@@ -1,0 +1,12 @@
+diff --git a/absl/copts/GENERATED_AbseilCopts.cmake b/absl/copts/GENERATED_AbseilCopts.cmake
+index a4ab1aa2..047cd360 100644
+--- a/absl/copts/GENERATED_AbseilCopts.cmake
++++ b/absl/copts/GENERATED_AbseilCopts.cmake
+@@ -64,7 +64,6 @@ list(APPEND ABSL_LLVM_FLAGS
+     "-Wall"
+     "-Wextra"
+     "-Wcast-qual"
+-    "-Wconversion"
+     "-Wfloat-overflow-conversion"
+     "-Wfloat-zero-conversion"
+     "-Wfor-loop-analysis"

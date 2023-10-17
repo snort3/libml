@@ -3,12 +3,21 @@ set(FETCHCONTENT_QUIET OFF CACHE BOOL "")
 
 if(NOT MSVC)
     add_compile_options(
-        -Wno-deprecated-declarations
-        -Wno-maybe-uninitialized
-        -Wno-unknown-pragmas
         -Wno-comment
+        -Wno-conversion
+        -Wno-deprecated-declarations
         -Wno-ignored-attributes
+        -Wno-uninitialized
+        -Wno-unknown-attributes
+        -Wno-unknown-pragmas
     )
+endif()
+
+if(APPLE)
+    set(CMAKE_C_ARCHIVE_CREATE "<CMAKE_AR> Scr <TARGET> <LINK_FLAGS> <OBJECTS>")
+    set(CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> Scr <TARGET> <LINK_FLAGS> <OBJECTS>")
+    set(CMAKE_C_ARCHIVE_FINISH "<CMAKE_RANLIB> -no_warning_for_no_symbols -c <TARGET>")
+    set(CMAKE_CXX_ARCHIVE_FINISH "<CMAKE_RANLIB> -no_warning_for_no_symbols -c <TARGET>")
 endif()
 
 ##########
@@ -64,6 +73,10 @@ add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/fft2d" EXCLUDE_FROM_ALL)
 
 set(FLATBUFFERS_SOURCE_DIR "${VENDOR_DIR}/flatbuffers" CACHE PATH "")
 set(FLATBUFFERS_BUILD_TESTS OFF CACHE BOOL "")
+
+if(APPLE)
+    set(FLATBUFFERS_OSX_BUILD_UNIVERSAL OFF CACHE BOOL "")
+endif()
 
 add_definitions(-DNOMINMAX=1)
 add_subdirectory("${FLATBUFFERS_SOURCE_DIR}" EXCLUDE_FROM_ALL)
