@@ -22,6 +22,7 @@
 - Upstream: <https://github.com/abseil/abseil-cpp>
 - Version: 20220623.0 (273292d1cfc0a94a65082ee350509af1d113344d)
 - License: Apache 2.0
+- Patch: patches/abseil.patch
 
 ## clog
 
