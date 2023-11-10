@@ -17,6 +17,8 @@
 //--------------------------------------------------------------------------
 // libml.cc author Brandon Stultz <brastult@cisco.com>
 
+#include <utility>
+
 #include "tensorflow/lite/interpreter.h"
 #include "tensorflow/lite/kernels/kernel_util.h"
 #include "tensorflow/lite/kernels/register.h"
@@ -32,43 +34,41 @@ using namespace tflite;
 const char* libml_version()
 { return VERSION; }
 
-BinaryClassifierModel::BinaryClassifierModel() = default;
-BinaryClassifierModel::~BinaryClassifierModel() = default;
+BinaryClassifier::BinaryClassifier() = default;
+BinaryClassifier::~BinaryClassifier() = default;
 
-bool BinaryClassifierModel::build(std::string in)
+bool BinaryClassifier::build(std::string in)
 {
+    interpreter.reset();
+
     LoggerOptions::SetMinimumLogSeverity(TFLITE_LOG_ERROR);
 
     src = std::move(in);
 
-    std::unique_ptr<FlatBufferModel> check =
-        FlatBufferModel::VerifyAndBuildFromBuffer(src.data(),
-            src.size());
+    model = FlatBufferModel::VerifyAndBuildFromBuffer(src.data(),
+        src.size());
 
-    if(check == nullptr)
+    if(model == nullptr)
         return false;
 
     ops::builtin::BuiltinOpResolver resolver;
 
-    InterpreterBuilder builder(*check, resolver);
+    std::unique_ptr<Interpreter> check;
 
-    std::unique_ptr<Interpreter> interpreter;
+    InterpreterBuilder builder(*model, resolver);
 
-    if(builder(&interpreter) != kTfLiteOk)
+    if(builder(&check) != kTfLiteOk)
         return false;
 
-    if(interpreter->inputs().size() != 1 &&
-       interpreter->outputs().size() != 1)
+    if(check->inputs().size() != 1 &&
+        check->outputs().size() != 1)
         return false;
 
-    const TfLiteTensor* input_tensor =
-        interpreter->input_tensor(0);
-
-    const TfLiteTensor* output_tensor =
-        interpreter->output_tensor(0);
+    const TfLiteTensor* input_tensor = check->input_tensor(0);
+    const TfLiteTensor* output_tensor = check->output_tensor(0);
 
     if(input_tensor->type != kTfLiteFloat32 &&
-       output_tensor->type != kTfLiteFloat32)
+        output_tensor->type != kTfLiteFloat32)
         return false;
 
     int64_t sz = NumElements(input_tensor);
@@ -81,44 +81,24 @@ bool BinaryClassifierModel::build(std::string in)
     if(NumElements(output_tensor) != 1)
         return false;
 
-    buffer = std::move(check);
+    if(check->AllocateTensors() != kTfLiteOk)
+        return false;
+
+    interpreter = std::move(check);
     return true;
 }
 
-bool BinaryClassifierModel::buildFromFile(std::string path)
+bool BinaryClassifier::buildFromFile(std::string path)
 {
     std::string data;
 
     if(!readFile(path, data))
-        return false;
-
-    return build(std::move(data));
-}
-
-BinaryClassifier::BinaryClassifier(const BinaryClassifierModel& m)
-    : model(m) {}
-
-BinaryClassifier::~BinaryClassifier() = default;
-
-bool BinaryClassifier::build()
-{
-    if(model.buffer == nullptr)
-        return false;
-
-    ops::builtin::BuiltinOpResolver resolver;
-
-    InterpreterBuilder builder(*model.buffer, resolver);
-
-    if(builder(&interpreter) != kTfLiteOk)
-        return false;
-
-    if(interpreter->AllocateTensors() != kTfLiteOk)
     {
-        interpreter = nullptr;
+        interpreter.reset();
         return false;
     }
 
-    return true;
+    return build(std::move(data));
 }
 
 bool BinaryClassifier::run(const char* buffer,
@@ -132,8 +112,6 @@ bool BinaryClassifier::run(const char* buffer,
 
     if(interpreter->ResetVariableTensors() != kTfLiteOk)
         return false;
-
-    size_t input_size = model.input_size;
 
     if(buffer_size > input_size)
         buffer_size = input_size;

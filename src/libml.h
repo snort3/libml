@@ -21,7 +21,6 @@
 
 #include <memory>
 #include <string>
-#include <utility>
 
 const char* libml_version();
 
@@ -31,33 +30,20 @@ namespace tflite
     class Interpreter;
 }
 
-class BinaryClassifierModel
+class BinaryClassifier
 {
 public:
-    BinaryClassifierModel();
-    ~BinaryClassifierModel();
+    BinaryClassifier();
+    ~BinaryClassifier();
 
     bool build(std::string);
     bool buildFromFile(std::string);
 
-    friend class BinaryClassifier;
+    bool run(const char*, size_t, float&);
 
 private:
     std::string src;
     size_t input_size = 0;
-    std::unique_ptr<tflite::FlatBufferModel> buffer;
-};
-
-class BinaryClassifier
-{
-public:
-    BinaryClassifier(const BinaryClassifierModel&);
-    ~BinaryClassifier();
-
-    bool build();
-    bool run(const char*, size_t, float&);
-
-private:
-    const BinaryClassifierModel& model;
+    std::unique_ptr<tflite::FlatBufferModel> model;
     std::unique_ptr<tflite::Interpreter> interpreter;
 };

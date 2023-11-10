@@ -17,33 +17,10 @@
 //--------------------------------------------------------------------------
 // classifier.cc author Brandon Stultz <brastult@cisco.com>
 
-#include <fstream>
 #include <iostream>
 #include <string>
 
 #include "libml.h"
-
-bool readFile(const std::string& path, std::string& buffer)    
-{    
-    std::ifstream file(path, std::ios::binary);
-
-    if(!file.is_open())
-        return false;
-
-    file.seekg(0, std::ios::end);
-    size_t size = static_cast<size_t>(file.tellg());
-    file.seekg(0, std::ios::beg);
-
-    if(size == 0)
-    {
-        buffer = {};
-        return true;
-    }
-
-    buffer.resize(size);
-    file.read(&buffer[0], std::streamsize(size));
-    return true;
-}
 
 int main(int argc, char** argv)
 {
@@ -56,27 +33,10 @@ int main(int argc, char** argv)
     std::cout << "Using LibML version " << libml_version() << "\n";
 
     std::string model_path(argv[1]);
-    std::string model_data;
 
-    if(!readFile(model_path, model_data))
-    {
-        std::cout << "error: could not read: "
-                  << model_path
-                  << std::endl;
-        return 1;
-    }
+    BinaryClassifier classifier;
 
-    BinaryClassifierModel model;
-
-    if(!model.build(std::move(model_data)))
-    {
-        std::cout << "error: could not build model\n";
-        return 1;
-    }
-
-    BinaryClassifier classifier(model);
-
-    if(!classifier.build())
+    if(!classifier.buildFromFile(model_path))
     {
         std::cout << "error: could not build classifier\n";
         return 1;
