@@ -17,6 +17,7 @@
 //--------------------------------------------------------------------------
 // libml.cc author Brandon Stultz <brastult@cisco.com>
 
+#include <cstdint>
 #include <utility>
 
 #include "tensorflow/lite/interpreter.h"
@@ -88,7 +89,7 @@ bool BinaryClassifier::build(std::string in)
     return true;
 }
 
-bool BinaryClassifier::buildFromFile(std::string path)
+bool BinaryClassifier::buildFromFile(const std::string& path)
 {
     std::string data;
 

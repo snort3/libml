@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <memory>
 #include <string>
 
@@ -37,7 +38,7 @@ public:
     ~BinaryClassifier();
 
     bool build(std::string);
-    bool buildFromFile(std::string);
+    bool buildFromFile(const std::string&);
 
     bool run(const char*, size_t, float&);
 

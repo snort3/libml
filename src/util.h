@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include <cstddef>
 #include <string>
 
+bool getFileSize(const std::string& path, size_t& size);
 bool readFile(const std::string& path, std::string& buffer);
