@@ -26,6 +26,7 @@ ${CMAKE_PROJECT_NAME} version ${VERSION}
 
 Build options:
     type:    ${CMAKE_BUILD_TYPE}
+    prefix:  ${CMAKE_INSTALL_PREFIX}
 
 Compiler options:
     CXX:     ${CMAKE_CXX_COMPILER}

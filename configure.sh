@@ -42,6 +42,9 @@ while [ $# -ne 0 ]; do
         --debugrelease)
             buildtype=RelWithDebInfo
             ;;
+        --prefix=*)
+            append_cache_entry CMAKE_INSTALL_PREFIX PATH $optarg
+            ;;
         #--test)
         #    append_cache_entry ENABLE_TESTS BOOL true
         #    ;;
