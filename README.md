@@ -17,14 +17,9 @@ sudo make -j$(nproc) install
 ### Binary Classifier
 
 ```c++
-BinaryClassifierModel model;
+BinaryClassifier classifier;
 
-if(!model.build(model_data))
-    return 1;
-
-BinaryClassifier classifier(model);
-
-if(!classifier.build())
+if(!classifier.buildFromFile(model_path))
     return 1;
 
 float output = 0.0;
