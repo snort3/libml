@@ -35,6 +35,7 @@
 - Upstream: <https://github.com/pytorch/cpuinfo>
 - Version: git (5e63739504f0f8e18e941bd63b2d6d42536c7d90)
 - License: BSD-2-Clause
+- Patch: patches/cpuinfo.patch
 
 ## eigen
 
@@ -79,12 +80,14 @@
 - Upstream: <https://github.com/Maratyszcza/psimd>
 - Version: git (072586a71b55b7f8c584153d223e95687148a900)
 - License: MIT
+- Patch: patches/psimd.patch
 
 ## FP16
 
 - Upstream: <https://github.com/Maratyszcza/FP16>
 - Version: git (0a92994d729ff76a58f692d3028ca1b64b145d91)
 - License: MIT
+- Patch: patches/FP16.patch
 
 ## FXdiv
 
@@ -103,6 +106,7 @@
 - Upstream: <https://github.com/intel/ARM_NEON_2_x86_SSE>
 - Version: git (a15b489e1222b2087007546b4912e21293ea86ff)
 - License: BSD-2-Clause
+- Patch: patches/neon2sse.patch
 
 ## XNNPACK
 
@@ -116,3 +120,4 @@
 - Upstream: <https://github.com/tensorflow/tensorflow>
 - Version: v2.11.0 (d5b57ca93e506df258271ea00fc29cf98383a374)
 - License: Apache 2.0
+- Patch: patches/tensorflow.patch

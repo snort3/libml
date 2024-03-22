@@ -64,6 +64,7 @@ list(APPEND ABSL_LLVM_FLAGS
     "-Wall"
     "-Wextra"
     "-Wcast-qual"
+    "-Wconversion"
     "-Wfloat-overflow-conversion"
     "-Wfloat-zero-conversion"
     "-Wfor-loop-analysis"

@@ -8,9 +8,14 @@ if(NOT MSVC)
         -Wno-deprecated-declarations
         -Wno-ignored-attributes
         -Wno-uninitialized
-        -Wno-unknown-attributes
         -Wno-unknown-pragmas
     )
+
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+        add_compile_options(-Wno-maybe-uninitialized)
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        add_compile_options(-Wno-unknown-attributes -Wno-deprecated-builtins)
+    endif()
 endif()
 
 if(APPLE)

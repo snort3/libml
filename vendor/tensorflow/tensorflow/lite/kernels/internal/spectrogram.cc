@@ -16,6 +16,7 @@ limitations under the License.
 #include "tensorflow/lite/kernels/internal/spectrogram.h"
 
 #include <assert.h>
+#include <cstdint>
 #include <math.h>
 
 #include "third_party/fft2d/fft.h"

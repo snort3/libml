@@ -52,3 +52,23 @@ index 4825d18b..aa4e8989 100644
 +#endif()
 +#
 +#message(STATUS "Proceeding with version: ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}.${VERSION_COMMIT}")
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 21e90151..6969d4aa 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1,5 +1,5 @@
+ # This is the legacy minimum version flatbuffers supported for a while.
+-cmake_minimum_required(VERSION 2.8.12)
++cmake_minimum_required(VERSION 3.5)
+ 
+ # CMake version 3.16 is the 'de-facto' minimum version for flatbuffers. If the
+ # current cmake is older than this, warn the user and include the legacy file to
+@@ -282,7 +282,7 @@ elseif(CMAKE_COMPILER_IS_GNUCXX)
+       "${CMAKE_CXX_FLAGS} -std=c++0x")
+   endif(CYGWIN)
+   set(CMAKE_CXX_FLAGS
+-    "${CMAKE_CXX_FLAGS} -Wall -pedantic -Werror -Wextra -Werror=shadow")
++    "${CMAKE_CXX_FLAGS} -Wall -pedantic -Werror -Wextra -Werror=shadow -Wno-stringop-overflow")
+   set(FLATBUFFERS_PRIVATE_CXX_FLAGS "-Wold-style-cast")
+   if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 4.4)
+     if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
