@@ -6,6 +6,13 @@
 
 #include "flatbuffers/flatbuffers.h"
 
+// Ensure the included flatbuffers.h is the same version as when this file was
+// generated, otherwise it may not be compatible.
+static_assert(FLATBUFFERS_VERSION_MAJOR == 23 &&
+              FLATBUFFERS_VERSION_MINOR == 1 &&
+              FLATBUFFERS_VERSION_REVISION == 21,
+             "Non-compatible flatbuffers version included");
+
 namespace com {
 namespace fbs {
 namespace app {
@@ -13,62 +20,61 @@ namespace app {
 struct Animal;
 struct AnimalBuilder;
 
-struct Animal FLATBUFFERS_FINAL_CLASS : private flatbuffers::Table {
+struct Animal FLATBUFFERS_FINAL_CLASS : private ::flatbuffers::Table {
   typedef AnimalBuilder Builder;
   enum FlatBuffersVTableOffset FLATBUFFERS_VTABLE_UNDERLYING_TYPE {
     VT_NAME = 4,
     VT_SOUND = 6,
     VT_WEIGHT = 8
   };
-  const flatbuffers::String *name() const {
-    return GetPointer<const flatbuffers::String *>(VT_NAME);
+  const ::flatbuffers::String *name() const {
+    return GetPointer<const ::flatbuffers::String *>(VT_NAME);
   }
-  const flatbuffers::String *sound() const {
-    return GetPointer<const flatbuffers::String *>(VT_SOUND);
+  const ::flatbuffers::String *sound() const {
+    return GetPointer<const ::flatbuffers::String *>(VT_SOUND);
   }
   uint16_t weight() const {
     return GetField<uint16_t>(VT_WEIGHT, 0);
   }
-  bool Verify(flatbuffers::Verifier &verifier) const {
+  bool Verify(::flatbuffers::Verifier &verifier) const {
     return VerifyTableStart(verifier) &&
            VerifyOffset(verifier, VT_NAME) &&
            verifier.VerifyString(name()) &&
            VerifyOffset(verifier, VT_SOUND) &&
            verifier.VerifyString(sound()) &&
-           VerifyField<uint16_t>(verifier, VT_WEIGHT) &&
+           VerifyField<uint16_t>(verifier, VT_WEIGHT, 2) &&
            verifier.EndTable();
   }
 };
 
 struct AnimalBuilder {
   typedef Animal Table;
-  flatbuffers::FlatBufferBuilder &fbb_;
-  flatbuffers::uoffset_t start_;
-  void add_name(flatbuffers::Offset<flatbuffers::String> name) {
+  ::flatbuffers::FlatBufferBuilder &fbb_;
+  ::flatbuffers::uoffset_t start_;
+  void add_name(::flatbuffers::Offset<::flatbuffers::String> name) {
     fbb_.AddOffset(Animal::VT_NAME, name);
   }
-  void add_sound(flatbuffers::Offset<flatbuffers::String> sound) {
+  void add_sound(::flatbuffers::Offset<::flatbuffers::String> sound) {
     fbb_.AddOffset(Animal::VT_SOUND, sound);
   }
   void add_weight(uint16_t weight) {
     fbb_.AddElement<uint16_t>(Animal::VT_WEIGHT, weight, 0);
   }
-  explicit AnimalBuilder(flatbuffers::FlatBufferBuilder &_fbb)
+  explicit AnimalBuilder(::flatbuffers::FlatBufferBuilder &_fbb)
         : fbb_(_fbb) {
     start_ = fbb_.StartTable();
   }
-  AnimalBuilder &operator=(const AnimalBuilder &);
-  flatbuffers::Offset<Animal> Finish() {
+  ::flatbuffers::Offset<Animal> Finish() {
     const auto end = fbb_.EndTable(start_);
-    auto o = flatbuffers::Offset<Animal>(end);
+    auto o = ::flatbuffers::Offset<Animal>(end);
     return o;
   }
 };
 
-inline flatbuffers::Offset<Animal> CreateAnimal(
-    flatbuffers::FlatBufferBuilder &_fbb,
-    flatbuffers::Offset<flatbuffers::String> name = 0,
-    flatbuffers::Offset<flatbuffers::String> sound = 0,
+inline ::flatbuffers::Offset<Animal> CreateAnimal(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
+    ::flatbuffers::Offset<::flatbuffers::String> name = 0,
+    ::flatbuffers::Offset<::flatbuffers::String> sound = 0,
     uint16_t weight = 0) {
   AnimalBuilder builder_(_fbb);
   builder_.add_sound(sound);
@@ -77,8 +83,8 @@ inline flatbuffers::Offset<Animal> CreateAnimal(
   return builder_.Finish();
 }
 
-inline flatbuffers::Offset<Animal> CreateAnimalDirect(
-    flatbuffers::FlatBufferBuilder &_fbb,
+inline ::flatbuffers::Offset<Animal> CreateAnimalDirect(
+    ::flatbuffers::FlatBufferBuilder &_fbb,
     const char *name = nullptr,
     const char *sound = nullptr,
     uint16_t weight = 0) {
@@ -92,32 +98,32 @@ inline flatbuffers::Offset<Animal> CreateAnimalDirect(
 }
 
 inline const com::fbs::app::Animal *GetAnimal(const void *buf) {
-  return flatbuffers::GetRoot<com::fbs::app::Animal>(buf);
+  return ::flatbuffers::GetRoot<com::fbs::app::Animal>(buf);
 }
 
 inline const com::fbs::app::Animal *GetSizePrefixedAnimal(const void *buf) {
-  return flatbuffers::GetSizePrefixedRoot<com::fbs::app::Animal>(buf);
+  return ::flatbuffers::GetSizePrefixedRoot<com::fbs::app::Animal>(buf);
 }
 
 inline bool VerifyAnimalBuffer(
-    flatbuffers::Verifier &verifier) {
+    ::flatbuffers::Verifier &verifier) {
   return verifier.VerifyBuffer<com::fbs::app::Animal>(nullptr);
 }
 
 inline bool VerifySizePrefixedAnimalBuffer(
-    flatbuffers::Verifier &verifier) {
+    ::flatbuffers::Verifier &verifier) {
   return verifier.VerifySizePrefixedBuffer<com::fbs::app::Animal>(nullptr);
 }
 
 inline void FinishAnimalBuffer(
-    flatbuffers::FlatBufferBuilder &fbb,
-    flatbuffers::Offset<com::fbs::app::Animal> root) {
+    ::flatbuffers::FlatBufferBuilder &fbb,
+    ::flatbuffers::Offset<com::fbs::app::Animal> root) {
   fbb.Finish(root);
 }
 
 inline void FinishSizePrefixedAnimalBuffer(
-    flatbuffers::FlatBufferBuilder &fbb,
-    flatbuffers::Offset<com::fbs::app::Animal> root) {
+    ::flatbuffers::FlatBufferBuilder &fbb,
+    ::flatbuffers::Offset<com::fbs::app::Animal> root) {
   fbb.FinishSizePrefixed(root);
 }
 

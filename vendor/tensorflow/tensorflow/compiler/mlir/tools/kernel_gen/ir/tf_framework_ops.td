@@ -40,7 +40,6 @@ def TFFramework_Dialect : Dialect {
   }];
 
   let useDefaultTypePrinterParser = 1;
-  let emitAccessorPrefix = kEmitAccessorPrefix_Prefixed;
 }
 
 def TFFramework_OpKernelContextType : DialectType<TFFramework_Dialect,
@@ -285,7 +284,6 @@ def TFFramework_JITCompileFromStrOp : TFFramework_Op<"jit_compile_from_str",
     StrAttr:$code,
     I64ArrayAttr:$tileSizes,
     I64ArrayAttr:$unrollFactors,
-    I64Attr:$maxSupportedRank,
     BoolAttr:$enableFtz,
     BoolAttr:$index64Bit,
     BoolAttr:$cpuCodegen

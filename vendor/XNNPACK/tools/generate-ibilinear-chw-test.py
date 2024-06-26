@@ -32,7 +32,7 @@ def split_ukernel_name(name):
   pixel_tile = int(match.group(3))
   channel_tile = 1
 
-  arch, isa = xnncommon.parse_target_name(target_name=match.group(2))
+  arch, isa, assembly = xnncommon.parse_target_name(target_name=match.group(2))
   return channel_tile, pixel_tile, arch, isa
 
 
@@ -211,20 +211,10 @@ def main(args):
       name = ukernel_spec["name"]
       channel_tile, pixel_tile, arch, isa = split_ukernel_name(name)
 
-      # specification can override architecture
-      arch = ukernel_spec.get("arch", arch)
-
       test_case = generate_test_cases(name, channel_tile, pixel_tile, isa)
       tests += "\n\n" + xnncommon.postprocess_test_case(test_case, arch, isa)
 
-    txt_changed = True
-    if os.path.exists(options.output):
-      with codecs.open(options.output, "r", encoding="utf-8") as output_file:
-        txt_changed = output_file.read() != tests
-
-    if txt_changed:
-      with codecs.open(options.output, "w", encoding="utf-8") as output_file:
-        output_file.write(tests)
+    xnncommon.overwrite_if_changed(options.output, tests)
 
 if __name__ == "__main__":
   main(sys.argv[1:])

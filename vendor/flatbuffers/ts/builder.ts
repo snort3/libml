@@ -24,6 +24,7 @@ export class Builder {
     private force_defaults = false;
     
     private string_maps: Map<string | Uint8Array, number> | null = null;
+    private text_encoder = new TextEncoder();
   
     /**
      * Create a FlatBufferBuilder.
@@ -149,7 +150,7 @@ export class Builder {
   
     /**
      * Add an `int8` to the buffer, properly aligned, and grows the buffer (if necessary).
-     * @param value The `int8` to add the the buffer.
+     * @param value The `int8` to add the buffer.
      */
     addInt8(value: number): void {
       this.prep(1, 0);
@@ -158,7 +159,7 @@ export class Builder {
   
     /**
      * Add an `int16` to the buffer, properly aligned, and grows the buffer (if necessary).
-     * @param value The `int16` to add the the buffer.
+     * @param value The `int16` to add the buffer.
      */
     addInt16(value: number): void {
       this.prep(2, 0);
@@ -167,7 +168,7 @@ export class Builder {
   
     /**
      * Add an `int32` to the buffer, properly aligned, and grows the buffer (if necessary).
-     * @param value The `int32` to add the the buffer.
+     * @param value The `int32` to add the buffer.
      */
     addInt32(value: number): void {
       this.prep(4, 0);
@@ -176,7 +177,7 @@ export class Builder {
   
     /**
      * Add an `int64` to the buffer, properly aligned, and grows the buffer (if necessary).
-     * @param value The `int64` to add the the buffer.
+     * @param value The `int64` to add the buffer.
      */
     addInt64(value: bigint): void {
       this.prep(8, 0);
@@ -185,7 +186,7 @@ export class Builder {
   
     /**
      * Add a `float32` to the buffer, properly aligned, and grows the buffer (if necessary).
-     * @param value The `float32` to add the the buffer.
+     * @param value The `float32` to add the buffer.
      */
     addFloat32(value: number): void {
       this.prep(4, 0);
@@ -194,49 +195,49 @@ export class Builder {
   
     /**
      * Add a `float64` to the buffer, properly aligned, and grows the buffer (if necessary).
-     * @param value The `float64` to add the the buffer.
+     * @param value The `float64` to add the buffer.
      */
     addFloat64(value: number): void {
       this.prep(8, 0);
       this.writeFloat64(value);
     }
   
-    addFieldInt8(voffset: number, value: number, defaultValue: number): void {
+    addFieldInt8(voffset: number, value: number, defaultValue: number|null): void {
       if (this.force_defaults || value != defaultValue) {
         this.addInt8(value);
         this.slot(voffset);
       }
     }
   
-    addFieldInt16(voffset: number, value: number, defaultValue: number): void {
+    addFieldInt16(voffset: number, value: number, defaultValue: number|null): void {
       if (this.force_defaults || value != defaultValue) {
         this.addInt16(value);
         this.slot(voffset);
       }
     }
   
-    addFieldInt32(voffset: number, value: number, defaultValue: number): void {
+    addFieldInt32(voffset: number, value: number, defaultValue: number|null): void {
       if (this.force_defaults || value != defaultValue) {
         this.addInt32(value);
         this.slot(voffset);
       }
     }
   
-    addFieldInt64(voffset: number, value: bigint, defaultValue: bigint): void {
+    addFieldInt64(voffset: number, value: bigint, defaultValue: bigint|null): void {
       if (this.force_defaults || value !== defaultValue) {
         this.addInt64(value);
         this.slot(voffset);
       }
     }
   
-    addFieldFloat32(voffset: number, value: number, defaultValue: number): void {
+    addFieldFloat32(voffset: number, value: number, defaultValue: number|null): void {
       if (this.force_defaults || value != defaultValue) {
         this.addFloat32(value);
         this.slot(voffset);
       }
     }
   
-    addFieldFloat64(voffset: number, value: number, defaultValue: number): void {
+    addFieldFloat64(voffset: number, value: number, defaultValue: number|null): void {
       if (this.force_defaults || value != defaultValue) {
         this.addFloat64(value);
         this.slot(voffset);
@@ -267,7 +268,7 @@ export class Builder {
      */
     nested(obj: Offset): void {
       if (obj != this.offset()) {
-        throw new Error('FlatBuffers: struct must be serialized inline.');
+        throw new TypeError('FlatBuffers: struct must be serialized inline.');
       }
     }
   
@@ -277,7 +278,7 @@ export class Builder {
      */
     notNested(): void {
       if (this.isNested) {
-        throw new Error('FlatBuffers: object serialization must not be nested.');
+        throw new TypeError('FlatBuffers: object serialization must not be nested.');
       }
     }
   
@@ -428,7 +429,7 @@ export class Builder {
         this.prep(this.minalign, SIZEOF_INT +
           FILE_IDENTIFIER_LENGTH + size_prefix);
         if (file_identifier.length != FILE_IDENTIFIER_LENGTH) {
-          throw new Error('FlatBuffers: file identifier must be length ' +
+          throw new TypeError('FlatBuffers: file identifier must be length ' +
             FILE_IDENTIFIER_LENGTH);
         }
         for (let i = FILE_IDENTIFIER_LENGTH - 1; i >= 0; i--) {
@@ -457,11 +458,12 @@ export class Builder {
     requiredField(table: Offset, field: number): void {
       const table_start = this.bb.capacity() - table;
       const vtable_start = table_start - this.bb.readInt32(table_start);
-      const ok = this.bb.readInt16(vtable_start + field) != 0;
+      const ok = field < this.bb.readInt16(vtable_start) &&
+                 this.bb.readInt16(vtable_start + field) != 0;
   
       // If this fails, the caller will show what field needs to be set.
       if (!ok) {
-        throw new Error('FlatBuffers: field ' + field + ' must be set');
+        throw new TypeError('FlatBuffers: field ' + field + ' must be set');
       }
     }
   
@@ -531,48 +533,30 @@ export class Builder {
       if (s instanceof Uint8Array) {
         utf8 = s;
       } else {
-        utf8 = [];
-        let i = 0;
-  
-        while (i < s.length) {
-          let codePoint;
-  
-          // Decode UTF-16
-          const a = s.charCodeAt(i++);
-          if (a < 0xD800 || a >= 0xDC00) {
-            codePoint = a;
-          } else {
-            const b = s.charCodeAt(i++);
-            codePoint = (a << 10) + b + (0x10000 - (0xD800 << 10) - 0xDC00);
-          }
-  
-          // Encode UTF-8
-          if (codePoint < 0x80) {
-            utf8.push(codePoint);
-          } else {
-            if (codePoint < 0x800) {
-              utf8.push(((codePoint >> 6) & 0x1F) | 0xC0);
-            } else {
-              if (codePoint < 0x10000) {
-                utf8.push(((codePoint >> 12) & 0x0F) | 0xE0);
-              } else {
-                utf8.push(
-                  ((codePoint >> 18) & 0x07) | 0xF0,
-                  ((codePoint >> 12) & 0x3F) | 0x80);
-              }
-              utf8.push(((codePoint >> 6) & 0x3F) | 0x80);
-            }
-            utf8.push((codePoint & 0x3F) | 0x80);
-          }
-        }
+        utf8 = this.text_encoder.encode(s);
       }
   
       this.addInt8(0);
       this.startVector(1, utf8.length, 1);
       this.bb.setPosition(this.space -= utf8.length);
-      for (let i = 0, offset = this.space, bytes = this.bb.bytes(); i < utf8.length; i++) {
-        bytes[offset++] = utf8[i];
+      this.bb.bytes().set(utf8, this.space);
+      return this.endVector();
+    }
+  
+    /**
+     * Create a byte vector.
+     *
+     * @param v The bytes to add
+     * @returns The offset in the buffer where the byte vector starts
+     */
+    createByteVector(v: Uint8Array | null | undefined): Offset {
+      if (v === null || v === undefined) {
+        return 0;
       }
+
+      this.startVector(1, v.length, 1);
+      this.bb.setPosition(this.space -= v.length);
+      this.bb.bytes().set(v, this.space);
       return this.endVector();
     }
   
@@ -581,7 +565,7 @@ export class Builder {
      * 
      * @returns offset of obj
      */
-    createObjectOffset(obj: string | any): Offset {
+    createObjectOffset(obj: string | IGeneratedObject | null): Offset {
       if(obj === null) {
         return 0
       }
@@ -598,7 +582,7 @@ export class Builder {
      * 
      * @returns list of offsets of each non null object
      */
-    createObjectOffsetList(list: string[] | any[]): Offset[] {
+    createObjectOffsetList(list: (string | IGeneratedObject)[]): Offset[] {
       const ret: number[] = [];
   
       for(let i = 0; i < list.length; ++i) {
@@ -607,7 +591,7 @@ export class Builder {
         if(val !== null) {
           ret.push(this.createObjectOffset(val));
         } else {
-          throw new Error(
+          throw new TypeError(
             'FlatBuffers: Argument for createObjectOffsetList cannot contain null.'); 
         }
       }
@@ -615,9 +599,9 @@ export class Builder {
       return ret;
     }
   
-    createStructOffsetList(list: string[] | any[], startFunc: (builder: Builder, length: number) => void): Offset {
+    createStructOffsetList(list: (string | IGeneratedObject)[], startFunc: (builder: Builder, length: number) => void): Offset {
       startFunc(this, list.length);
-      this.createObjectOffsetList(list);
+      this.createObjectOffsetList(list.slice().reverse());
       return this.endVector();
     }
   }

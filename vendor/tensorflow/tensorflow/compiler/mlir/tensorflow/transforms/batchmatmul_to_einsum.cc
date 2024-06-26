@@ -49,12 +49,12 @@ class ConvertTFBatchMatMulToEinsumOp
 
   LogicalResult matchAndRewrite(BatchMatMulOpType op,
                                 PatternRewriter& rewriter) const override {
-    Value input_lhs = op.x();
-    Value input_rhs = op.y();
+    Value input_lhs = op.getX();
+    Value input_rhs = op.getY();
 
     // LHS and RHS must be a ranked tensor type
-    auto lhs_type = input_lhs.getType().dyn_cast<RankedTensorType>();
-    auto rhs_type = input_rhs.getType().dyn_cast<RankedTensorType>();
+    auto lhs_type = mlir::dyn_cast<RankedTensorType>(input_lhs.getType());
+    auto rhs_type = mlir::dyn_cast<RankedTensorType>(input_rhs.getType());
 
     if (!lhs_type || !rhs_type) return failure();
 
@@ -70,8 +70,8 @@ class ConvertTFBatchMatMulToEinsumOp
 
     // einsum equation for batchmatmul
     std::string equation("...mk,...kn->...mn");
-    if (op.adj_x()) std::swap(equation[3], equation[4]);
-    if (op.adj_y()) std::swap(equation[6 + 3], equation[6 + 4]);
+    if (op.getAdjX()) std::swap(equation[3], equation[4]);
+    if (op.getAdjY()) std::swap(equation[6 + 3], equation[6 + 4]);
 
     rewriter.replaceOpWithNewOp<TF::EinsumOp>(
         op, op.getType(),

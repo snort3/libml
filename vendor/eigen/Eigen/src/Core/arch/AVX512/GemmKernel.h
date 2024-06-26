@@ -18,11 +18,11 @@
 #include <immintrin.h>
 #include <type_traits>
 
+// IWYU pragma: private
 #include "../../InternalHeaderCheck.h"
 
 #if !defined(EIGEN_USE_AVX512_GEMM_KERNELS)
-// Disable new AVX512 kernels by default.
-#define EIGEN_USE_AVX512_GEMM_KERNELS 0
+#define EIGEN_USE_AVX512_GEMM_KERNELS 1
 #endif
 
 #define SECOND_FETCH (32)
@@ -89,8 +89,6 @@ class gemm_class {
 
   const Index a_stride, b_stride;
   const Index a_off, b_off;
-
-  static EIGEN_ALWAYS_INLINE constexpr int div_up(int a, int b) { return a == 0 ? 0 : (a - 1) / b + 1; }
 
   EIGEN_ALWAYS_INLINE void prefetch_a(const Scalar *a_addr) {
     _mm_prefetch((char *)(a_prefetch_size + a_addr - a_shift), _MM_HINT_T0);
@@ -479,7 +477,7 @@ class gemm_class {
    *
    *              const Scalar *cox = (idx == 0) ? co1 : co2;
    *
-   *              const int um_vecs = div_up(a_unroll, nelems_in_cache_line);
+   *              const int um_vecs = numext::div_ceil(a_unroll, nelems_in_cache_line);
    *              scale_load_c<0, um_vecs, idx, a_unroll>(cox, alpha_reg);
    *              write_c<0, um_vecs, idx, a_unroll>(cox);
    *
@@ -498,7 +496,7 @@ class gemm_class {
   EIGEN_ALWAYS_INLINE void c_update_1count(Scalar *&cox) {
     if (pow >= 4) cox += ldc;
 
-    const int um_vecs = div_up(a_unroll, nelems_in_cache_line);
+    const int um_vecs = numext::div_ceil(a_unroll, nelems_in_cache_line);
     auto &alpha_reg = zmm[alpha_load_reg];
 
     scale_load_c<0, um_vecs, idx, a_unroll>(cox, alpha_reg);
@@ -641,10 +639,11 @@ class gemm_class {
     }
   }
 
-  template <int uk, int max_b_unroll, int a_unroll, int b_unroll, bool ktail, bool fetch_x, bool c_fetch>
+  template <int uk, int max_b_unroll, int a_unroll, int b_unroll, bool ktail, bool fetch_x, bool c_fetch,
+            bool no_a_preload = false>
   EIGEN_ALWAYS_INLINE void innerkernel_1uk(const Scalar *&aa, const Scalar *const &ao, const Scalar *const &bo,
                                            Scalar *&co2, int &fetchA_idx, int &fetchB_idx) {
-    const int um_vecs = div_up(a_unroll, nelems_in_cache_line);
+    const int um_vecs = numext::div_ceil(a_unroll, nelems_in_cache_line);
 
     if (max_b_unroll >= 1)
       innerkernel_1pow<uk, 1, 0, um_vecs, b_unroll, ktail, fetch_x, c_fetch>(aa, ao, bo, co2, fetchA_idx, fetchB_idx);
@@ -655,8 +654,8 @@ class gemm_class {
     if (max_b_unroll >= 8)
       innerkernel_1pow<uk, 8, 0, um_vecs, b_unroll, ktail, fetch_x, c_fetch>(aa, ao, bo, co2, fetchA_idx, fetchB_idx);
 
-    // Load A after pow-loop.
-    load_a<0, um_vecs, uk, a_unroll, ktail>(ao);
+    // Load A after pow-loop. Skip this at the end to prevent running over the buffer
+    if (!no_a_preload) load_a<0, um_vecs, uk, a_unroll, ktail>(ao);
   }
 
   /*  Inner kernel loop structure.
@@ -698,7 +697,8 @@ class gemm_class {
    *  bo += b_unroll * kfactor;
    */
 
-  template <int a_unroll, int b_unroll, int k_factor, int max_b_unroll, int max_k_factor, bool c_fetch>
+  template <int a_unroll, int b_unroll, int k_factor, int max_b_unroll, int max_k_factor, bool c_fetch,
+            bool no_a_preload = false>
   EIGEN_ALWAYS_INLINE void innerkernel(const Scalar *&aa, const Scalar *&ao, const Scalar *&bo, Scalar *&co2) {
     int fetchA_idx = 0;
     int fetchB_idx = 0;
@@ -707,19 +707,21 @@ class gemm_class {
     const bool ktail = k_factor == 1;
 
     static_assert(k_factor <= 4 && k_factor > 0, "innerkernel maximum k_factor supported is 4");
+    static_assert(no_a_preload == false || (no_a_preload == true && k_factor == 1),
+                  "skipping a preload only allowed when k unroll is 1");
 
     if (k_factor > 0)
-      innerkernel_1uk<0, max_b_unroll, a_unroll, b_unroll, ktail, fetch_x, c_fetch>(aa, ao, bo, co2, fetchA_idx,
-                                                                                    fetchB_idx);
+      innerkernel_1uk<0, max_b_unroll, a_unroll, b_unroll, ktail, fetch_x, c_fetch, no_a_preload>(
+          aa, ao, bo, co2, fetchA_idx, fetchB_idx);
     if (k_factor > 1)
-      innerkernel_1uk<1, max_b_unroll, a_unroll, b_unroll, ktail, fetch_x, c_fetch>(aa, ao, bo, co2, fetchA_idx,
-                                                                                    fetchB_idx);
+      innerkernel_1uk<1, max_b_unroll, a_unroll, b_unroll, ktail, fetch_x, c_fetch, no_a_preload>(
+          aa, ao, bo, co2, fetchA_idx, fetchB_idx);
     if (k_factor > 2)
-      innerkernel_1uk<2, max_b_unroll, a_unroll, b_unroll, ktail, fetch_x, c_fetch>(aa, ao, bo, co2, fetchA_idx,
-                                                                                    fetchB_idx);
+      innerkernel_1uk<2, max_b_unroll, a_unroll, b_unroll, ktail, fetch_x, c_fetch, no_a_preload>(
+          aa, ao, bo, co2, fetchA_idx, fetchB_idx);
     if (k_factor > 3)
-      innerkernel_1uk<3, max_b_unroll, a_unroll, b_unroll, ktail, fetch_x, c_fetch>(aa, ao, bo, co2, fetchA_idx,
-                                                                                    fetchB_idx);
+      innerkernel_1uk<3, max_b_unroll, a_unroll, b_unroll, ktail, fetch_x, c_fetch, no_a_preload>(
+          aa, ao, bo, co2, fetchA_idx, fetchB_idx);
 
     // Advance A/B pointers after uk-loop.
     ao += a_unroll * k_factor;
@@ -728,8 +730,8 @@ class gemm_class {
 
   template <int a_unroll, int b_unroll, int max_b_unroll>
   EIGEN_ALWAYS_INLINE void kloop(const Scalar *&aa, const Scalar *&ao, const Scalar *&bo, Scalar *&co1, Scalar *&co2) {
-    const int um_vecs = div_up(a_unroll, nelems_in_cache_line);
-    if (!use_less_a_regs)
+    const int um_vecs = numext::div_ceil(a_unroll, nelems_in_cache_line);
+    if (!use_less_a_regs && k > 1)
       a_loads<0, 2, 0, um_vecs, a_unroll>(ao);
     else
       a_loads<0, 1, 0, um_vecs, a_unroll>(ao);
@@ -743,7 +745,13 @@ class gemm_class {
 
     // Unrolling k-loop by a factor of 4.
     const int max_k_factor = 4;
-    Index loop_count = k / max_k_factor;
+    Index kRem = k % max_k_factor;
+    Index k_ = k - kRem;
+    if (k_ >= max_k_factor) {
+      k_ -= max_k_factor;
+      kRem += max_k_factor;
+    }
+    Index loop_count = k_ / max_k_factor;
 
     if (loop_count > 0) {
 #ifdef SECOND_FETCH
@@ -771,10 +779,13 @@ class gemm_class {
     }
 
     // k-loop remainder handling.
-    loop_count = k % max_k_factor;
-    while (loop_count > 0) {
+    loop_count = kRem;
+    while (loop_count > 1) {
       innerkernel<a_unroll, b_unroll, 1, max_b_unroll, max_k_factor, 0>(aa, ao, bo, co2);
       loop_count--;
+    }
+    if (loop_count > 0) {
+      innerkernel<a_unroll, b_unroll, 1, max_b_unroll, max_k_factor, 0, true>(aa, ao, bo, co2);
     }
 
     // Update C matrix.
@@ -1193,10 +1204,9 @@ struct gemm_pack_rhs<Scalar, Index, DataMapper, 8, RowMajor, Conjugate, PanelMod
 
 template <typename Scalar, typename Index, typename DataMapper, int mr, bool ConjugateLhs, bool ConjugateRhs>
 struct gebp_kernel<Scalar, Scalar, Index, DataMapper, mr, 8, ConjugateLhs, ConjugateRhs> {
-  EIGEN_ALWAYS_INLINE
-  void operator()(const DataMapper &res, const Scalar *blockA, const Scalar *blockB, Index rows, Index depth,
-                  Index cols, Scalar alpha, Index strideA = -1, Index strideB = -1, Index offsetA = 0,
-                  Index offsetB = 0);
+  EIGEN_ALWAYS_INLINE void operator()(const DataMapper &res, const Scalar *blockA, const Scalar *blockB, Index rows,
+                                      Index depth, Index cols, Scalar alpha, Index strideA = -1, Index strideB = -1,
+                                      Index offsetA = 0, Index offsetB = 0);
 };
 
 template <typename Scalar, typename Index, typename DataMapper, int mr, bool ConjugateLhs, bool ConjugateRhs>
@@ -1225,7 +1235,7 @@ EIGEN_ALWAYS_INLINE void gebp_kernel<Scalar, Scalar, Index, DataMapper, mr, 8, C
     }
   }
 }
-#endif // EIGEN_USE_AVX512_GEMM_KERNELS
+#endif  // EIGEN_USE_AVX512_GEMM_KERNELS
 
 }  // namespace internal
 }  // namespace Eigen

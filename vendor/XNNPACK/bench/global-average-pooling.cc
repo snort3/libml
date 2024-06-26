@@ -15,12 +15,13 @@
 #include <vector>
 
 #include <xnnpack.h>
+#include <xnnpack/aligned-allocator.h>
+#include <xnnpack/common.h>
 
 #include <benchmark/benchmark.h>
-#include <fp16.h>
+#include <fp16/fp16.h>
 #include "bench/utils.h"
 
-#ifndef XNN_NO_QU8_OPERATORS
 static void global_average_pooling_qu8(benchmark::State& state) {
   const size_t batch_size = state.range(0);
   const size_t input_height = state.range(1);
@@ -42,7 +43,6 @@ static void global_average_pooling_qu8(benchmark::State& state) {
 
   xnn_operator_t global_pooling_op = nullptr;
   status = xnn_create_global_average_pooling_nwc_qu8(
-    channels, channels /* input stride */, channels /* output stride */,
     127 /* input zero point */, 0.75f /* input scale */,
     127 /* output zero point */, 1.25f /* output scale */,
     0, 255,
@@ -51,17 +51,30 @@ static void global_average_pooling_qu8(benchmark::State& state) {
     state.SkipWithError("failed to create Global Average Pooling operator");
   }
 
-  status = xnn_setup_global_average_pooling_nwc_qu8(
+  size_t workspace_size = 0;
+  size_t workspace_alignment = 0;
+  status = xnn_reshape_global_average_pooling_nwc_qu8(
     global_pooling_op,
     batch_size, input_height * input_width,
-    input.data(), output.data(),
-    nullptr /* thread pool */);
+    channels, channels /* input stride */, channels /* output stride */,
+    &workspace_size, &workspace_alignment,
+    /*threadpool=*/nullptr);
+  if (status != xnn_status_success) {
+    state.SkipWithError("failed to reshape Global Average Pooling operator");
+  }
+
+  std::vector<char, AlignedAllocator<char, XNN_ALLOCATION_ALIGNMENT>> workspace(workspace_size);
+
+  status = xnn_setup_global_average_pooling_nwc_qu8(
+    global_pooling_op,
+    workspace.data(),
+    input.data(), output.data());
   if (status != xnn_status_success) {
     state.SkipWithError("failed to setup Global Average Pooling operator");
   }
 
   for (auto _ : state) {
-    xnn_run_operator(global_pooling_op, nullptr /* thread pool */);
+    xnn_run_operator(global_pooling_op, /*threadpool=*/nullptr);
   }
 
   status = xnn_delete_operator(global_pooling_op);
@@ -80,9 +93,7 @@ static void global_average_pooling_qu8(benchmark::State& state) {
       batch_size * (input_height * input_width + 1) * channels * sizeof(uint8_t),
     benchmark::Counter::kIsRate);
 }
-#endif  // XNN_NO_QU8_OPERATORS
 
-#ifndef XNN_NO_QS8_OPERATORS
 static void global_average_pooling_qs8(benchmark::State& state) {
   const size_t batch_size = state.range(0);
   const size_t input_height = state.range(1);
@@ -105,7 +116,6 @@ static void global_average_pooling_qs8(benchmark::State& state) {
 
   xnn_operator_t global_pooling_op = nullptr;
   status = xnn_create_global_average_pooling_nwc_qs8(
-    channels, channels /* input stride */, channels /* output stride */,
     -1 /* input zero point */, 0.75f /* input scale */,
     -1 /* output zero point */, 1.25f /* output scale */,
     -128, 127,
@@ -114,17 +124,29 @@ static void global_average_pooling_qs8(benchmark::State& state) {
     state.SkipWithError("failed to create Global Average Pooling operator");
   }
 
-  status = xnn_setup_global_average_pooling_nwc_qs8(
+  size_t workspace_size = 0;
+  size_t workspace_alignment = 0;
+  status = xnn_reshape_global_average_pooling_nwc_qs8(
     global_pooling_op,
     batch_size, input_height * input_width,
-    input.data(), output.data(),
-    nullptr /* thread pool */);
+    channels, channels /* input stride */, channels /* output stride */,
+    &workspace_size, &workspace_alignment,
+    /*threadpool=*/nullptr);
+  if (status != xnn_status_success) {
+    state.SkipWithError("failed to reshape Global Average Pooling operator");
+  }
+
+  std::vector<char, AlignedAllocator<char, XNN_ALLOCATION_ALIGNMENT>> workspace(workspace_size);
+  status = xnn_setup_global_average_pooling_nwc_qs8(
+    global_pooling_op,
+    workspace.data(),
+    input.data(), output.data());
   if (status != xnn_status_success) {
     state.SkipWithError("failed to setup Global Average Pooling operator");
   }
 
   for (auto _ : state) {
-    xnn_run_operator(global_pooling_op, nullptr /* thread pool */);
+    xnn_run_operator(global_pooling_op, /*threadpool=*/nullptr);
   }
 
   status = xnn_delete_operator(global_pooling_op);
@@ -143,13 +165,8 @@ static void global_average_pooling_qs8(benchmark::State& state) {
       batch_size * (input_height * input_width + 1) * channels * sizeof(int8_t),
     benchmark::Counter::kIsRate);
 }
-#endif  // XNN_NO_QS8_OPERATORS
 
-#ifndef XNN_NO_F16_OPERATORS
 static void global_average_pooling_f16(benchmark::State& state) {
-  if (!benchmark::utils::CheckNEONFP16ARITH(state)) {
-    return;
-  }
   const size_t batch_size = state.range(0);
   const size_t input_height = state.range(1);
   const size_t input_width = state.range(2);
@@ -171,24 +188,35 @@ static void global_average_pooling_f16(benchmark::State& state) {
 
   xnn_operator_t global_pooling_op = nullptr;
   status = xnn_create_global_average_pooling_nwc_f16(
-    channels, channels /* input stride */, channels /* output stride */,
     -std::numeric_limits<float>::infinity(), +std::numeric_limits<float>::infinity(),
     0 /* flags */, &global_pooling_op);
   if (status != xnn_status_success) {
     state.SkipWithError("failed to create Global Average Pooling operator");
   }
 
-  status = xnn_setup_global_average_pooling_nwc_f16(
+  size_t workspace_size = 0;
+  size_t workspace_alignment = 0;
+  status = xnn_reshape_global_average_pooling_nwc_f16(
     global_pooling_op,
     batch_size, input_height * input_width,
-    input.data(), output.data(),
-    nullptr /* thread pool */);
+    channels, channels /* input stride */, channels /* output stride */,
+    &workspace_size, &workspace_alignment,
+    /*threadpool=*/nullptr);
+  if (status != xnn_status_success) {
+    state.SkipWithError("failed to reshape Global Average Pooling operator");
+  }
+
+  std::vector<char, AlignedAllocator<char, XNN_ALLOCATION_ALIGNMENT>> workspace(workspace_size);
+  status = xnn_setup_global_average_pooling_nwc_f16(
+    global_pooling_op,
+    workspace.data(),
+    input.data(), output.data());
   if (status != xnn_status_success) {
     state.SkipWithError("failed to setup Global Average Pooling operator");
   }
 
   for (auto _ : state) {
-    xnn_run_operator(global_pooling_op, nullptr /* thread pool */);
+    xnn_run_operator(global_pooling_op, /*threadpool=*/nullptr);
   }
 
   status = xnn_delete_operator(global_pooling_op);
@@ -207,7 +235,6 @@ static void global_average_pooling_f16(benchmark::State& state) {
       batch_size * (input_height * input_width + 1) * channels * sizeof(uint16_t),
     benchmark::Counter::kIsRate);
 }
-#endif  // XNN_NO_F16_OPERATORS
 
 static void global_average_pooling_f32(benchmark::State& state) {
   const size_t batch_size = state.range(0);
@@ -230,24 +257,35 @@ static void global_average_pooling_f32(benchmark::State& state) {
 
   xnn_operator_t global_pooling_op = nullptr;
   status = xnn_create_global_average_pooling_nwc_f32(
-    channels, channels /* input stride */, channels /* output stride */,
     -std::numeric_limits<float>::infinity(), +std::numeric_limits<float>::infinity(),
     0 /* flags */, &global_pooling_op);
   if (status != xnn_status_success) {
     state.SkipWithError("failed to create Global Average Pooling operator");
   }
 
-  status = xnn_setup_global_average_pooling_nwc_f32(
+  size_t workspace_size = 0;
+  size_t workspace_alignment = 0;
+  status = xnn_reshape_global_average_pooling_nwc_f32(
     global_pooling_op,
     batch_size, input_height * input_width,
-    input.data(), output.data(),
-    nullptr /* thread pool */);
+    channels, channels /* input stride */, channels /* output stride */,
+    &workspace_size, &workspace_alignment,
+    /*threadpool=*/nullptr);
+  if (status != xnn_status_success) {
+    state.SkipWithError("failed to reshape Global Average Pooling operator");
+  }
+
+  std::vector<char, AlignedAllocator<char, XNN_ALLOCATION_ALIGNMENT>> workspace(workspace_size);
+  status = xnn_setup_global_average_pooling_nwc_f32(
+    global_pooling_op,
+    workspace.data(),
+    input.data(), output.data());
   if (status != xnn_status_success) {
     state.SkipWithError("failed to setup Global Average Pooling operator");
   }
 
   for (auto _ : state) {
-    xnn_run_operator(global_pooling_op, nullptr /* thread pool */);
+    xnn_run_operator(global_pooling_op, /*threadpool=*/nullptr);
   }
 
   status = xnn_delete_operator(global_pooling_op);
@@ -275,15 +313,9 @@ static void ImageNetArguments(benchmark::internal::Benchmark* b) {
   b->Args({1, 13, 13, 1000});
 }
 
-#ifndef XNN_NO_QU8_OPERATORS
 BENCHMARK(global_average_pooling_qu8)->Apply(ImageNetArguments)->UseRealTime();
-#endif  // XNN_NO_QU8_OPERATORS
-#ifndef XNN_NO_QS8_OPERATORS
 BENCHMARK(global_average_pooling_qs8)->Apply(ImageNetArguments)->UseRealTime();
-#endif  // XNN_NO_QS8_OPERATORS
-#ifndef XNN_NO_F16_OPERATORS
 BENCHMARK(global_average_pooling_f16)->Apply(ImageNetArguments)->UseRealTime();
-#endif  // XNN_NO_F16_OPERATORS
 BENCHMARK(global_average_pooling_f32)->Apply(ImageNetArguments)->UseRealTime();
 
 #ifndef XNNPACK_BENCHMARK_NO_MAIN

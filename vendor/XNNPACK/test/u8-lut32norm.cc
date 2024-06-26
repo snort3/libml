@@ -1,16 +1,18 @@
-// Copyright (c) Facebook, Inc. and its affiliates.
-// All rights reserved.
-//
-// Copyright 2019 Google LLC
+// Copyright 2023 Google LLC
 //
 // This source code is licensed under the BSD-style license found in the
 // LICENSE file in the root directory of this source tree.
-
-#include <gtest/gtest.h>
+//
+// Auto-generated file. Do not edit!
+//   Specification: test/u8-lut32norm.yaml
+//   Generator: tools/generate-lut-norm-test.py
 
 #include <xnnpack/lut.h>
-#include "lut-norm-microkernel-tester.h"
 
+#include <cstddef>
+
+#include "lut-norm-microkernel-tester.h"
+#include <gtest/gtest.h>
 
 TEST(U8_LUT32NORM__SCALAR, n_eq_1) {
   LUTNormMicrokernelTester()

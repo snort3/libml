@@ -31,7 +31,7 @@ def split_ukernel_name(name):
   assert match is not None
   batch_tile = int(match.group(2))
 
-  arch, isa = xnncommon.parse_target_name(target_name=match.group(1))
+  arch, isa, assembly = xnncommon.parse_target_name(target_name=match.group(1))
   return batch_tile, arch, isa
 
 
@@ -145,20 +145,10 @@ def main(args):
       name = ukernel_spec["name"]
       batch_tile, arch, isa = split_ukernel_name(name)
 
-      # specification can override architecture
-      arch = ukernel_spec.get("arch", arch)
-
       test_case = generate_test_cases(name, batch_tile, isa)
       tests += "\n\n" + xnncommon.postprocess_test_case(test_case, arch, isa)
 
-    txt_changed = True
-    if os.path.exists(options.output):
-      with codecs.open(options.output, "r", encoding="utf-8") as output_file:
-        txt_changed = output_file.read() != tests
-
-    if txt_changed:
-      with codecs.open(options.output, "w", encoding="utf-8") as output_file:
-        output_file.write(tests)
+    xnncommon.overwrite_if_changed(options.output, tests)
 
 
 if __name__ == "__main__":

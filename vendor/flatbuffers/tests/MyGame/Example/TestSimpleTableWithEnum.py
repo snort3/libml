@@ -35,15 +35,24 @@ class TestSimpleTableWithEnum(object):
             return self._tab.Get(flatbuffers.number_types.Uint8Flags, o + self._tab.Pos)
         return 2
 
-def TestSimpleTableWithEnumStart(builder): builder.StartObject(1)
+def TestSimpleTableWithEnumStart(builder):
+    builder.StartObject(1)
+
 def Start(builder):
-    return TestSimpleTableWithEnumStart(builder)
-def TestSimpleTableWithEnumAddColor(builder, color): builder.PrependUint8Slot(0, color, 2)
+    TestSimpleTableWithEnumStart(builder)
+
+def TestSimpleTableWithEnumAddColor(builder, color):
+    builder.PrependUint8Slot(0, color, 2)
+
 def AddColor(builder, color):
-    return TestSimpleTableWithEnumAddColor(builder, color)
-def TestSimpleTableWithEnumEnd(builder): return builder.EndObject()
+    TestSimpleTableWithEnumAddColor(builder, color)
+
+def TestSimpleTableWithEnumEnd(builder):
+    return builder.EndObject()
+
 def End(builder):
     return TestSimpleTableWithEnumEnd(builder)
+
 
 class TestSimpleTableWithEnumT(object):
 
@@ -56,6 +65,11 @@ class TestSimpleTableWithEnumT(object):
         testSimpleTableWithEnum = TestSimpleTableWithEnum()
         testSimpleTableWithEnum.Init(buf, pos)
         return cls.InitFromObj(testSimpleTableWithEnum)
+
+    @classmethod
+    def InitFromPackedBuf(cls, buf, pos=0):
+        n = flatbuffers.encode.Get(flatbuffers.packer.uoffset, buf, pos)
+        return cls.InitFromBuf(buf, pos+n)
 
     @classmethod
     def InitFromObj(cls, testSimpleTableWithEnum):

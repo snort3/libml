@@ -11,10 +11,11 @@
 #include <cmath>
 #include <functional>
 #include <limits>
+#include <memory>
 #include <random>
 #include <vector>
 
-#include <fp16.h>
+#include <fp16/fp16.h>
 
 #include <xnnpack.h>
 
@@ -30,7 +31,6 @@
 #endif  // BENCHMARK_TENSORFLOW_LITE
 
 
-#ifndef XNN_NO_F16_OPERATORS
 static void xnnpack_sigmoid_f16(benchmark::State& state) {
   const size_t batch_size = state.range(0);
 
@@ -52,24 +52,27 @@ static void xnnpack_sigmoid_f16(benchmark::State& state) {
 
   xnn_operator_t sigmoid_op = nullptr;
   status = xnn_create_sigmoid_nc_f16(
-    1 /* channels */, 1 /* input stride */, 1 /* output stride */,
     0 /* flags */, &sigmoid_op);
   if (status != xnn_status_success || sigmoid_op == nullptr) {
     state.SkipWithError("failed to create Sigmoid operator");
     return;
   }
 
-  status = xnn_setup_sigmoid_nc_f16(
-    sigmoid_op, batch_size,
-    input.data(), output.data(),
-    nullptr /* thread pool */);
+  status = xnn_reshape_sigmoid_nc_f16(sigmoid_op, batch_size,
+    /*channels=*/1, /*input_stride=*/1, /*output_stride=*/1, /*threadpool=*/nullptr);
+  if (status != xnn_status_success) {
+    state.SkipWithError("failed to reshape Sigmoid operator");
+    return;
+  }
+
+  status = xnn_setup_sigmoid_nc_f16(sigmoid_op, input.data(), output.data());
   if (status != xnn_status_success) {
     state.SkipWithError("failed to setup Sigmoid operator");
     return;
   }
 
   for (auto _ : state) {
-    status = xnn_run_operator(sigmoid_op, nullptr /* thread pool */);
+    status = xnn_run_operator(sigmoid_op, /*threadpool=*/nullptr);
     if (status != xnn_status_success) {
       state.SkipWithError("failed to run Sigmoid operator");
       return;
@@ -94,7 +97,6 @@ static void xnnpack_sigmoid_f16(benchmark::State& state) {
   state.counters["bytes"] =
     benchmark::Counter(uint64_t(state.iterations()) * bytes_per_iteration, benchmark::Counter::kIsRate);
 }
-#endif  // XNN_NO_F16_OPERATORS
 
 static void xnnpack_sigmoid_f32(benchmark::State& state) {
   const size_t batch_size = state.range(0);
@@ -116,24 +118,27 @@ static void xnnpack_sigmoid_f32(benchmark::State& state) {
 
   xnn_operator_t sigmoid_op = nullptr;
   status = xnn_create_sigmoid_nc_f32(
-    1 /* channels */, 1 /* input stride */, 1 /* output stride */,
     0 /* flags */, &sigmoid_op);
   if (status != xnn_status_success || sigmoid_op == nullptr) {
     state.SkipWithError("failed to create Sigmoid operator");
     return;
   }
 
-  status = xnn_setup_sigmoid_nc_f32(
-    sigmoid_op, batch_size,
-    input.data(), output.data(),
-    nullptr /* thread pool */);
+  status = xnn_reshape_sigmoid_nc_f32(sigmoid_op, batch_size,
+    /*channels=*/1, /*input_stride=*/1, /*output_stride=*/1, /*threadpool=*/nullptr);
+  if (status != xnn_status_success) {
+    state.SkipWithError("failed to reshape Sigmoid operator");
+    return;
+  }
+
+  status = xnn_setup_sigmoid_nc_f32(sigmoid_op, input.data(), output.data());
   if (status != xnn_status_success) {
     state.SkipWithError("failed to setup Sigmoid operator");
     return;
   }
 
   for (auto _ : state) {
-    status = xnn_run_operator(sigmoid_op, nullptr /* thread pool */);
+    status = xnn_run_operator(sigmoid_op, /*threadpool=*/nullptr);
     if (status != xnn_status_success) {
       state.SkipWithError("failed to run Sigmoid operator");
       return;
@@ -159,7 +164,6 @@ static void xnnpack_sigmoid_f32(benchmark::State& state) {
     benchmark::Counter(uint64_t(state.iterations()) * bytes_per_iteration, benchmark::Counter::kIsRate);
 }
 
-#ifndef XNN_NO_QS8_OPERATORS
 static void xnnpack_sigmoid_qs8(benchmark::State& state) {
   const size_t batch_size = state.range(0);
 
@@ -182,7 +186,6 @@ static void xnnpack_sigmoid_qs8(benchmark::State& state) {
 
   xnn_operator_t sigmoid_op = nullptr;
   status = xnn_create_sigmoid_nc_qs8(
-    1 /* channels */, 1 /* input stride */, 1 /* output stride */,
     1 /* input zero point */, 1.0f /* input scale */,
     -128 /* output zero point */, 1.0f / 256.0f /* output scale */,
     std::numeric_limits<int8_t>::min() /* output min */, std::numeric_limits<int8_t>::max() /* output max */,
@@ -192,17 +195,22 @@ static void xnnpack_sigmoid_qs8(benchmark::State& state) {
     return;
   }
 
-  status = xnn_setup_sigmoid_nc_qs8(
-    sigmoid_op, batch_size,
-    input.data(), output.data(),
-    nullptr /* thread pool */);
+
+  status = xnn_reshape_sigmoid_nc_qs8(sigmoid_op, batch_size,
+    /*channels=*/1, /*input_stride=*/1, /*output_stride=*/1, /*threadpool=*/nullptr);
+  if (status != xnn_status_success) {
+    state.SkipWithError("failed to reshape Sigmoid operator");
+    return;
+  }
+
+  status = xnn_setup_sigmoid_nc_qs8(sigmoid_op, input.data(), output.data());
   if (status != xnn_status_success) {
     state.SkipWithError("failed to setup Sigmoid operator");
     return;
   }
 
   for (auto _ : state) {
-    status = xnn_run_operator(sigmoid_op, nullptr /* thread pool */);
+    status = xnn_run_operator(sigmoid_op, /*threadpool=*/nullptr);
     if (status != xnn_status_success) {
       state.SkipWithError("failed to run Sigmoid operator");
       return;
@@ -227,9 +235,7 @@ static void xnnpack_sigmoid_qs8(benchmark::State& state) {
   state.counters["bytes"] =
     benchmark::Counter(uint64_t(state.iterations()) * bytes_per_iteration, benchmark::Counter::kIsRate);
 }
-#endif  // XNN_NO_QS8_OPERATORS
 
-#ifndef XNN_NO_QU8_OPERATORS
 static void xnnpack_sigmoid_qu8(benchmark::State& state) {
   const size_t batch_size = state.range(0);
 
@@ -251,7 +257,6 @@ static void xnnpack_sigmoid_qu8(benchmark::State& state) {
 
   xnn_operator_t sigmoid_op = nullptr;
   status = xnn_create_sigmoid_nc_qu8(
-    1 /* channels */, 1 /* input stride */, 1 /* output stride */,
     128 /* input zero point */, 1.0f /* input scale */,
     0 /* output zero point */, 1.0f / 256.0f /* output scale */,
     std::numeric_limits<uint8_t>::min() /* output min */, std::numeric_limits<uint8_t>::max() /* output max */,
@@ -261,17 +266,21 @@ static void xnnpack_sigmoid_qu8(benchmark::State& state) {
     return;
   }
 
-  status = xnn_setup_sigmoid_nc_qu8(
-    sigmoid_op, batch_size,
-    input.data(), output.data(),
-    nullptr /* thread pool */);
+  status = xnn_reshape_sigmoid_nc_qu8(sigmoid_op, batch_size,
+    /*channels=*/1, /*input_stride=*/1, /*output_stride=*/1, /*threadpool=*/nullptr);
+  if (status != xnn_status_success) {
+    state.SkipWithError("failed to reshape Sigmoid operator");
+    return;
+  }
+
+  status = xnn_setup_sigmoid_nc_qu8(sigmoid_op, input.data(), output.data());
   if (status != xnn_status_success) {
     state.SkipWithError("failed to setup Sigmoid operator");
     return;
   }
 
   for (auto _ : state) {
-    status = xnn_run_operator(sigmoid_op, nullptr /* thread pool */);
+    status = xnn_run_operator(sigmoid_op, /*threadpool=*/nullptr);
     if (status != xnn_status_success) {
       state.SkipWithError("failed to run Sigmoid operator");
       return;
@@ -296,7 +305,6 @@ static void xnnpack_sigmoid_qu8(benchmark::State& state) {
   state.counters["bytes"] =
     benchmark::Counter(uint64_t(state.iterations()) * bytes_per_iteration, benchmark::Counter::kIsRate);
 }
-#endif  // XNN_NO_QU8_OPERATORS
 
 #ifdef BENCHMARK_TENSORFLOW_LITE
 static void tflite_sigmoid_f32(benchmark::State& state) {
@@ -608,24 +616,18 @@ static void tflite_sigmoid_qu8(benchmark::State& state) {
 }
 #endif  // BENCHMARK_TENSORFLOW_LITE
 
-#ifndef XNN_NO_F16_OPERATORS
-  BENCHMARK(xnnpack_sigmoid_f16)
-    ->Apply(benchmark::utils::UnaryElementwiseParameters<uint16_t, uint16_t>)
-    ->UseRealTime();
-#endif  // XNN_NO_F16_OPERATORS
+BENCHMARK(xnnpack_sigmoid_f16)
+  ->Apply(benchmark::utils::UnaryElementwiseParameters<uint16_t, uint16_t>)
+  ->UseRealTime();
 BENCHMARK(xnnpack_sigmoid_f32)
   ->Apply(benchmark::utils::UnaryElementwiseParameters<float, float>)
   ->UseRealTime();
-#ifndef XNN_NO_QS8_OPERATORS
-  BENCHMARK(xnnpack_sigmoid_qs8)
-    ->Apply(benchmark::utils::UnaryElementwiseParameters<int8_t, int8_t>)
-    ->UseRealTime();
-#endif  // XNN_NO_QS8_OPERATORS
-#ifndef XNN_NO_QU8_OPERATORS
-  BENCHMARK(xnnpack_sigmoid_qu8)
-    ->Apply(benchmark::utils::UnaryElementwiseParameters<uint8_t, uint8_t>)
-    ->UseRealTime();
-#endif  // XNN_NO_QU8_OPERATORS
+BENCHMARK(xnnpack_sigmoid_qs8)
+  ->Apply(benchmark::utils::UnaryElementwiseParameters<int8_t, int8_t>)
+  ->UseRealTime();
+BENCHMARK(xnnpack_sigmoid_qu8)
+  ->Apply(benchmark::utils::UnaryElementwiseParameters<uint8_t, uint8_t>)
+  ->UseRealTime();
 
 #ifdef BENCHMARK_TENSORFLOW_LITE
   BENCHMARK(tflite_sigmoid_f32)

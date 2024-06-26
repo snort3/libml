@@ -57,28 +57,32 @@ ResourceValueAndSubtype GetResourceWriteResult(
   auto assign_var = dyn_cast<TF::AssignVariableOp>(result_user);
   if (!assign_var) return resource;
 
-  auto handle = assign_var.resource();
+  auto handle = assign_var.getResource();
   // Skip result if cluster writes to the same variable via multiple results.
   for (Operation* handle_user : handle.getUsers()) {
     if (handle_user == assign_var) continue;
     auto assign_var_user = dyn_cast<TF::AssignVariableOp>(handle_user);
     if (!assign_var_user) continue;
-    if (assign_var_user.value().getDefiningOp() == cluster_func)
+    if (assign_var_user.getValue().getDefiningOp() == cluster_func)
       return resource;
   }
 
-  resource.resource = assign_var.resource();
-  resource.subtype = assign_var.value().getType();
+  resource.resource = assign_var.getResource();
+  resource.subtype = assign_var.getValue().getType();
   return resource;
 }
 
 // Checks if resource is read by TPU cluster.
 bool ClusterFuncHasResourceRead(tf_device::ClusterFuncOp cluster_func,
                                 Value resource) {
-  for (Operation* resource_user : resource.getUsers())
-    if (auto read = dyn_cast<TF::ReadVariableOp>(resource_user))
-      for (Operation* read_user : read.value().getUsers())
+  for (Operation* resource_user : resource.getUsers()) {
+    if (auto read = dyn_cast<TF::ReadVariableOp>(resource_user)) {
+      for (Operation* read_user : read.getValue().getUsers()) {
         if (read_user == cluster_func) return true;
+        if (isa<tf_device::ReplicateOp>(read_user)) return true;
+      }
+    }
+  }
 
   return false;
 }
@@ -105,7 +109,7 @@ void TPUResourceReadForWritePass::runOnOperation() {
       auto new_read = builder.create<TF::ReadVariableOp>(
           resource_and_type.resource.getLoc(), resource_and_type.subtype,
           resource_and_type.resource);
-      read_operands.push_back(new_read.value());
+      read_operands.push_back(new_read.getValue());
     }
 
     if (read_operands.empty()) continue;
@@ -124,7 +128,7 @@ void TPUResourceReadForWritePass::runOnOperation() {
       block.addArgument(read_operand.getType(), loc);
 
     func.setType(FunctionType::get(&getContext(), block.getArgumentTypes(),
-                                   func.getCallableResults()));
+                                   func.getResultTypes()));
     cluster_func.erase();
   }
 }

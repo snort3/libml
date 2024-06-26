@@ -18,7 +18,6 @@ set(FlatBuffers_Library_SRCS
         ${FLATBUFFERS_SRC}/include/flatbuffers/allocator.h
         ${FLATBUFFERS_SRC}/include/flatbuffers/array.h
         ${FLATBUFFERS_SRC}/include/flatbuffers/base.h
-        ${FLATBUFFERS_SRC}/include/flatbuffers/bfbs_generator.h
         ${FLATBUFFERS_SRC}/include/flatbuffers/buffer.h
         ${FLATBUFFERS_SRC}/include/flatbuffers/buffer_ref.h
         ${FLATBUFFERS_SRC}/include/flatbuffers/default_allocator.h
@@ -26,6 +25,7 @@ set(FlatBuffers_Library_SRCS
         ${FLATBUFFERS_SRC}/include/flatbuffers/flatbuffer_builder.h
         ${FLATBUFFERS_SRC}/include/flatbuffers/flatbuffers.h
         ${FLATBUFFERS_SRC}/include/flatbuffers/flexbuffers.h
+        ${FLATBUFFERS_SRC}/include/flatbuffers/flex_flat_util.h
         ${FLATBUFFERS_SRC}/include/flatbuffers/hash.h
         ${FLATBUFFERS_SRC}/include/flatbuffers/idl.h
         ${FLATBUFFERS_SRC}/include/flatbuffers/minireflect.h
@@ -48,26 +48,9 @@ set(FlatBuffers_Library_SRCS
         ${FLATBUFFERS_SRC}/src/code_generators.cpp
         )
 
-set(FlatBuffers_Test_SRCS
-        ${FLATBUFFERS_SRC}/tests/test.cpp
-        ${FLATBUFFERS_SRC}/tests/test_assert.h
-        ${FLATBUFFERS_SRC}/tests/test_builder.h
-        ${FLATBUFFERS_SRC}/tests/test_assert.cpp
-        ${FLATBUFFERS_SRC}/tests/test_builder.cpp
-        ${FLATBUFFERS_SRC}/tests/native_type_test_impl.h
-        ${FLATBUFFERS_SRC}/tests/native_type_test_impl.cpp
-)
-
 add_library( # Sets the name of the library.
              flatbuffers
 
              ${FlatBuffers_Library_SRCS}
-             ${FlatBuffers_Test_SRCS}
              ${Generated_SRCS}
-)
-
-add_library( # Sets the name of the library.
-             flatbuffers_tests
-
-             ${FlatBuffers_Test_SRCS}
 )

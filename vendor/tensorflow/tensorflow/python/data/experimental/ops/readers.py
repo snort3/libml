@@ -21,9 +21,11 @@ import gzip
 import numpy as np
 
 from tensorflow.python import tf2
+from tensorflow.python.compat import v2_compat
 from tensorflow.python.data.experimental.ops import error_ops
 from tensorflow.python.data.experimental.ops import parsing_ops
 from tensorflow.python.data.ops import dataset_ops
+from tensorflow.python.data.ops import map_op
 from tensorflow.python.data.ops import options as options_lib
 from tensorflow.python.data.ops import readers as core_readers
 from tensorflow.python.data.util import convert
@@ -419,9 +421,7 @@ def make_csv_dataset_v2(
       index.
     label_name: A optional string corresponding to the label column. If
       provided, the data for this column is returned as a separate `Tensor` from
-      the features dictionary, so that the dataset complies with the format
-      expected by a `tf.Estimator.train` or `tf.Estimator.evaluate` input
-      function.
+      the features dictionary.
     select_columns: An optional list of integer indices or string column
       names, that specifies a subset of columns of CSV data to select. If
       column names are provided, these must correspond to names provided in
@@ -619,7 +619,7 @@ def make_csv_dataset_v2(
   # indefinitely, and all batches will be full-sized.
   dataset = dataset.batch(batch_size=batch_size,
                           drop_remainder=num_epochs is None)
-  dataset = dataset_ops.MapDataset(
+  dataset = map_op._MapDataset(  # pylint: disable=protected-access
       dataset, map_fn, use_inter_op_parallelism=False)
   dataset = dataset.prefetch(prefetch_buffer_size)
 
@@ -1066,7 +1066,7 @@ def make_batched_features_dataset_v2(file_pattern,
   # Extract values if the `Example` tensors are stored as key-value tuples.
   if dataset_ops.get_legacy_output_types(dataset) == (
       dtypes.string, dtypes.string):
-    dataset = dataset_ops.MapDataset(
+    dataset = map_op._MapDataset(  # pylint: disable=protected-access
         dataset, lambda _, v: v, use_inter_op_parallelism=False)
 
   # Apply dataset repeat and shuffle transformations.
@@ -1219,3 +1219,20 @@ else:
   SqlDataset = SqlDatasetV1
   make_batched_features_dataset = make_batched_features_dataset_v1
   make_csv_dataset = make_csv_dataset_v1
+
+
+def _tf2_callback():
+  global CsvDataset, SqlDataset, make_batched_features_dataset, make_csv_dataset
+  if tf2.enabled():
+    CsvDataset = CsvDatasetV2
+    SqlDataset = SqlDatasetV2
+    make_batched_features_dataset = make_batched_features_dataset_v2
+    make_csv_dataset = make_csv_dataset_v2
+  else:
+    CsvDataset = CsvDatasetV1
+    SqlDataset = SqlDatasetV1
+    make_batched_features_dataset = make_batched_features_dataset_v1
+    make_csv_dataset = make_csv_dataset_v1
+
+
+v2_compat.register_data_v2_callback(_tf2_callback)

@@ -31,7 +31,7 @@ public class AnyUnion {
   public MyGame.Example2.MonsterT AsMyGame_Example2_Monster() { return this.As<MyGame.Example2.MonsterT>(); }
   public static AnyUnion FromMyGame_Example2_Monster(MyGame.Example2.MonsterT _mygame_example2_monster) { return new AnyUnion{ Type = Any.MyGame_Example2_Monster, Value = _mygame_example2_monster }; }
 
-  public static int Pack(FlatBuffers.FlatBufferBuilder builder, AnyUnion _o) {
+  public static int Pack(Google.FlatBuffers.FlatBufferBuilder builder, AnyUnion _o) {
     switch (_o.Type) {
       default: return 0;
       case Any.Monster: return MyGame.Example.Monster.Pack(builder, _o.AsMonster()).Value;
@@ -81,6 +81,31 @@ public class AnyUnion_JsonConverter : Newtonsoft.Json.JsonConverter {
       case Any.MyGame_Example2_Monster: _o.Value = serializer.Deserialize<MyGame.Example2.MonsterT>(reader); break;
     }
     return _o;
+  }
+}
+
+
+
+static public class AnyVerify
+{
+  static public bool Verify(Google.FlatBuffers.Verifier verifier, byte typeId, uint tablePos)
+  {
+    bool result = true;
+    switch((Any)typeId)
+    {
+      case Any.Monster:
+        result = MyGame.Example.MonsterVerify.Verify(verifier, tablePos);
+        break;
+      case Any.TestSimpleTableWithEnum:
+        result = MyGame.Example.TestSimpleTableWithEnumVerify.Verify(verifier, tablePos);
+        break;
+      case Any.MyGame_Example2_Monster:
+        result = MyGame.Example2.MonsterVerify.Verify(verifier, tablePos);
+        break;
+      default: result = true;
+        break;
+    }
+    return result;
   }
 }
 

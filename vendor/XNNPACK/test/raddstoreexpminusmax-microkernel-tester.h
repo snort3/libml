@@ -5,46 +5,47 @@
 
 #pragma once
 
-#include <gtest/gtest.h>
+#include <xnnpack.h>
+#include <xnnpack/microfnptr.h>
+#include <xnnpack/microparams.h>
 
 #include <algorithm>
 #include <cassert>
+#include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
+#include <limits>
 #include <random>
 #include <vector>
 
-#include <fp16.h>
-
-#include <xnnpack.h>
-#include <xnnpack/microfnptr.h>
-#include <xnnpack/microparams-init.h>
-
+#include "replicable_random_device.h"
+#include <gtest/gtest.h>
+#include <fp16/fp16.h>
 
 class RAddStoreExpMinusMaxMicrokernelTester {
  public:
-  inline RAddStoreExpMinusMaxMicrokernelTester& elements(size_t elements) {
+  RAddStoreExpMinusMaxMicrokernelTester& elements(size_t elements) {
     assert(elements != 0);
     this->elements_ = elements;
     return *this;
   }
 
-  inline size_t elements() const {
+  size_t elements() const {
     return this->elements_;
   }
 
-  inline RAddStoreExpMinusMaxMicrokernelTester& iterations(size_t iterations) {
+  RAddStoreExpMinusMaxMicrokernelTester& iterations(size_t iterations) {
     this->iterations_ = iterations;
     return *this;
   }
 
-  inline size_t iterations() const {
+  size_t iterations() const {
     return this->iterations_;
   }
 
-  void Test(xnn_f16_raddstoreexpminusmax_ukernel_function raddstoreexpminusmax, xnn_init_f16_expminus_params_fn init_params) const {
-    std::random_device random_device;
-    auto rng = std::mt19937(random_device());
+  void Test(xnn_f16_raddstoreexpminusmax_ukernel_fn raddstoreexpminusmax, xnn_init_f16_expminus_params_fn init_params) const {
+    xnnpack::ReplicableRandomDevice rng;
     // Choose such range that exph(x[i]) overflows, but exph(x[i] - x_max) doesn't.
     // However, the range is still narrow enough that double-precision exp doesn't overflow.
     std::uniform_real_distribution<float> f32dist(15.0f, 20.0f);
@@ -77,7 +78,7 @@ class RAddStoreExpMinusMaxMicrokernelTester {
 
       // Verify results.
       for (size_t i = 0; i < elements(); i++) {
-      ASSERT_NEAR(y_ref[i], fp16_ieee_to_fp32_value(y[i]), std::abs(y_ref[i]) * 5.0e-3f)
+      EXPECT_NEAR(y_ref[i], fp16_ieee_to_fp32_value(y[i]), std::abs(y_ref[i]) * 5.0e-3f)
         << "element " << i << " / " << elements() << ", x_max " << x_max_as_float;
       }
       ASSERT_NEAR(sum_ref, fp16_ieee_to_fp32_value(sum), std::abs(sum_ref) * 5.0e-3f)
@@ -85,9 +86,8 @@ class RAddStoreExpMinusMaxMicrokernelTester {
     }
   }
 
-  void Test(xnn_f32_raddstoreexpminusmax_ukernel_function raddstoreexpminusmax, xnn_init_f32_expminus_params_fn init_params) const {
-    std::random_device random_device;
-    auto rng = std::mt19937(random_device());
+  void Test(xnn_f32_raddstoreexpminusmax_ukernel_fn raddstoreexpminusmax, xnn_init_f32_expminus_params_fn init_params) const {
+    xnnpack::ReplicableRandomDevice rng;
     // Choose such range that expf(x[i]) overflows, but expf(x[i] - x_max) doesn't.
     // However, the range is still narrow enough that double-precision exp doesn't overflow.
     std::uniform_real_distribution<float> f32dist(90.0f, 100.0f);
@@ -116,7 +116,7 @@ class RAddStoreExpMinusMaxMicrokernelTester {
 
       // Verify results.
       for (size_t i = 0; i < elements(); i++) {
-      ASSERT_NEAR(y_ref[i], double(y[i]), std::abs(y_ref[i]) * 1.0e-6)
+      EXPECT_NEAR(y_ref[i], double(y[i]), std::abs(y_ref[i]) * 1.0e-6)
         << "element " << i << " / " << elements() << ", x_max " << x_max;
       }
       ASSERT_NEAR(sum_ref, double(sum), std::abs(sum_ref) * 1.0e-6)

@@ -19,32 +19,31 @@ limitations under the License.
 #include <string>
 #include <vector>
 
-#include "absl/strings/str_join.h"
-
 namespace tensorflow {
 
-std::ostream& operator<<(std::ostream& os, TfrtTpuInfraTarget tpu_target) {
-  switch (tpu_target) {
-    case TfrtTpuInfraTarget::kNoTpu:
-      return os << "NoTpu";
-    case TfrtTpuInfraTarget::kTpurt:
+std::ostream& operator<<(std::ostream& os,
+                         TfrtDeviceInfraTarget device_target) {
+  switch (device_target) {
+    case TfrtDeviceInfraTarget::kCpu:
+      return os << "Cpu";
+    case TfrtDeviceInfraTarget::kTpurt:
       return os << "Tpurt";
-    case TfrtTpuInfraTarget::kTfFallback:
+    case TfrtDeviceInfraTarget::kTfFallback:
       return os << "TfFallback";
-    case TfrtTpuInfraTarget::kBridgeFallback:
+    case TfrtDeviceInfraTarget::kBridgeFallback:
       return os << "BridgeFallback";
+    case TfrtDeviceInfraTarget::kGpu:
+      return os << "Gpu";
   }
 }
 
 std::ostream& operator<<(std::ostream& os, const TfrtCompileOptions& options) {
-  return os << "{"
-            << "variable_device = " << options.variable_device
+  return os << "{" << "variable_device = " << options.variable_device
             << ", default_device = " << options.default_device
             << ", enable_optimizer = " << options.enable_optimizer
-            << ", enable_native_ops = " << options.enable_native_ops
             << ", enable_grappler = " << options.enable_grappler
             << ", force_data_format = " << options.force_data_format
-            << ", tpu_target = " << options.tpu_target
+            << ", device_target = " << options.device_target
             << ", tpu_fuse_ops = " << options.tpu_fuse_ops
             << ", tpu_move_resource_gather_to_host = "
             << options.tpu_move_resource_gather_to_host
@@ -55,12 +54,8 @@ std::ostream& operator<<(std::ostream& os, const TfrtCompileOptions& options) {
             << ", hoist_invariant_ops = " << options.hoist_invariant_ops
             << ", enable_while_parallel_iterations = "
             << options.enable_while_parallel_iterations
-            << ", auto_fusion_oplist = ["
-            << absl::StrJoin(options.auto_fusion_oplist, ",") << "]"
-            << ", auto_fusion_min_cluster_size = "
-            << options.auto_fusion_min_cluster_size
             << ", cost_threshold = " << options.cost_threshold
-            << ", upper_cost_threshold = " << options.upper_cost_threshold
+            << ", min_num_batch_threads = " << options.min_num_batch_threads
             << ", merge_inter_dependent_streams = "
             << options.merge_inter_dependent_streams
             << ", decompose_resource_ops = " << options.decompose_resource_ops

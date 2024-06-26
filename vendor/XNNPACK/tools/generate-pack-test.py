@@ -30,7 +30,7 @@ def split_ukernel_name(name):
   common_parts = common_name.split("_")
   param_spec = common_parts[-1].split("x")
   mr = int(param_spec[0])
-  arch, isa = xnncommon.parse_target_name(target_name)
+  arch, isa, assembly = xnncommon.parse_target_name(target_name)
   return mr, arch, isa
 
 
@@ -214,20 +214,10 @@ def main(args):
       k_block = int(ukernel_spec["k-block"])
       mr, arch, isa = split_ukernel_name(name)
 
-      # specification can override architecture
-      arch = ukernel_spec.get("arch", arch)
-
       test_case = generate_test_cases(name, mr, k_block, isa)
       tests += "\n\n" + xnncommon.postprocess_test_case(test_case, arch, isa)
 
-    txt_changed = True
-    if os.path.exists(options.output):
-      with codecs.open(options.output, "r", encoding="utf-8") as output_file:
-        txt_changed = output_file.read() != tests
-
-    if txt_changed:
-      with codecs.open(options.output, "w", encoding="utf-8") as output_file:
-        output_file.write(tests)
+    xnncommon.overwrite_if_changed(options.output, tests)
 
 
 if __name__ == "__main__":

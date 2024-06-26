@@ -31,6 +31,18 @@ void _mm_storeu_si16(void* address, __m128i v) {
 #endif  // GCC pre-11, Clang pre-8, Android NDK Clang pre-8.0.7, Apple Clang pre-11, and ICC pre-16
 #endif  // SSE2
 
+#ifdef __AVX__
+#include <immintrin.h>
+
+// GCC pre-10
+#if defined(__GNUC__) && !defined(__clang__) && !defined(__INTEL_COMPILER) && (__GNUC__ < 10)
+static XNN_INTRINSIC __m256 _mm256_zextps128_ps256(__m128 v) {
+  return _mm256_insertf128_ps(_mm256_setzero_ps(), v, 0);
+}
+#endif  // GCC pre-10
+
+#endif  // __AVX__
+
 #ifdef __AVX512F__
 #include <immintrin.h>
 
@@ -97,6 +109,7 @@ float _mm512_reduce_max_ps(__m512 v) {
 
 #endif  // GCC pre-7, Clang pre-4, and ICC pre-18
 
+// GCC pre-9
 #if defined(__GNUC__) && !defined(__clang__) && !defined(__INTEL_COMPILER) && (__GNUC__ < 9)
 static XNN_INTRINSIC
 __m512i _mm512_set_epi8(
@@ -130,6 +143,13 @@ __m512i _mm512_set_epi8(
 }
 #endif  // GCC pre-9
 
+// GCC pre-10
+#if defined(__GNUC__) && !defined(__clang__) && !defined(__INTEL_COMPILER) && (__GNUC__ < 10)
+static XNN_INTRINSIC __m512 _mm512_zextps128_ps512(__m128 v) {
+  return _mm512_insertf32x4(_mm512_setzero_ps(), v, 0);
+}
+#endif  // GCC pre-10
+
 #endif  // __AVX512F__
 
 #if XNN_ARCH_ARM
@@ -157,6 +177,76 @@ int32x4_t vcvtnq_s32_f32(float32x4_t v) {
 #endif  // AArch32 GCC targeting ARMv8 NEON
 
 #endif  // ARM NEON
+
+// AArch32 Clang targeting ARMv8.2-A with FP16 arithmetics
+#if XNN_ARCH_ARM && (defined(__ARM_FEATURE_FP16_SCALAR_ARITHMETIC) && defined(__clang__))
+#include <arm_fp16.h>
+
+static XNN_INTRINSIC
+float16_t vaddh_f16(float16_t a, float16_t b) {
+  return a + b;
+}
+
+static XNN_INTRINSIC
+float16_t vdivh_f16(float16_t a, float16_t b) {
+  return a / b;
+}
+
+static XNN_INTRINSIC
+float16_t vmaxnmh_f16(float16_t a, float16_t b) {
+  return XNN_UNPREDICTABLE(b < a) ? a : b;
+}
+
+static XNN_INTRINSIC
+float16_t vminnmh_f16(float16_t a, float16_t b) {
+  return XNN_UNPREDICTABLE(b < a) ? b : a;
+}
+
+static XNN_INTRINSIC
+float16_t vmulh_f16(float16_t a, float16_t b) {
+  return a * b;
+}
+
+static XNN_INTRINSIC
+float16_t vsubh_f16(float16_t a, float16_t b) {
+  return a - b;
+}
+
+static XNN_INTRINSIC
+float16_t vsqrth_f16(float16_t v) {
+  return __builtin_sqrtf(v);
+}
+#endif  // AArch32 Clang targeting ARMv8.2-A with FP16 arithmetics
+
+// AArch32 targeting ARMv8.2-A with NEON+FP16 arithmetics
+#if XNN_ARCH_ARM && defined(__ARM_FEATURE_FP16_VECTOR_ARITHMETIC)
+#include <arm_neon.h>
+
+#if !defined(__GNUC__) || defined(__clang_major__) & (__clang_major__ < 10)
+  // GNU-style assembly is not supported, or "x" constraint is not supported (Clang pre-10)
+  #define vmlaq_lane_f16(acc, x, y, n) \
+    vaddq_f16((acc), vmulq_lane_f16((x), (y), (n)))
+  #define vmla_lane_f16(acc, x, y, n) \
+    vadd_f16((acc), vmul_lane_f16((x), (y), (n)))
+#else
+  #define vmlaq_lane_f16(acc, x, y, n)       \
+    ({                                       \
+      float16x8_t result = acc;              \
+      __asm__ ("vmla.f16 %q0, %q1, %P2[%c3]" \
+          : "+w" (result)                    \
+          : "w" (x), "x" (y), "i" (n));      \
+      result;                                \
+    })
+  #define vmla_lane_f16(acc, x, y, n)        \
+    ({                                       \
+      float16x4_t result = acc;              \
+      __asm__ ("vmla.f16 %P0, %P1, %P2[%c3]" \
+          : "+w" (result)                    \
+          : "w" (x), "x" (y), "i" (n));      \
+      result;                                \
+    })
+#endif
+#endif  // AArch32 targeting ARMv8.2-A with NEON+FP16 arithmetics
 
 #if XNN_ARCH_ARM64
 #include <arm_neon.h>

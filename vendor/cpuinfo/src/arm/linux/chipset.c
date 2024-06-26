@@ -1,4 +1,3 @@
-#include <ctype.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -38,29 +37,17 @@ static inline bool is_ascii_numeric(char c) {
 }
 
 static inline uint16_t load_u16le(const void* ptr) {
-#if defined(__ARM_ARCH_7A__) || defined(__aarch64__)
-    return *((const uint16_t*) ptr);
-#else
 	const uint8_t* byte_ptr = (const uint8_t*) ptr;
 	return ((uint16_t) byte_ptr[1] << 8) | (uint16_t) byte_ptr[0];
-#endif
 }
 
 static inline uint32_t load_u24le(const void* ptr) {
-#if defined(__ARM_ARCH_7A__) || defined(__aarch64__)
-    return ((uint32_t) ((const uint8_t*) ptr)[2] << 16) | ((uint32_t) *((const uint16_t*) ptr));
-#else
-	const uint8_t* byte_ptr = (const uint8_t*) ptr;
-	return ((uint32_t) byte_ptr[2] << 16) | ((uint32_t) byte_ptr[1] << 8) | (uint32_t) byte_ptr[0];
-#endif
+	return ((uint32_t) ((const uint8_t*) ptr)[2] << 16) | (uint32_t) load_u16le(ptr);
 }
 
 static inline uint32_t load_u32le(const void* ptr) {
-#if defined(__ARM_ARCH_7A__) || defined(__aarch64__)
-    return *((const uint32_t*) ptr);
-#else
-	return ((uint32_t) ((const uint8_t*) ptr)[3] << 24) | load_u24le(ptr);
-#endif
+	const uint8_t* byte_ptr = (const uint8_t*) ptr;
+	return ((uint32_t) byte_ptr[3] << 24) | ((uint32_t) byte_ptr[2] << 16) | ((uint32_t) byte_ptr[1] << 8) | (uint32_t) byte_ptr[0];
 }
 
 /*
@@ -97,6 +84,7 @@ static enum cpuinfo_arm_chipset_vendor chipset_series_vendor[cpuinfo_arm_chipset
 	[cpuinfo_arm_chipset_series_spreadtrum_sc]          = cpuinfo_arm_chipset_vendor_spreadtrum,
 	[cpuinfo_arm_chipset_series_telechips_tcc]          = cpuinfo_arm_chipset_vendor_telechips,
 	[cpuinfo_arm_chipset_series_texas_instruments_omap] = cpuinfo_arm_chipset_vendor_texas_instruments,
+	[cpuinfo_arm_chipset_series_unisoc_t]               = cpuinfo_arm_chipset_vendor_unisoc,
 	[cpuinfo_arm_chipset_series_wondermedia_wm]         = cpuinfo_arm_chipset_vendor_wondermedia,
 };
 
@@ -280,82 +268,6 @@ static bool match_sm(
 		.model = model,
 	};
 	return true;
-}
-
-
-struct special_map_entry {
-	const char* platform;
-	uint16_t model;
-	uint8_t series;
-	char suffix;
-};
-
-static const struct special_map_entry qualcomm_hardware_map_entries[] = {
-		{
-				/* "Kona" -> Qualcomm Kona */
-				.platform = "Kona",
-				.series = cpuinfo_arm_chipset_series_qualcomm_snapdragon,
-				.model = 865,
-		},
-		{
-				/* "Bengal" -> Qualcomm Bengal */
-				.platform = "Bengal",
-				.series = cpuinfo_arm_chipset_series_qualcomm_snapdragon,
-				.model = 662,
-		},
-		{
-				/* "Bengalp" -> Qualcomm Bengalp */
-				.platform = "Bengalp",
-				.series = cpuinfo_arm_chipset_series_qualcomm_snapdragon,
-				.model = 662,
-		},
-		{
-				/* "Lito" -> Qualcomm Lito */
-				.platform = "Lito",
-				.series = cpuinfo_arm_chipset_series_qualcomm_snapdragon,
-				.model = 765,
-				.suffix = 'G'
-		},
-		{
-				/* "Lagoon" -> Qualcomm Lagoon */
-				.platform = "Lagoon",
-				.series = cpuinfo_arm_chipset_series_qualcomm_snapdragon,
-				.model = 0,
-		},
-};
-
-
-int strcicmp(char const *a, char const *b)
-{
-	for (;; a++, b++) {
-		int d = tolower((unsigned char)*a) - tolower((unsigned char)*b);
-		if (d != 0 || !*a)
-			return d;
-	}
-}
-
-static bool match_qualcomm_special(
-		const char* start, const char* end,
-		struct cpuinfo_arm_chipset chipset[restrict static 1])
-{
-	for (size_t i = 0; i < CPUINFO_COUNT_OF(qualcomm_hardware_map_entries); i++) {
-		int length = end - start;
-		if (strcicmp(qualcomm_hardware_map_entries[i].platform, start) == 0 &&
-			qualcomm_hardware_map_entries[i].platform[length] == 0)
-		{
-			*chipset = (struct cpuinfo_arm_chipset) {
-					.vendor = chipset_series_vendor[qualcomm_hardware_map_entries[i].series],
-					.series = (enum cpuinfo_arm_chipset_series) qualcomm_hardware_map_entries[i].series,
-					.model = qualcomm_hardware_map_entries[i].model,
-					.suffix = {
-							[0] = qualcomm_hardware_map_entries[i].suffix,
-					},
-			};
-			return true;
-		}
-	}
-	return false;
-
 }
 
 /**
@@ -955,6 +867,63 @@ static bool match_sc(
 }
 
 /**
+ * Tries to match, case-sentitively, /Unisoc T\d{3,4}/ signature for Unisoc T chipset.
+ * If match successful, extracts model information into \p chipset argument.
+ *
+ * @param start - start of the platform identifier (/proc/cpuinfo Hardware string, ro.product.board,
+ *                ro.board.platform, or ro.chipname) to match.
+ * @param end - end of the platform identifier (/proc/cpuinfo Hardware string, ro.product.board,
+ *              ro.board.platform, or ro.chipname) to match.
+ * @param[out] chipset - location where chipset information will be stored upon a successful match.
+ *
+ * @returns true if signature matched, false otherwise.
+ */
+static bool match_t(
+	const char* start, const char* end,
+	struct cpuinfo_arm_chipset chipset[restrict static 1])
+{
+	/* Expect 11-12 symbols: "Unisoc T" (8 symbols) + 3-4-digit model number */
+	const size_t length = end - start;
+	switch (length) {
+		case 11:
+		case 12:
+			break;
+		default:
+			return false;
+	}
+
+	/* Check that string starts with "Unisoc T". The first four characters are loaded as 32-bit little endian word */
+	const uint32_t expected_unis = load_u32le(start);
+	if (expected_unis != UINT32_C(0x73696E55) /* "sinU" = reverse("Unis") */) {
+		return false;
+	}
+
+	/* The next four characters are loaded as 32-bit little endian word */
+	const uint32_t expected_oc_t = load_u32le(start + 4);
+	if (expected_oc_t != UINT32_C(0x5420636F) /* "T co" = reverse("oc T") */) {
+		return false;
+	}
+
+	/* Validate and parse 3-4 digit model number */
+	uint32_t model = 0;
+	for (uint32_t i = 8; i < length; i++) {
+		const uint32_t digit = (uint32_t) (uint8_t) start[i] - '0';
+		if (digit >= 10) {
+			/* Not really a digit */
+			return false;
+		}
+		model = model * 10 + digit;
+	}
+
+	*chipset = (struct cpuinfo_arm_chipset) {
+		.vendor = cpuinfo_arm_chipset_vendor_unisoc,
+		.series = cpuinfo_arm_chipset_series_unisoc_t,
+		.model = model,
+	};
+	return true;
+}
+
+/**
  * Tries to match /lc\d{4}[a-z]?$/ signature for Leadcore LC chipsets.
  * If match successful, extracts model information into \p chipset argument.
  *
@@ -968,7 +937,7 @@ static bool match_lc(
 	const char* start, const char* end,
 	struct cpuinfo_arm_chipset chipset[restrict static 1])
 {
-	/* Expect at 6-7 symbols: "lc" (2 symbols) + 4-digit model number + optional 1-letter suffix */
+	/* Expect 6-7 symbols: "lc" (2 symbols) + 4-digit model number + optional 1-letter suffix */
 	const size_t length = end - start;
 	switch (length) {
 		case 6:
@@ -1829,6 +1798,13 @@ static bool is_tegra(const char* start, const char* end) {
 	return (length == 5 || start[5] == '3');
 }
 
+struct special_map_entry {
+	const char* platform;
+	uint16_t model;
+	uint8_t series;
+	char suffix;
+};
+
 static const struct special_map_entry special_hardware_map_entries[] = {
 #if CPUINFO_ARCH_ARM
 	{
@@ -2387,14 +2363,6 @@ struct cpuinfo_arm_chipset cpuinfo_arm_linux_decode_chipset_from_proc_cpuinfo_ha
 								(int) hardware_length, hardware);
 							return chipset;
 						}
-
-						if (match_qualcomm_special(pos, hardware_end, &chipset)) {
-							cpuinfo_log_debug(
-									"matched Qualcomm signature in /proc/cpuinfo Hardware string \"%.*s\"",
-									(int) hardware_length, hardware);
-							return chipset;
-						}
-
 					}
 					word_start = false;
 					break;
@@ -2432,6 +2400,16 @@ struct cpuinfo_arm_chipset cpuinfo_arm_linux_decode_chipset_from_proc_cpuinfo_ha
 			cpuinfo_log_debug(
 				"matched Spreadtrum SC signature in /proc/cpuinfo Hardware string \"%.*s\"",
 				(int) hardware_length, hardware);
+
+			return chipset;
+		}
+
+		/* Check Unisoc T signature */
+		if (match_t(hardware, hardware_end, &chipset)) {
+			cpuinfo_log_debug(
+				"matched Unisoc T signature in /proc/cpuinfo Hardware string \"%.*s\"",
+				(int) hardware_length, hardware);
+
 			return chipset;
 		}
 
@@ -3495,6 +3473,7 @@ static const char* chipset_vendor_string[cpuinfo_arm_chipset_vendor_max] = {
 	[cpuinfo_arm_chipset_vendor_spreadtrum]        = "Spreadtrum",
 	[cpuinfo_arm_chipset_vendor_telechips]         = "Telechips",
 	[cpuinfo_arm_chipset_vendor_texas_instruments] = "Texas Instruments",
+	[cpuinfo_arm_chipset_vendor_unisoc]            = "Unisoc",
 	[cpuinfo_arm_chipset_vendor_wondermedia]       = "WonderMedia",
 };
 
@@ -3529,6 +3508,7 @@ static const char* chipset_series_string[cpuinfo_arm_chipset_series_max] = {
 	[cpuinfo_arm_chipset_series_spreadtrum_sc]          = "SC",
 	[cpuinfo_arm_chipset_series_telechips_tcc]          = "TCC",
 	[cpuinfo_arm_chipset_series_texas_instruments_omap] = "OMAP",
+	[cpuinfo_arm_chipset_series_unisoc_t]               = "T",
 	[cpuinfo_arm_chipset_series_wondermedia_wm]         = "WM",
 };
 
@@ -3562,7 +3542,7 @@ void cpuinfo_arm_chipset_to_string(
 	}
 }
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__)
 	static inline struct cpuinfo_arm_chipset disambiguate_qualcomm_chipset(
 		const struct cpuinfo_arm_chipset proc_cpuinfo_hardware_chipset[restrict static 1],
 		const struct cpuinfo_arm_chipset ro_product_board_chipset[restrict static 1],
@@ -3854,7 +3834,7 @@ void cpuinfo_arm_chipset_to_string(
 	 */
 	void cpuinfo_arm_fixup_raspberry_pi_chipset(
 		struct cpuinfo_arm_chipset chipset[restrict static 1],
-		const char revision[restrict static CPUINFO_HARDWARE_VALUE_MAX])
+		const char revision[restrict static CPUINFO_REVISION_VALUE_MAX])
 	{
 		const size_t revision_length = strnlen(revision, CPUINFO_REVISION_VALUE_MAX);
 

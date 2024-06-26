@@ -58,7 +58,7 @@ for item in data:
         seq[maxlen - arrlen + i] = arr[i]
     X.append(seq)
     Y.append(item['attack'])
-    
+
 #
 # Build Model (Simple LSTM)
 #
@@ -85,9 +85,16 @@ model.fit(np.asarray(X).astype(np.float32),
 # Save Model
 #
 
-model.export("model")
+export_archive = tf.keras.export.ExportArchive()
+export_archive.track(model)
+export_archive.add_endpoint(
+    name='serve',
+    fn=model.call,
+    input_signature=[tf.TensorSpec(shape=(1, maxlen), dtype=tf.float32)],
+)
+export_archive.write_out('model')
 
-converter = tf.lite.TFLiteConverter.from_saved_model("model")
+converter = tf.lite.TFLiteConverter.from_saved_model('model')
 
 classifier_model = converter.convert()
 

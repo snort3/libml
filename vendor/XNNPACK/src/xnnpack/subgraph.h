@@ -9,8 +9,10 @@
 #include <stdint.h>
 
 #include <xnnpack.h>
-#include <xnnpack/common.h>
+#include <xnnpack/allocation-type.h>
 #include <xnnpack/cache.h>
+#include <xnnpack/common.h>
+#include <xnnpack/math.h>
 #include <xnnpack/node-type.h>
 
 #if defined(EMSCRIPTEN)
@@ -21,21 +23,27 @@
 #include <time.h>
 #endif
 
-#define XNN_MAX_INPUTS 4
+#define XNN_MAX_INPUTS 5
 #define XNN_MAX_OUTPUTS 4
-
-#define XNN_MAX_RUNTIME_INPUTS 4
-#define XNN_MAX_RUNTIME_OUTPUTS 4
 
 #define XNN_INVALID_NODE_ID UINT32_MAX
 
-#define XNN_MAX_OPERATOR_OBJECTS 4
+#define XNN_MAX_OPERATOR_OBJECTS 5
 
 /// Disable fusion of nodes in subgraph. Fusion is enabled by default, set this flag to turn it off.
 #define XNN_FLAG_NO_OPERATOR_FUSION 0x80000000
 
 #ifdef __cplusplus
 extern "C" {
+#endif
+
+#ifdef XNN_SLINKY_ENABLED
+struct xnn_value;
+struct slinky_pipeline;
+typedef struct slinky_pipeline* slinky_pipeline_t;
+slinky_pipeline_t xnn_runtime_to_slinky_pipeline(xnn_runtime_t runtime);
+void destroy_slinky_pipeline(slinky_pipeline_t pipeline);
+enum xnn_status evaluate(slinky_pipeline_t p, struct xnn_value* const* input_values, size_t num_inputs, struct xnn_value* const* output_values, size_t num_outputs);
 #endif
 
 struct xnn_shape {
@@ -77,17 +85,29 @@ struct xnn_value {
         /// Index of the channel dimension with per-channel quantization parameters.
         size_t channel_dimension;
       };
+      struct {
+        /// Number of non-batch dimensions. 1 for FC, 3 for Conv2D.
+        size_t num_nonbatch_dims;
+        /// Per-batch quantization parameters factor to convert quantized elements to real representation.
+        struct xnn_dynamic_quantization_params* dynamic_params;
+        /// Number of (struct xnn_dynamic_quantization_params) * sizeof(struct xnn_dynamic_quantization_params)
+        size_t dynamic_params_size;
+      };
     };
   } quantization;
   /// Tensor shape.
   struct xnn_shape shape;
+  /// Size of tensor.
+  size_t size;
+  /// Type of allocation for this tensors' data.
+  enum xnn_allocation_type allocation_type;
   /// Binary features of the tensor. Supported values are any combination of:
   /// - XNN_VALUE_FLAG_EXTERNAL_INPUT
   /// - XNN_VALUE_FLAG_EXTERNAL_OUTPUT
   /// - XNN_VALUE_FLAG_PERSISTENT
   uint32_t flags;
   /// Static initialization data. Must be null for non-static values.
-  const void* data;
+  void* data;
   /// Index of the Subgraph node that produced the value, or XNN_INVALID_NODE_ID is the Value is an external input.
   uint32_t producer;
   /// Index of the first Node that consume the value, or XNN_INVALID_NODE_ID if the Value has no consumers within the
@@ -108,42 +128,47 @@ struct xnn_value {
   /// Set during analysis in xnn_subgraph_rewrite_for_fp16.
   /// Indicates Value ID of the FP32 variant of this Value.
   uint32_t fp32_id;
+  /// Used during analysis in xnn_subgraph_rewrite_for_fp16.
+  /// Temporary buffer to convert static data to FP16.
+  void* fp16_temp_data;
+  // Pointer to original fp32 data if this value was converted from fp32 to fp16 (only for static values). This is used
+  // for nodes like Convolution, where the filter is expected to be kept as fp32, but could have been converted to fp16
+  // if another node (like Subtraction) also consumed the weights.
+  // If NULL, no conversion to fp16 was done, use field `data`.
+  // If not NULL, points to the original fp32 data, (which should be `data` before it was overwritten to point to
+  // converted fp16 buffer.
+  const void* fp32_data;
 };
 
 
-XNN_INLINE bool xnn_value_is_external(const struct xnn_value* value) {
+XNN_INLINE static bool xnn_value_is_external(const struct xnn_value* value) {
   return (value->flags & (XNN_VALUE_FLAG_EXTERNAL_INPUT | XNN_VALUE_FLAG_EXTERNAL_OUTPUT)) != 0;
 }
 
-XNN_INLINE bool xnn_value_is_external_output(const struct xnn_value* value) {
+XNN_INLINE static bool xnn_value_is_external_output(const struct xnn_value* value) {
   return (value->flags & XNN_VALUE_FLAG_EXTERNAL_OUTPUT) != 0;
 }
 
-XNN_INLINE bool xnn_value_is_external_input(const struct xnn_value* value) {
+XNN_INLINE static bool xnn_value_is_external_input(const struct xnn_value* value) {
   return (value->flags & XNN_VALUE_FLAG_EXTERNAL_INPUT) != 0;
 }
 
-XNN_INLINE bool xnn_value_is_persistent(const struct xnn_value* value) {
-  return (value->flags & XNN_VALUE_FLAG_PERSISTENT) != 0;
+XNN_INLINE static bool xnn_value_is_internal(const struct xnn_value* value) {
+  return (
+    (value->flags & (XNN_VALUE_FLAG_EXTERNAL_INPUT | XNN_VALUE_FLAG_EXTERNAL_OUTPUT | XNN_VALUE_FLAG_PERSISTENT)) == 0);
 }
 
-enum xnn_allocation_type {
-  xnn_allocation_type_invalid = 0,
-  /// Static data that is provided by caller, needs to outlive the xnn_runtime.
-  xnn_allocation_type_static,
-  /// Lives in XNNPACK-managed internal workspace.
-  xnn_allocation_type_workspace,
-  /// Non-static data that is external to the runtime, provided by caller, specified in xnn_setup_runtime.
-  xnn_allocation_type_external,
-};
+XNN_INLINE static bool xnn_value_is_persistent(const struct xnn_value* value) {
+  return value->allocation_type == xnn_allocation_type_persistent;
+}
 
-struct xnn_blob {
-  /// Size in bytes.
-  size_t size;
-  /// Data pointer.
-  void* data;
-  enum xnn_allocation_type allocation_type;
-};
+XNN_INLINE static bool xnn_value_is_valid(const struct xnn_value* value) {
+  return value->type != xnn_value_type_invalid;
+}
+
+XNN_INLINE static bool xnn_value_is_static(const struct xnn_value* value) {
+  return value->allocation_type == xnn_allocation_type_static;
+}
 
 struct xnn_node;
 struct xnn_operator_data;
@@ -153,12 +178,19 @@ typedef enum xnn_status (*xnn_create_operator_fn)(
   const struct xnn_value* values,
   size_t num_values,
   struct xnn_operator_data* opdata,
-  const struct xnn_caches* caches);
+  struct xnn_code_cache* code_cache,
+  xnn_weights_cache_t weights_cache);
+
+typedef enum xnn_status (*xnn_reshape_operator_fn)(
+  struct xnn_operator_data* opdata,
+  struct xnn_value* values,
+  size_t num_values,
+  pthreadpool_t threadpool);
 
 typedef enum xnn_status (*xnn_setup_operator_fn)(
   const struct xnn_operator_data* opdata,
-  const struct xnn_blob* blobs,
-  size_t num_blobs,
+  const struct xnn_value* values,
+  size_t num_values,
   pthreadpool_t threadpool);
 
 enum xnn_compute_type {
@@ -166,12 +198,17 @@ enum xnn_compute_type {
   xnn_compute_type_fp32,
   xnn_compute_type_fp16,
   xnn_compute_type_qc8,
+  xnn_compute_type_qd8_to_fp16,
+  xnn_compute_type_qd8_to_fp32,
   xnn_compute_type_qs8,
   xnn_compute_type_qu8,
+  xnn_compute_type_fp16_to_qd8,
+  xnn_compute_type_fp16_to_fp32,
   xnn_compute_type_fp32_to_fp16,
+  xnn_compute_type_fp32_to_qd8,
   xnn_compute_type_fp32_to_qs8,
   xnn_compute_type_fp32_to_qu8,
-  xnn_compute_type_fp16_to_fp32,
+  xnn_compute_type_qs8_to_fp16,
   xnn_compute_type_qs8_to_fp32,
   xnn_compute_type_qu8_to_fp32,
 };
@@ -182,6 +219,9 @@ struct xnn_node {
   enum xnn_compute_type compute_type;
   /// Static parameters of the operator node.
   union {
+    struct {
+      int32_t axis;
+    } concatenate;
     struct {
       uint32_t input_padding_top;
       uint32_t input_padding_right;
@@ -230,7 +270,10 @@ struct xnn_node {
     } depthwise_convolution_2d;
     struct {
       uint32_t block_size;
-    } depth_to_space;
+    } depth_to_space_2d;
+    struct {
+      int32_t axis;
+    } even_split;
     struct {
       uint32_t padding_top;
       uint32_t padding_right;
@@ -262,15 +305,28 @@ struct xnn_node {
       size_t new_width;
     } static_resize;
     struct {
-      size_t axis;
-    } concatenate;
+      size_t max_tokens;
+    } rope;
     struct {
-      size_t axis;
-    } even_split;
+      size_t num_dims;
+      size_t offsets[XNN_MAX_TENSOR_DIMS];
+      size_t sizes[XNN_MAX_TENSOR_DIMS];
+    } slice;
+    struct {
+      uint32_t block_size;
+    } space_to_depth_2d;
+    struct {
+      size_t num_reduction_axes;
+      size_t reduction_axes[XNN_MAX_TENSOR_DIMS];
+    } reduce;
     struct {
       size_t perm[XNN_MAX_TENSOR_DIMS];
       size_t num_dims;
     } transpose;
+    struct {
+      enum xnn_attention_logits_cap_type cap_type;
+      struct xnn_attention_logits_cap_tanh_params cap_tanh_params;
+    } scaled_dot_product_attention;
   } params;
   struct {
     float output_min;
@@ -293,6 +349,8 @@ struct xnn_node {
   size_t num_zeroes;
   // Factory function to create an operator object from the node.
   xnn_create_operator_fn create;
+  // Function to reshape an operator using opdata.
+  xnn_reshape_operator_fn reshape;
   // Function to setup an operator using opdata.
   xnn_setup_operator_fn setup;
 };
@@ -308,22 +366,57 @@ typedef struct timespec xnn_timestamp;
 #endif
 
 struct xnn_operator_data {
+  enum xnn_node_type type;
+  uint32_t id;
   xnn_operator_t operator_objects[XNN_MAX_OPERATOR_OBJECTS];
+  xnn_reshape_operator_fn reshape;
   xnn_setup_operator_fn setup;
   size_t batch_size;
+  size_t sequence_size;
+  size_t heads;
   size_t input_height;
   size_t input_width;
   size_t output_height;
   size_t output_width;
+  size_t input_channels;
+  size_t output_channels;
   struct xnn_shape shape1;
   struct xnn_shape shape2;
-  size_t pre_paddings[XNN_MAX_TENSOR_DIMS];
-  size_t post_paddings[XNN_MAX_TENSOR_DIMS];
+  union {
+    // Used for reduction/mean.
+    struct {
+      size_t num_reduction_axes;
+      size_t reduction_axes[XNN_MAX_TENSOR_DIMS];
+    };
+    // Used for reshape.
+    struct {
+      size_t num_reshape_dims;
+      size_t reshape_dims[XNN_MAX_TENSOR_DIMS];
+    };
+    // Used for concatenate.
+    int32_t axis;
+    // Used for static constant pad.
+    struct {
+      size_t post_paddings[XNN_MAX_TENSOR_DIMS];
+      size_t pre_paddings[XNN_MAX_TENSOR_DIMS];
+    };
+    // Used for static slice.
+    struct {
+      size_t offsets[XNN_MAX_TENSOR_DIMS];
+      size_t sizes[XNN_MAX_TENSOR_DIMS];
+    };
+  };
   uint32_t adjustment_height;
   uint32_t adjustment_width;
-  uint32_t inputs[XNN_MAX_RUNTIME_INPUTS];
-  uint32_t outputs[XNN_MAX_RUNTIME_OUTPUTS];
+  uint32_t num_inputs;
+  uint32_t inputs[XNN_MAX_INPUTS];
+  uint32_t num_outputs;
+  uint32_t outputs[XNN_MAX_OUTPUTS];
   xnn_timestamp end_ts[XNN_MAX_OPERATOR_OBJECTS];
+  void* workspace;
+  size_t workspace_size;
+  size_t workspace_alignment;
+  uint32_t flags;
 };
 
 struct xnn_subgraph {
@@ -349,8 +442,8 @@ struct xnn_runtime {
   /// Number of operators in the execution plan.
   size_t num_ops;
 
-  struct xnn_blob* blobs;
-  size_t num_blobs;
+  struct xnn_value* values;
+  size_t num_values;
 
   struct xnn_workspace* workspace;
   struct xnn_runtime* next_workspace_user;
@@ -364,17 +457,47 @@ struct xnn_runtime {
   bool profiling;
   // The start timestamp of the first operator in the subgraph. This is set when profiling is true.
   xnn_timestamp start_ts;
+
+  // True if runtime has ever been setup. If it has been setup, the pointers inside of opdata need to be updated if
+  // workspace changes.
+  bool has_been_setup;
+  bool memory_planned;
+
+#ifdef XNN_SLINKY_ENABLED
+  slinky_pipeline_t slinky_pipeline;
+  size_t num_inputs;
+  size_t num_outputs;
+  struct xnn_value* input_values[XNN_MAX_OPERATOR_OBJECTS];
+  struct xnn_value* output_values[XNN_MAX_OPERATOR_OBJECTS];
+#endif
 };
 
 struct xnn_value* xnn_subgraph_new_internal_value(xnn_subgraph_t subgraph);
 
 struct xnn_node* xnn_subgraph_new_node(xnn_subgraph_t subgraph);
 
-void xnn_subgraph_add_nodes(xnn_subgraph_t subgraph, size_t num_nodes);
+enum xnn_status xnn_subgraph_add_nodes(xnn_subgraph_t subgraph, size_t num_nodes);
 
-size_t xnn_tensor_get_size(
-  xnn_subgraph_t subgraph,
-  uint32_t value_id);
+// Get size of the tensor in bytes (based on dimensions of tensor).
+size_t xnn_tensor_get_size(const struct xnn_value* value);
+
+size_t xnn_tensor_get_size_by_id(xnn_subgraph_t subgraph, uint32_t value_id);
+
+// Checks if a tensor shape is completely known.
+bool xnn_tensor_shape_is_static(const struct xnn_value* value);
+
+XNN_INLINE static size_t xnn_get_rounded_size(size_t size)
+{
+  // We round it to XNN_EXTRA_BYTES to ensure that we can read more than the actual size of the tensor, and round it
+  // to allocation alignment to ensure that all tensors and operator workspaces are aligned correctly.
+  return round_up_po2(round_up_po2(size, XNN_EXTRA_BYTES), XNN_ALLOCATION_ALIGNMENT);
+}
+
+// Returns the size of tensor rounded to appropriate extra bytes and allocation alignment.
+XNN_INLINE static size_t xnn_tensor_get_rounded_size(const struct xnn_value* value)
+{
+  return xnn_get_rounded_size(value->size);
+}
 
 // Product of all shape dimensions
 size_t xnn_shape_multiply_all_dims(
@@ -387,6 +510,28 @@ size_t xnn_shape_multiply_batch_dims(
 // Product of all shape dimensions, except for the last (channel) one
 size_t xnn_shape_multiply_non_channel_dims(
   const struct xnn_shape shape[1]);
+
+// Product of n leading dimensions.
+size_t xnn_shape_multiply_leading_dims(
+  const struct xnn_shape shape[1],
+  size_t num_leading_dims);
+
+// Product of trailing dimensions starting from start_dim.
+size_t xnn_shape_multiply_trailing_dims(
+  const struct xnn_shape shape[1],
+  size_t start_dim);
+
+// Get the size in bytes to hold dynamic quant params
+size_t xnn_tensor_get_dynamic_quant_param_size(const struct xnn_value* value);
+
+XNN_INLINE static size_t xnn_tensor_get_rounded_dynamic_quant_param_size(const struct xnn_value *value) {
+  assert (value->datatype == xnn_datatype_qdint8);
+
+  // We may read out of bounds for qparams.
+  return xnn_get_rounded_size(value->quantization.dynamic_params_size
+    + XNN_EXTRA_QUANTIZATION_PARAMS * sizeof(struct xnn_dynamic_quantization_params));
+}
+
 
 enum xnn_status xnn_subgraph_optimize(xnn_subgraph_t subgraph, uint32_t flags);
 
@@ -412,9 +557,17 @@ struct xnn_workspace {
   struct xnn_runtime* first_user;
   // Workspace will be destroyed in xnn_delete_runtime or xnn_delete_workspace if num_users reaches 0.
   size_t ref_count;
+  size_t persistent_size;
 };
 
 void xnn_subgraph_analyze_consumers_and_producers(xnn_subgraph_t subgraph);
+
+enum xnn_status resize_fully_connected_output_tensor(
+  const struct xnn_operator_data* opdata,
+  struct xnn_value* values,
+  size_t num_values,
+  size_t old_workspace_size,
+  pthreadpool_t threadpool);
 
 #ifdef __cplusplus
 }  // extern "C"

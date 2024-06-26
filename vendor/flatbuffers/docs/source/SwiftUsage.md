@@ -22,10 +22,10 @@ GitHub page](https://github.com/google/flatbuffers/tree/master/swift).
 
 ## Testing the FlatBuffers Swift library
 
-The code to test the Swift library can be found at `flatbuffers/Flatbuffers.Test.Swift`.
-The test code itself is located in [Flatbuffers.Test.Swift](https://github.com/google/flatbuffers/blob/master/tests/FlatBuffers.Test.Swift).
+The code to test the Swift library can be found at `flatbuffers/tests/swift/tests`.
+The test code itself is located in [flatbuffers/tests/swift/tests](https://github.com/google/flatbuffers/blob/master/tests/swift/tests).
 
-To run the tests, use the [SwiftTest.sh](https://github.com/google/flatbuffers/blob/master/tests/FlatBuffers.Test.Swift/SwiftTest.sh) shell script.
+To run the tests, use the [SwiftTest.sh](https://github.com/google/flatbuffers/blob/master/tests/swift/tests/SwiftTest.sh) shell script.
 
 *Note: The shell script requires [Swift](https://swift.org) to
 be installed.*
@@ -72,7 +72,10 @@ Now you can access values like this:
 In some cases it's necessary to modify values in an existing FlatBuffer in place (without creating a copy). For this reason, scalar fields of a Flatbuffer table or struct can be mutated.
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~{.swift}
-    let monster = Monster.getRootAsMonster(bb: ByteBuffer(data: data))
+    var byteBuffer = ByteBuffer(bytes: data)
+    // Get an accessor to the root object inside the buffer.
+    let monster: Monster = try! getCheckedRoot(byteBuffer: &byteBuffer)
+    // let monster: Monster = getRoot(byteBuffer: &byteBuffer)
 
     if !monster.mutate(hp: 10) {
       fatalError("couldn't mutate")

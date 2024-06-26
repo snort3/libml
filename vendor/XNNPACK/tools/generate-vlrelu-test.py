@@ -27,14 +27,14 @@ parser.set_defaults(defines=list())
 
 
 def split_ukernel_name(name):
-  match = re.fullmatch(r"xnn_(qs8|qu8)_vlrelu_ukernel__(.+)_x(\d+)", name)
+  match = re.fullmatch(r"xnn_(qs8|qu8)_vlrelu_ukernel__(.+)_u(\d+)(v)?", name)
   if match is None:
     raise ValueError("Unexpected microkernel name: " + name)
 
   datatype = match.group(1)
   batch_tile = int(match.group(3))
 
-  arch, isa = xnncommon.parse_target_name(target_name=match.group(2))
+  arch, isa, assembly = xnncommon.parse_target_name(target_name=match.group(2))
   return datatype, batch_tile, arch, isa
 
 
@@ -201,12 +201,12 @@ def main(args):
 //   Generator: {generator}
 
 
-#include <gtest/gtest.h>
-
 #include <xnnpack/common.h>
 #include <xnnpack/isa-checks.h>
-
+#include <xnnpack/microparams-init.h>
 #include <xnnpack/vlrelu.h>
+
+#include <gtest/gtest.h>
 #include "vlrelu-microkernel-tester.h"
 """.format(specification=options.spec, generator=sys.argv[0])
 
@@ -215,21 +215,11 @@ def main(args):
       init_fn = ukernel_spec.get("init")
       datatype, batch_tile, arch, isa = split_ukernel_name(name)
 
-      # specification can override architecture
-      arch = ukernel_spec.get("arch", arch)
-
       test_case = generate_test_cases(
         name, init_fn, datatype, batch_tile, isa)
       tests += "\n\n" + xnncommon.postprocess_test_case(test_case, arch, isa)
 
-    txt_changed = True
-    if os.path.exists(options.output):
-      with codecs.open(options.output, "r", encoding="utf-8") as output_file:
-        txt_changed = output_file.read() != tests
-
-    if txt_changed:
-      with codecs.open(options.output, "w", encoding="utf-8") as output_file:
-        output_file.write(tests)
+    xnncommon.overwrite_if_changed(options.output, tests)
 
 
 if __name__ == "__main__":

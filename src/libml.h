@@ -1,5 +1,5 @@
 //--------------------------------------------------------------------------
-// Copyright (C) 2023-2023 Cisco and/or its affiliates. All rights reserved.
+// Copyright (C) 2023-2024 Cisco and/or its affiliates. All rights reserved.
 //
 // This program is free software; you can redistribute it and/or modify it
 // under the terms of the GNU General Public License Version 2 as published
@@ -25,7 +25,7 @@
 
 const char* libml_version();
 
-namespace tflite
+namespace tflite::impl
 {
     class FlatBufferModel;
     class Interpreter;
@@ -45,6 +45,6 @@ public:
 private:
     std::string src;
     size_t input_size = 0;
-    std::unique_ptr<tflite::FlatBufferModel> model;
-    std::unique_ptr<tflite::Interpreter> interpreter;
+    std::unique_ptr<tflite::impl::FlatBufferModel> model;
+    std::unique_ptr<tflite::impl::Interpreter> interpreter;
 };

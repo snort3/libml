@@ -5,117 +5,116 @@
 
 #pragma once
 
-#include <gtest/gtest.h>
+#include <xnnpack.h>
+#include <xnnpack/aligned-allocator.h>
+#include <xnnpack/microfnptr.h>
+#include <xnnpack/microparams.h>
+#include <xnnpack/pack.h>
 
 #include <algorithm>
 #include <cassert>
+#include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
-#include <functional>
 #include <random>
 #include <vector>
 
-#include <fp16.h>
-
-#include <xnnpack.h>
-#include <xnnpack/aligned-allocator.h>
-#include <xnnpack/pack.h>
-#include <xnnpack/microfnptr.h>
-#include <xnnpack/microparams-init.h>
-
+#include "replicable_random_device.h"
+#include <gtest/gtest.h>
+#include <fp16/fp16.h>
 
 class VMulCAddCMicrokernelTester {
  public:
-  inline VMulCAddCMicrokernelTester& channel_tile(size_t channel_tile) {
+  VMulCAddCMicrokernelTester& channel_tile(size_t channel_tile) {
     this->channel_tile_ = channel_tile;
     return *this;
   }
 
-  inline size_t channel_tile() const {
+  size_t channel_tile() const {
     return this->channel_tile_;
   }
 
-  inline VMulCAddCMicrokernelTester& channels(size_t channels) {
+  VMulCAddCMicrokernelTester& channels(size_t channels) {
     assert(channels != 0);
     this->channels_ = channels;
     return *this;
   }
 
-  inline size_t channels() const {
+  size_t channels() const {
     return this->channels_;
   }
 
-  inline size_t packed_channels() const {
+  size_t packed_channels() const {
     return channels() % channel_tile() == 0 ? channels() : (channels() / channel_tile() + 1) * channel_tile();
   }
 
-  inline VMulCAddCMicrokernelTester& rows(size_t rows) {
+  VMulCAddCMicrokernelTester& rows(size_t rows) {
     assert(rows != 0);
     this->rows_ = rows;
     return *this;
   }
 
-  inline size_t rows() const {
+  size_t rows() const {
     return this->rows_;
   }
 
-  inline VMulCAddCMicrokernelTester& input_stride(size_t input_stride) {
+  VMulCAddCMicrokernelTester& input_stride(size_t input_stride) {
     this->input_stride_ = input_stride;
     return *this;
   }
 
-  inline size_t input_stride() const {
+  size_t input_stride() const {
     return this->input_stride_ == 0 ? channels() : this->input_stride_;
   }
 
-  inline VMulCAddCMicrokernelTester& output_stride(size_t output_stride) {
+  VMulCAddCMicrokernelTester& output_stride(size_t output_stride) {
     this->output_stride_ = output_stride;
     return *this;
   }
 
-  inline size_t output_stride() const {
+  size_t output_stride() const {
     return this->output_stride_ == 0 ? channels() : this->output_stride_;
   }
 
-  inline VMulCAddCMicrokernelTester& inplace(bool inplace) {
+  VMulCAddCMicrokernelTester& inplace(bool inplace) {
     this->inplace_ = inplace;
     return *this;
   }
 
-  inline bool inplace() const {
+  bool inplace() const {
     return this->inplace_;
   }
 
-  inline VMulCAddCMicrokernelTester& qmin(uint8_t qmin) {
+  VMulCAddCMicrokernelTester& qmin(uint8_t qmin) {
     this->qmin_ = qmin;
     return *this;
   }
 
-  inline uint8_t qmin() const {
+  uint8_t qmin() const {
     return this->qmin_;
   }
 
-  inline VMulCAddCMicrokernelTester& qmax(uint8_t qmax) {
+  VMulCAddCMicrokernelTester& qmax(uint8_t qmax) {
     this->qmax_ = qmax;
     return *this;
   }
 
-  inline uint8_t qmax() const {
+  uint8_t qmax() const {
     return this->qmax_;
   }
 
-  inline VMulCAddCMicrokernelTester& iterations(size_t iterations) {
+  VMulCAddCMicrokernelTester& iterations(size_t iterations) {
     this->iterations_ = iterations;
     return *this;
   }
 
-  inline size_t iterations() const {
+  size_t iterations() const {
     return this->iterations_;
   }
 
-  void Test(xnn_f16_vmulcaddc_ukernel_function vmulcaddc, xnn_init_f16_minmax_params_fn init_params) const {
-    std::random_device random_device;
-    auto rng = std::mt19937(random_device());
+  void Test(xnn_f16_vmulcaddc_ukernel_fn vmulcaddc, xnn_init_f16_minmax_params_fn init_params) const {
+    xnnpack::ReplicableRandomDevice rng;
     std::uniform_real_distribution<float> f32dist;
 
     if (inplace()) {
@@ -174,7 +173,7 @@ class VMulCAddCMicrokernelTester {
       // Verify results.
       for (size_t i = 0; i < rows(); i++) {
         for (size_t j = 0; j < channels(); j++) {
-          ASSERT_NEAR(fp16_ieee_to_fp32_value(y[i * output_stride() + j]), y_ref[i * channels() + j], std::max(1.0e-4f, std::abs(y_ref[i * channels() + j]) * 1.0e-2f))
+          EXPECT_NEAR(fp16_ieee_to_fp32_value(y[i * output_stride() + j]), y_ref[i * channels() + j], std::max(1.0e-4f, std::abs(y_ref[i * channels() + j]) * 1.0e-2f))
             << "at pixel " << i << " / " << rows()
             << ", channel = " << j << " / " << channels();
         }
@@ -182,9 +181,8 @@ class VMulCAddCMicrokernelTester {
     }
   }
 
-  void Test(xnn_f32_vmulcaddc_ukernel_function vmulcaddc, xnn_init_f32_minmax_params_fn init_params) const {
-    std::random_device random_device;
-    auto rng = std::mt19937(random_device());
+  void Test(xnn_f32_vmulcaddc_ukernel_fn vmulcaddc, xnn_init_f32_minmax_params_fn init_params) const {
+    xnnpack::ReplicableRandomDevice rng;
     std::uniform_real_distribution<float> f32dist;
 
     if (inplace()) {
@@ -241,7 +239,7 @@ class VMulCAddCMicrokernelTester {
       // Verify results.
       for (size_t i = 0; i < rows(); i++) {
         for (size_t j = 0; j < channels(); j++) {
-          ASSERT_NEAR(y[i * output_stride() + j], y_ref[i * channels() + j], std::abs(y_ref[i * channels() + j]) * 1.0e-6f)
+          EXPECT_NEAR(y[i * output_stride() + j], y_ref[i * channels() + j], std::abs(y_ref[i * channels() + j]) * 1.0e-6f)
             << "at pixel " << i << " / " << rows()
             << ", channel = " << j << " / " << channels();
         }

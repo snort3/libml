@@ -28,7 +28,7 @@ public class KeywordsInUnionUnion {
   public KeywordTest.KeywordsInTableT Asinternal() { return this.As<KeywordTest.KeywordsInTableT>(); }
   public static KeywordsInUnionUnion Frominternal(KeywordTest.KeywordsInTableT _internal) { return new KeywordsInUnionUnion{ Type = KeywordsInUnion.@internal, Value = _internal }; }
 
-  public static int Pack(FlatBuffers.FlatBufferBuilder builder, KeywordsInUnionUnion _o) {
+  public static int Pack(Google.FlatBuffers.FlatBufferBuilder builder, KeywordsInUnionUnion _o) {
     switch (_o.Type) {
       default: return 0;
       case KeywordsInUnion.@static: return KeywordTest.KeywordsInTable.Pack(builder, _o.Asstatic()).Value;
@@ -76,6 +76,28 @@ public class KeywordsInUnionUnion_JsonConverter : Newtonsoft.Json.JsonConverter 
       case KeywordsInUnion.@internal: _o.Value = serializer.Deserialize<KeywordTest.KeywordsInTableT>(reader); break;
     }
     return _o;
+  }
+}
+
+
+
+static public class KeywordsInUnionVerify
+{
+  static public bool Verify(Google.FlatBuffers.Verifier verifier, byte typeId, uint tablePos)
+  {
+    bool result = true;
+    switch((KeywordsInUnion)typeId)
+    {
+      case KeywordsInUnion.@static:
+        result = KeywordTest.KeywordsInTableVerify.Verify(verifier, tablePos);
+        break;
+      case KeywordsInUnion.@internal:
+        result = KeywordTest.KeywordsInTableVerify.Verify(verifier, tablePos);
+        break;
+      default: result = true;
+        break;
+    }
+    return result;
   }
 }
 

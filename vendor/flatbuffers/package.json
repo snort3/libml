@@ -1,6 +1,6 @@
 {
   "name": "flatbuffers",
-  "version": "2.0.4",
+  "version": "24.3.25",
   "description": "Memory Efficient Serialization Library",
   "files": [
     "js/**/*.js",
@@ -16,8 +16,9 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "npm run compile && cd tests && ./TypeScriptTest.sh",
-    "compile": "tsc && tsc -p tsconfig.mjs.json",
+    "test": "npm run compile && cd tests/ts && python3 ./TypeScriptTest.py",
+    "lint": "eslint ts",
+    "compile": "tsc && tsc -p tsconfig.mjs.json && esbuild js/flatbuffers.js --minify --global-name=flatbuffers --bundle --outfile=js/flatbuffers.min.js",
     "prepublishOnly": "npm install --only=dev && npm run compile"
   },
   "repository": {
@@ -28,16 +29,17 @@
     "flatbuffers"
   ],
   "author": "The FlatBuffers project",
-  "license": "SEE LICENSE IN LICENSE.txt",
+  "license": "Apache-2.0",
   "bugs": {
     "url": "https://github.com/google/flatbuffers/issues"
   },
   "homepage": "https://google.github.io/flatbuffers/",
-  "dependencies": {},
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^4.12.0",
-    "@typescript-eslint/parser": "^4.12.0",
-    "eslint": "^7.17.0",
-    "typescript": "^4.1.3"
+    "@types/node": "^20.10.4",
+    "@typescript-eslint/eslint-plugin": "^6.13.2",
+    "@typescript-eslint/parser": "^6.13.2",
+    "esbuild": "^0.19.8",
+    "eslint": "^8.55.0",
+    "typescript": "5.3.3"
   }
 }

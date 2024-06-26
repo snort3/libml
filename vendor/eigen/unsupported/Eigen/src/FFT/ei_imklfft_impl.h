@@ -7,17 +7,19 @@
 
 #include <mkl_dfti.h>
 
+// IWYU pragma: private
 #include "./InternalHeaderCheck.h"
 
 #include <complex>
+#include <memory>
 
 namespace Eigen {
 namespace internal {
 namespace imklfft {
 
-#define RUN_OR_ASSERT(EXPR, ERROR_MSG)                   \
-  {                                                      \
-    MKL_LONG status = (EXPR);                            \
+#define RUN_OR_ASSERT(EXPR, ERROR_MSG)                    \
+  {                                                       \
+    MKL_LONG status = (EXPR);                             \
     eigen_assert(status == DFTI_NO_ERROR && (ERROR_MSG)); \
   };
 
@@ -38,33 +40,27 @@ inline MKL_Complex8* complex_cast(const std::complex<float>* p) {
  * Array of type MKL_LONG otherwise. Lengths of each dimension for a
  * multi-dimensional transform.
  */
-inline void configure_descriptor(DFTI_DESCRIPTOR_HANDLE* handl,
-                                 enum DFTI_CONFIG_VALUE precision,
-                                 enum DFTI_CONFIG_VALUE forward_domain,
-                                 MKL_LONG dimension, MKL_LONG* sizes) {
-  eigen_assert(dimension == 1 ||
-               dimension == 2 &&
-                   "Transformation dimension must be less than 3.");
+inline void configure_descriptor(std::shared_ptr<DFTI_DESCRIPTOR>& handl, enum DFTI_CONFIG_VALUE precision,
+                                 enum DFTI_CONFIG_VALUE forward_domain, MKL_LONG dimension, MKL_LONG* sizes) {
+  eigen_assert(dimension == 1 || dimension == 2 && "Transformation dimension must be less than 3.");
 
+  DFTI_DESCRIPTOR_HANDLE res = nullptr;
   if (dimension == 1) {
-    RUN_OR_ASSERT(DftiCreateDescriptor(handl, precision, forward_domain,
-                                       dimension, *sizes),
+    RUN_OR_ASSERT(DftiCreateDescriptor(&res, precision, forward_domain, dimension, *sizes),
                   "DftiCreateDescriptor failed.")
+    handl.reset(res, [](DFTI_DESCRIPTOR_HANDLE handle) { DftiFreeDescriptor(&handle); });
     if (forward_domain == DFTI_REAL) {
       // Set CCE storage
-      RUN_OR_ASSERT(DftiSetValue(*handl, DFTI_CONJUGATE_EVEN_STORAGE,
-                                 DFTI_COMPLEX_COMPLEX),
+      RUN_OR_ASSERT(DftiSetValue(handl.get(), DFTI_CONJUGATE_EVEN_STORAGE, DFTI_COMPLEX_COMPLEX),
                     "DftiSetValue failed.")
     }
   } else {
-    RUN_OR_ASSERT(
-        DftiCreateDescriptor(handl, precision, DFTI_COMPLEX, dimension, sizes),
-        "DftiCreateDescriptor failed.")
+    RUN_OR_ASSERT(DftiCreateDescriptor(&res, precision, DFTI_COMPLEX, dimension, sizes), "DftiCreateDescriptor failed.")
+    handl.reset(res, [](DFTI_DESCRIPTOR_HANDLE handle) { DftiFreeDescriptor(&handle); });
   }
 
-  RUN_OR_ASSERT(DftiSetValue(*handl, DFTI_PLACEMENT, DFTI_NOT_INPLACE),
-                "DftiSetValue failed.")
-  RUN_OR_ASSERT(DftiCommitDescriptor(*handl), "DftiCommitDescriptor failed.")
+  RUN_OR_ASSERT(DftiSetValue(handl.get(), DFTI_PLACEMENT, DFTI_NOT_INPLACE), "DftiSetValue failed.")
+  RUN_OR_ASSERT(DftiCommitDescriptor(handl.get()), "DftiCommitDescriptor failed.")
 }
 
 template <typename T>
@@ -75,63 +71,54 @@ struct plan<float> {
   typedef float scalar_type;
   typedef MKL_Complex8 complex_type;
 
-  DFTI_DESCRIPTOR_HANDLE m_plan;
+  std::shared_ptr<DFTI_DESCRIPTOR> m_plan;
 
-  plan() : m_plan(0) {}
-  ~plan() {
-    if (m_plan) DftiFreeDescriptor(&m_plan);
-  };
+  plan() = default;
 
   enum DFTI_CONFIG_VALUE precision = DFTI_SINGLE;
 
   inline void forward(complex_type* dst, complex_type* src, MKL_LONG nfft) {
     if (m_plan == 0) {
-      configure_descriptor(&m_plan, precision, DFTI_COMPLEX, 1, &nfft);
+      configure_descriptor(m_plan, precision, DFTI_COMPLEX, 1, &nfft);
     }
-    RUN_OR_ASSERT(DftiComputeForward(m_plan, src, dst),
-                  "DftiComputeForward failed.")
+    RUN_OR_ASSERT(DftiComputeForward(m_plan.get(), src, dst), "DftiComputeForward failed.")
   }
 
   inline void inverse(complex_type* dst, complex_type* src, MKL_LONG nfft) {
     if (m_plan == 0) {
-      configure_descriptor(&m_plan, precision, DFTI_COMPLEX, 1, &nfft);
+      configure_descriptor(m_plan, precision, DFTI_COMPLEX, 1, &nfft);
     }
-    RUN_OR_ASSERT(DftiComputeBackward(m_plan, src, dst),
-                  "DftiComputeBackward failed.")
+    RUN_OR_ASSERT(DftiComputeBackward(m_plan.get(), src, dst), "DftiComputeBackward failed.")
   }
 
   inline void forward(complex_type* dst, scalar_type* src, MKL_LONG nfft) {
     if (m_plan == 0) {
-      configure_descriptor(&m_plan, precision, DFTI_REAL, 1, &nfft);
+      configure_descriptor(m_plan, precision, DFTI_REAL, 1, &nfft);
     }
-    RUN_OR_ASSERT(DftiComputeForward(m_plan, src, dst),
-                  "DftiComputeForward failed.")
+    RUN_OR_ASSERT(DftiComputeForward(m_plan.get(), src, dst), "DftiComputeForward failed.")
   }
 
   inline void inverse(scalar_type* dst, complex_type* src, MKL_LONG nfft) {
     if (m_plan == 0) {
-      configure_descriptor(&m_plan, precision, DFTI_REAL, 1, &nfft);
+      configure_descriptor(m_plan, precision, DFTI_REAL, 1, &nfft);
     }
-    RUN_OR_ASSERT(DftiComputeBackward(m_plan, src, dst),
-                  "DftiComputeBackward failed.")
+    RUN_OR_ASSERT(DftiComputeBackward(m_plan.get(), src, dst), "DftiComputeBackward failed.")
   }
 
   inline void forward2(complex_type* dst, complex_type* src, int n0, int n1) {
     if (m_plan == 0) {
       MKL_LONG sizes[2] = {n0, n1};
-      configure_descriptor(&m_plan, precision, DFTI_COMPLEX, 2, sizes);
+      configure_descriptor(m_plan, precision, DFTI_COMPLEX, 2, sizes);
     }
-    RUN_OR_ASSERT(DftiComputeForward(m_plan, src, dst),
-                  "DftiComputeForward failed.")
+    RUN_OR_ASSERT(DftiComputeForward(m_plan.get(), src, dst), "DftiComputeForward failed.")
   }
 
   inline void inverse2(complex_type* dst, complex_type* src, int n0, int n1) {
     if (m_plan == 0) {
       MKL_LONG sizes[2] = {n0, n1};
-      configure_descriptor(&m_plan, precision, DFTI_COMPLEX, 2, sizes);
+      configure_descriptor(m_plan, precision, DFTI_COMPLEX, 2, sizes);
     }
-    RUN_OR_ASSERT(DftiComputeBackward(m_plan, src, dst),
-                  "DftiComputeBackward failed.")
+    RUN_OR_ASSERT(DftiComputeBackward(m_plan.get(), src, dst), "DftiComputeBackward failed.")
   }
 };
 
@@ -140,63 +127,54 @@ struct plan<double> {
   typedef double scalar_type;
   typedef MKL_Complex16 complex_type;
 
-  DFTI_DESCRIPTOR_HANDLE m_plan;
+  std::shared_ptr<DFTI_DESCRIPTOR> m_plan;
 
-  plan() : m_plan(0) {}
-  ~plan() {
-    if (m_plan) DftiFreeDescriptor(&m_plan);
-  };
+  plan() = default;
 
   enum DFTI_CONFIG_VALUE precision = DFTI_DOUBLE;
 
   inline void forward(complex_type* dst, complex_type* src, MKL_LONG nfft) {
     if (m_plan == 0) {
-      configure_descriptor(&m_plan, precision, DFTI_COMPLEX, 1, &nfft);
+      configure_descriptor(m_plan, precision, DFTI_COMPLEX, 1, &nfft);
     }
-    RUN_OR_ASSERT(DftiComputeForward(m_plan, src, dst),
-                  "DftiComputeForward failed.")
+    RUN_OR_ASSERT(DftiComputeForward(m_plan.get(), src, dst), "DftiComputeForward failed.")
   }
 
   inline void inverse(complex_type* dst, complex_type* src, MKL_LONG nfft) {
     if (m_plan == 0) {
-      configure_descriptor(&m_plan, precision, DFTI_COMPLEX, 1, &nfft);
+      configure_descriptor(m_plan, precision, DFTI_COMPLEX, 1, &nfft);
     }
-    RUN_OR_ASSERT(DftiComputeBackward(m_plan, src, dst),
-                  "DftiComputeBackward failed.")
+    RUN_OR_ASSERT(DftiComputeBackward(m_plan.get(), src, dst), "DftiComputeBackward failed.")
   }
 
   inline void forward(complex_type* dst, scalar_type* src, MKL_LONG nfft) {
     if (m_plan == 0) {
-      configure_descriptor(&m_plan, precision, DFTI_REAL, 1, &nfft);
+      configure_descriptor(m_plan, precision, DFTI_REAL, 1, &nfft);
     }
-    RUN_OR_ASSERT(DftiComputeForward(m_plan, src, dst),
-                  "DftiComputeForward failed.")
+    RUN_OR_ASSERT(DftiComputeForward(m_plan.get(), src, dst), "DftiComputeForward failed.")
   }
 
   inline void inverse(scalar_type* dst, complex_type* src, MKL_LONG nfft) {
     if (m_plan == 0) {
-      configure_descriptor(&m_plan, precision, DFTI_REAL, 1, &nfft);
+      configure_descriptor(m_plan, precision, DFTI_REAL, 1, &nfft);
     }
-    RUN_OR_ASSERT(DftiComputeBackward(m_plan, src, dst),
-                  "DftiComputeBackward failed.")
+    RUN_OR_ASSERT(DftiComputeBackward(m_plan.get(), src, dst), "DftiComputeBackward failed.")
   }
 
   inline void forward2(complex_type* dst, complex_type* src, int n0, int n1) {
     if (m_plan == 0) {
       MKL_LONG sizes[2] = {n0, n1};
-      configure_descriptor(&m_plan, precision, DFTI_COMPLEX, 2, sizes);
+      configure_descriptor(m_plan, precision, DFTI_COMPLEX, 2, sizes);
     }
-    RUN_OR_ASSERT(DftiComputeForward(m_plan, src, dst),
-                  "DftiComputeForward failed.")
+    RUN_OR_ASSERT(DftiComputeForward(m_plan.get(), src, dst), "DftiComputeForward failed.")
   }
 
   inline void inverse2(complex_type* dst, complex_type* src, int n0, int n1) {
     if (m_plan == 0) {
       MKL_LONG sizes[2] = {n0, n1};
-      configure_descriptor(&m_plan, precision, DFTI_COMPLEX, 2, sizes);
+      configure_descriptor(m_plan, precision, DFTI_COMPLEX, 2, sizes);
     }
-    RUN_OR_ASSERT(DftiComputeBackward(m_plan, src, dst),
-                  "DftiComputeBackward failed.")
+    RUN_OR_ASSERT(DftiComputeBackward(m_plan.get(), src, dst), "DftiComputeBackward failed.")
   }
 };
 
@@ -210,71 +188,53 @@ struct imklfft_impl {
   // complex-to-complex forward FFT
   inline void fwd(Complex* dst, const Complex* src, int nfft) {
     MKL_LONG size = nfft;
-    get_plan(nfft, dst, src)
-        .forward(complex_cast(dst), complex_cast(src), size);
+    get_plan(nfft, dst, src).forward(complex_cast(dst), complex_cast(src), size);
   }
 
   // real-to-complex forward FFT
   inline void fwd(Complex* dst, const Scalar* src, int nfft) {
     MKL_LONG size = nfft;
-    get_plan(nfft, dst, src)
-        .forward(complex_cast(dst), const_cast<Scalar*>(src), nfft);
+    get_plan(nfft, dst, src).forward(complex_cast(dst), const_cast<Scalar*>(src), nfft);
   }
 
   // 2-d complex-to-complex
   inline void fwd2(Complex* dst, const Complex* src, int n0, int n1) {
-    get_plan(n0, n1, dst, src)
-        .forward2(complex_cast(dst), complex_cast(src), n0, n1);
+    get_plan(n0, n1, dst, src).forward2(complex_cast(dst), complex_cast(src), n0, n1);
   }
 
   // inverse complex-to-complex
   inline void inv(Complex* dst, const Complex* src, int nfft) {
     MKL_LONG size = nfft;
-    get_plan(nfft, dst, src)
-        .inverse(complex_cast(dst), complex_cast(src), nfft);
+    get_plan(nfft, dst, src).inverse(complex_cast(dst), complex_cast(src), nfft);
   }
 
   // half-complex to scalar
   inline void inv(Scalar* dst, const Complex* src, int nfft) {
     MKL_LONG size = nfft;
-    get_plan(nfft, dst, src)
-        .inverse(const_cast<Scalar*>(dst), complex_cast(src), nfft);
+    get_plan(nfft, dst, src).inverse(const_cast<Scalar*>(dst), complex_cast(src), nfft);
   }
 
   // 2-d complex-to-complex
   inline void inv2(Complex* dst, const Complex* src, int n0, int n1) {
-    get_plan(n0, n1, dst, src)
-        .inverse2(complex_cast(dst), complex_cast(src), n0, n1);
+    get_plan(n0, n1, dst, src).inverse2(complex_cast(dst), complex_cast(src), n0, n1);
   }
 
  private:
   std::map<int64_t, plan<Scalar>> m_plans;
 
-  inline plan<Scalar>& get_plan(int nfft, void* dst,
-                                const void* src) {
+  inline plan<Scalar>& get_plan(int nfft, void* dst, const void* src) {
     int inplace = dst == src ? 1 : 0;
-    int aligned = ((reinterpret_cast<size_t>(src) & 15) |
-                   (reinterpret_cast<size_t>(dst) & 15)) == 0
-                      ? 1
-                      : 0;
-    int64_t key = ((nfft << 2) | (inplace << 1) | aligned)
-                  << 1;
+    int aligned = ((reinterpret_cast<size_t>(src) & 15) | (reinterpret_cast<size_t>(dst) & 15)) == 0 ? 1 : 0;
+    int64_t key = ((nfft << 2) | (inplace << 1) | aligned) << 1;
 
     // Create element if key does not exist.
     return m_plans[key];
   }
 
-  inline plan<Scalar>& get_plan(int n0, int n1, void* dst,
-                                const void* src) {
+  inline plan<Scalar>& get_plan(int n0, int n1, void* dst, const void* src) {
     int inplace = (dst == src) ? 1 : 0;
-    int aligned = ((reinterpret_cast<size_t>(src) & 15) |
-                   (reinterpret_cast<size_t>(dst) & 15)) == 0
-                      ? 1
-                      : 0;
-    int64_t key = (((((int64_t)n0) << 31) | (n1 << 2) |
-                    (inplace << 1) | aligned)
-                   << 1) +
-                  1;
+    int aligned = ((reinterpret_cast<size_t>(src) & 15) | (reinterpret_cast<size_t>(dst) & 15)) == 0 ? 1 : 0;
+    int64_t key = (((((int64_t)n0) << 31) | (n1 << 2) | (inplace << 1) | aligned) << 1) + 1;
 
     // Create element if key does not exist.
     return m_plans[key];

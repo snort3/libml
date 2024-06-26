@@ -33,7 +33,7 @@ def split_ukernel_name(name):
   channel_tile = int(match.group(4))
   row_tile = int(match.group(6))
 
-  arch, isa = xnncommon.parse_target_name(target_name=match.group(5))
+  arch, isa, assembly = xnncommon.parse_target_name(target_name=match.group(5))
   return channel_tile, row_tile, arch, isa
 
 
@@ -256,12 +256,12 @@ def main(args):
 //   Generator: {generator}
 
 
-#include <gtest/gtest.h>
-
 #include <xnnpack/common.h>
 #include <xnnpack/isa-checks.h>
-
+#include <xnnpack/microparams-init.h>
 #include <xnnpack/vmulcaddc.h>
+
+#include <gtest/gtest.h>
 #include "vmulcaddc-microkernel-tester.h"
 """.format(specification=options.spec, generator=sys.argv[0])
 
@@ -270,21 +270,11 @@ def main(args):
       init_fn = ukernel_spec.get("init")
       channel_tile, row_tile, arch, isa = split_ukernel_name(name)
 
-      # specification can override architecture
-      arch = ukernel_spec.get("arch", arch)
-
       test_case = generate_test_cases(
         name, channel_tile, row_tile, init_fn, isa)
       tests += "\n\n" + xnncommon.postprocess_test_case(test_case, arch, isa)
 
-    txt_changed = True
-    if os.path.exists(options.output):
-      with codecs.open(options.output, "r", encoding="utf-8") as output_file:
-        txt_changed = output_file.read() != tests
-
-    if txt_changed:
-      with codecs.open(options.output, "w", encoding="utf-8") as output_file:
-        output_file.write(tests)
+    xnncommon.overwrite_if_changed(options.output, tests)
 
 
 if __name__ == "__main__":

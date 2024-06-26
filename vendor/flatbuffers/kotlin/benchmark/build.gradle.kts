@@ -1,21 +1,26 @@
-import org.jetbrains.kotlin.ir.backend.js.compile
+import groovy.xml.XmlParser
 
 plugins {
-  kotlin("multiplatform") version "1.4.20"
-  id("org.jetbrains.kotlin.plugin.allopen") version "1.4.20"
-  id("org.jetbrains.kotlinx.benchmark") version "0.3.0"
-  id("io.morethan.jmhreport") version "0.9.0"
-  id("de.undercouch.download") version "4.1.1"
-}
-
-// allOpen plugin is needed for the benchmark annotations.
-// for more infomation, see https://github.com/Kotlin/kotlinx-benchmark#gradle-plugin
-allOpen {
-  annotation("org.openjdk.jmh.annotations.State")
+  kotlin("multiplatform")
+  id("org.jetbrains.kotlinx.benchmark")
+  id("io.morethan.jmhreport")
+  id("de.undercouch.download")
 }
 
 group = "com.google.flatbuffers.jmh"
 version = "2.0.0-SNAPSHOT"
+
+// Reads latest version from Java's runtime pom.xml,
+// so we can use it for benchmarking against Kotlin's
+// runtime
+fun readJavaFlatBufferVersion(): String {
+  val pom = XmlParser().parse(File("../java/pom.xml"))
+  val versionTag = pom.children().find {
+    val node = it as groovy.util.Node
+    node.name().toString().contains("version")
+  } as groovy.util.Node
+  return versionTag.value().toString()
+}
 
 // This plugin generates a static html page with the aggregation
 // of all benchmarks ran. very useful visualization tool.
@@ -34,7 +39,7 @@ benchmark {
       iterationTime = 300
       iterationTimeUnit = "ms"
       // uncomment for benchmarking JSON op only
-      // include(".*JsonBenchmark.*")
+       include(".*FlatbufferBenchmark.*")
     }
   }
   targets {
@@ -44,54 +49,33 @@ benchmark {
 
 kotlin {
   jvm {
-    withJava()
-    compilations.all {
-      kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_1_8.toString()
+    compilations {
+      val main by getting { }
+      // custom benchmark compilation
+      val benchmarks by compilations.creating {
+        defaultSourceSet {
+          dependencies {
+            // Compile against the main compilation's compile classpath and outputs:
+            implementation(main.compileDependencyFiles + main.output.classesDirs)
+          }
+        }
       }
     }
   }
 
   sourceSets {
-
-    all {
-      languageSettings.enableLanguageFeature("InlineClasses")
-      languageSettings.useExperimentalAnnotation("kotlin.ExperimentalUnsignedTypes")
-    }
-
-    val commonTest by getting {
-      dependencies {
-        implementation(kotlin("test-common"))
-        implementation(kotlin("test-annotations-common"))
-      }
-    }
-    val jvmTest by getting {
-      dependencies {
-        implementation(kotlin("test-junit"))
-      }
-    }
     val jvmMain by getting {
       dependencies {
-        implementation("org.jetbrains.kotlinx:kotlinx-benchmark-runtime:0.3.0")
         implementation(kotlin("stdlib-common"))
         implementation(project(":flatbuffers-kotlin"))
-        implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
-        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.4.1")
-
-        //moshi
-        implementation("com.squareup.moshi:moshi-kotlin:1.11.0")
-
-        //gson
-        implementation("com.google.code.gson:gson:2.8.5")
+        implementation(libs.kotlinx.benchmark.runtime)
+        // json serializers
+        implementation(libs.moshi.kotlin)
+        implementation(libs.gson)
       }
-    }
-
-    /* Targets configuration omitted.
-     *  To find out how to configure the targets, please follow the link:
-     *  https://kotlinlang.org/docs/reference/building-mpp-with-gradle.html#setting-up-targets
-     */
-    targets {
-      targetFromPreset(presets.getAt("jvm"))
+      kotlin.srcDir("src/jvmMain/generated/kotlin/")
+      kotlin.srcDir("src/jvmMain/generated/java/")
+      kotlin.srcDir("../../java/src/main/java")
     }
   }
 }
@@ -106,6 +90,63 @@ tasks.register<de.undercouch.gradle.tasks.download.Download>("downloadMultipleFi
   overwrite(false)
 }
 
-project.tasks.named("compileKotlinJvm") {
-  dependsOn("downloadMultipleFiles")
+abstract class GenerateFBTestClasses : DefaultTask() {
+  @get:InputFiles
+  abstract val inputFiles: ConfigurableFileCollection
+
+  @get:Input
+  abstract val includeFolder: Property<String>
+
+  @get:Input
+  abstract val outputFolder: Property<String>
+
+  @get:Input
+  abstract val variants: ListProperty<String>
+
+  @Inject
+  protected open fun getExecActionFactory(): org.gradle.process.internal.ExecActionFactory? {
+    throw UnsupportedOperationException()
+  }
+
+  init {
+    includeFolder.set("")
+  }
+
+  @TaskAction
+  fun compile() {
+    val execAction = getExecActionFactory()!!.newExecAction()
+    val sources = inputFiles.asPath.split(":")
+    val langs = variants.get().map { "--$it" }
+    val args = mutableListOf("flatc","-o", outputFolder.get(), *langs.toTypedArray())
+    if (includeFolder.get().isNotEmpty()) {
+      args.add("-I")
+      args.add(includeFolder.get())
+    }
+    args.addAll(sources)
+    println(args)
+    execAction.commandLine = args
+    print(execAction.execute())
+  }
+}
+
+// Use the default greeting
+tasks.register<GenerateFBTestClasses>("generateFBTestClassesKt") {
+  inputFiles.setFrom("$projectDir/monster_test_kotlin.fbs")
+  includeFolder.set("$rootDir/../tests/include_test")
+  outputFolder.set("${projectDir}/src/jvmMain/generated/kotlin/")
+  variants.addAll("kotlin-kmp")
+}
+
+tasks.register<GenerateFBTestClasses>("generateFBTestClassesJava") {
+  inputFiles.setFrom("$projectDir/monster_test_java.fbs")
+  includeFolder.set("$rootDir/../tests/include_test")
+  outputFolder.set("${projectDir}/src/jvmMain/generated/java/")
+  variants.addAll("kotlin")
+}
+
+project.tasks.forEach {
+  if (it.name.contains("compileKotlin")) {
+    it.dependsOn("generateFBTestClassesKt")
+    it.dependsOn("generateFBTestClassesJava")
+  }
 }

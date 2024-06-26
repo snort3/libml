@@ -15,7 +15,9 @@ limitations under the License.
 #ifndef TENSORFLOW_CORE_TFRT_RUN_HANDLER_THREAD_POOL_RUN_HANDLER_CONCURRENT_WORK_QUEUE_H_
 #define TENSORFLOW_CORE_TFRT_RUN_HANDLER_THREAD_POOL_RUN_HANDLER_CONCURRENT_WORK_QUEUE_H_
 
+#include <atomic>
 #include <memory>
+#include <optional>
 #include <ostream>
 #include <string>
 #include <vector>
@@ -89,11 +91,8 @@ class RunHandlerThreadWorkQueue
         " complementary threads)");
   }
 
-  tensorflow::StatusOr<
-      std::unique_ptr<tensorflow::tfrt_stub::WorkQueueInterface>>
-  InitializeRequest(tfrt::RequestContextBuilder* request_context_builder,
-                    tensorflow::thread::ThreadPoolInterface**
-                        intra_op_threadpool) const override;
+  absl::StatusOr<std::unique_ptr<tensorflow::tfrt_stub::WorkQueueInterface>>
+  InitializeRequest(int64_t request_id) const override;
 
   int GetParallelismLevel() const override {
     return options_.num_main_threads + options_.num_complementary_threads;
@@ -101,8 +100,8 @@ class RunHandlerThreadWorkQueue
 
   void AddTask(TaskFunction work) override;
 
-  Optional<TaskFunction> AddBlockingTask(TaskFunction work,
-                                         bool allow_queuing) override;
+  std::optional<TaskFunction> AddBlockingTask(TaskFunction work,
+                                              bool allow_queuing) override;
 
   void Quiesce() override;
 

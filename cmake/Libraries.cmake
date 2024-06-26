@@ -1,5 +1,6 @@
 set(VENDOR_DIR "${PROJECT_SOURCE_DIR}/vendor" CACHE PATH "")
 set(FETCHCONTENT_QUIET OFF CACHE BOOL "")
+set(CMAKE_EXPORT_PACKAGE_REGISTRY OFF)
 
 if(NOT MSVC)
     add_compile_options(
@@ -12,7 +13,7 @@ if(NOT MSVC)
     )
 
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-        add_compile_options(-Wno-maybe-uninitialized)
+        add_compile_options(-Wno-maybe-uninitialized -Wno-stringop-overflow -Wno-return-type)
     elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         add_compile_options(-Wno-unknown-attributes -Wno-deprecated-builtins)
     endif()
@@ -31,14 +32,6 @@ endif()
 
 set(ABSL_PROPAGATE_CXX_STD ON CACHE BOOL "")
 add_subdirectory("${VENDOR_DIR}/abseil" EXCLUDE_FROM_ALL)
-
-########
-# clog #
-########
-
-set(CLOG_BUILD_TESTS OFF CACHE BOOL "")
-set(CLOG_SOURCE_DIR "${VENDOR_DIR}/cpuinfo/deps/clog" CACHE PATH "")
-add_subdirectory("${CLOG_SOURCE_DIR}" EXCLUDE_FROM_ALL)
 
 ###########
 # cpuinfo #
@@ -96,8 +89,18 @@ set(FLATBUFFERS_PROJECT_DIR "${FLATBUFFERS_SOURCE_DIR}" CACHE STRING "")
 # gemmlowp #
 ############
 
-set(GEMMLOWP_SOURCE_DIR "${VENDOR_DIR}/gemmlowp" CACHE PATH "")
-add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/gemmlowp" EXCLUDE_FROM_ALL)
+set(BUILD_TESTING_TMP ${BUILD_TESTING})
+set(BUILD_TESTING OFF)
+
+set(gemmlowp_SOURCE_DIR "${VENDOR_DIR}/gemmlowp/contrib" CACHE PATH "")
+add_subdirectory("${gemmlowp_SOURCE_DIR}" EXCLUDE_FROM_ALL)
+set(gemmlowp_POPULATED ON CACHE BOOL "")
+
+get_target_property(GEMMLOWP_INCLUDE_DIRS gemmlowp INTERFACE_DIRECTORIES)
+add_library(gemmlowp::gemmlowp ALIAS gemmlowp)
+set(GEMMLOWP_LIBRARIES gemmlowp)
+
+set(BUILD_TESTING ${BUILD_TESTING_TMP})
 
 #######
 # ruy #
@@ -149,6 +152,13 @@ get_target_property(NEON2SSE_INCLUDE_DIRS NEON_2_SSE INTERFACE_DIRECTORIES)
 add_library(NEON_2_SSE::NEON_2_SSE ALIAS NEON_2_SSE)
 set(NEON2SSE_LIBRARIES NEON_2_SSE)
 
+#############
+# ml_dtypes #
+#############
+
+set(ML_DTYPES_SOURCE_DIR "${VENDOR_DIR}/ml_dtypes" CACHE PATH "")
+add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/ml_dtypes" EXCLUDE_FROM_ALL)
+
 ###########
 # XNNPACK #
 ###########
@@ -174,3 +184,8 @@ add_subdirectory(
     "${VENDOR_DIR}/tensorflow/tensorflow/lite"
     EXCLUDE_FROM_ALL
 )
+
+if(ENABLE_TESTS)
+    enable_testing()
+    find_package(CppUTest REQUIRED)
+endif()

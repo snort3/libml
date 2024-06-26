@@ -5,17 +5,23 @@
 
 #include <xnnpack.h>
 #include <xnnpack/aarch64-assembler.h>
-#include <xnnpack/allocator.h>
+#include <xnnpack/assembler.h>
 #include <xnnpack/common.h>
+#include <xnnpack/memory.h>
+#include <xnnpack/microparams-init.h>
+#include <xnnpack/microparams.h>
+
+#include <cstdint>
+#include <random>
 
 #include "assembler-helpers.h"
+#include "replicable_random_device.h"
 #include <gtest/gtest.h>
 
 namespace xnnpack {
 namespace aarch64 {
 
 TEST(AArch64Assembler, Initialization) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(/*allocator=*/nullptr));
   xnn_code_buffer b;
   xnn_allocate_code_memory(&b, XNN_DEFAULT_CODE_BUFFER_SIZE);
   Assembler a(&b);
@@ -23,7 +29,6 @@ TEST(AArch64Assembler, Initialization) {
 }
 
 TEST(AArch64Assembler, BaseInstructionEncoding) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(/*allocator=*/nullptr));
   xnn_code_buffer b;
   xnn_allocate_code_memory(&b, XNN_DEFAULT_CODE_BUFFER_SIZE);
   Assembler a(&b);
@@ -33,6 +38,20 @@ TEST(AArch64Assembler, BaseInstructionEncoding) {
   EXPECT_ERROR(Error::kInvalidOperand, a.add(x1, x2, 4096));
 
   CHECK_ENCODING(0x8B040069, a.add(x9, x3, x4));
+
+  CHECK_ENCODING(0xB1002069, a.adds(x9, x3, 8));
+
+  CHECK_ENCODING(0xF2400869, a.ands(x9, x3, 7));
+  // Any immediate other than 7 is not supported.
+  EXPECT_ERROR(Error::kInvalidOperand, a.ands(x9, x3, 8));
+
+  CHECK_ENCODING(0x94000001, a.bl(4));
+  CHECK_ENCODING(0x97FFFF80, a.bl(-512));
+  EXPECT_ERROR(Error::kInvalidOperand, a.bl(3));
+  EXPECT_ERROR(Error::kLabelOffsetOutOfBounds, a.bl(128 * 1024 * 1204 + 4));  // > 128MB
+  EXPECT_ERROR(Error::kLabelOffsetOutOfBounds, a.bl(-128 * 1024 * 1204 - 4));  // < -128MB
+
+  CHECK_ENCODING(0xD63F0100, a.blr(x8));
 
   CHECK_ENCODING(0xF100081F, a.cmp(x0, 2));
   EXPECT_ERROR(Error::kInvalidOperand, a.cmp(x0, 4096));
@@ -60,13 +79,30 @@ TEST(AArch64Assembler, BaseInstructionEncoding) {
   EXPECT_ERROR(Error::kInvalidOperand, a.ldr(x8, mem[sp, 32768]));
   EXPECT_ERROR(Error::kInvalidOperand, a.ldr(x8, MemOperand(sp, 16, AddressingMode::kPostIndex)));
 
+  CHECK_ENCODING(0xB8408488, a.ldr(w8, mem[x4], 8));
+  CHECK_ENCODING(0xB84FF488, a.ldr(w8, mem[x4], 255));
+  CHECK_ENCODING(0xB8500488, a.ldr(w8, mem[x4], -256));
+  EXPECT_ERROR(Error::kInvalidOperand, a.ldr(w8, mem[x4], 256));
+  EXPECT_ERROR(Error::kInvalidOperand, a.ldr(w8, mem[x4], -257));
+
   CHECK_ENCODING(0xF8408488, a.ldr(x8, mem[x4], 8));
   CHECK_ENCODING(0xF84FF488, a.ldr(x8, mem[x4], 255));
   CHECK_ENCODING(0xF8500488, a.ldr(x8, mem[x4], -256));
   EXPECT_ERROR(Error::kInvalidOperand, a.ldr(x8, mem[x4], 256));
   EXPECT_ERROR(Error::kInvalidOperand, a.ldr(x8, mem[x4], -257));
 
+  CHECK_ENCODING(0xD29BD5A9, a.mov(x9, 0xDEAD));
+
   CHECK_ENCODING(0xAA0303E9, a.mov(x9, x3));
+
+  CHECK_ENCODING(0xF29BD5A9, a.movk(x9, 0xDEAD, 0));
+  CHECK_ENCODING(0xF2BBD5A9, a.movk(x9, 0xDEAD, 16));
+  CHECK_ENCODING(0xF2DBD5A9, a.movk(x9, 0xDEAD, 32));
+  CHECK_ENCODING(0xF2FBD5A9, a.movk(x9, 0xDEAD, 48));
+  // Not divisible by 16.
+  EXPECT_ERROR(Error::kInvalidOperand, a.movk(x9, 0xDEAD, 1));
+  // Out of range, max shift is 48.
+  EXPECT_ERROR(Error::kInvalidOperand, a.movk(x9, 0xDEAD, 64));
 
   CHECK_ENCODING(0xD503201F, a.nop());
 
@@ -75,9 +111,17 @@ TEST(AArch64Assembler, BaseInstructionEncoding) {
   EXPECT_ERROR(Error::kInvalidOperand, a.prfm(kPLDL1KEEP, mem[x5, -8]));
   EXPECT_ERROR(Error::kInvalidOperand, a.prfm(kPLDL1KEEP, mem[x5, 32761]));
 
+  CHECK_ENCODING(0xF9800210, a.prfm(kPSTL1KEEP, mem[x16]));
+  EXPECT_ERROR(Error::kInvalidOperand, a.prfm(kPSTL1KEEP, mem[x5, -8]));
+  EXPECT_ERROR(Error::kInvalidOperand, a.prfm(kPSTL1KEEP, mem[x5, 32761]));
+
   CHECK_ENCODING(0xD65F03C0, a.ret());
 
   CHECK_ENCODING(0xCB020083, a.sub(x3, x4, x2));
+
+  CHECK_ENCODING(0xD1003083, a.sub(x3, x4, 12));
+  CHECK_ENCODING(0xD13FFC83, a.sub(x3, x4, 4095));
+  EXPECT_ERROR(Error::kInvalidOperand, a.sub(x0, x2, 4096));  // Out of bounds.
 
   CHECK_ENCODING(0xA90457F4, a.stp(x20, x21, mem[sp, 64]));
   CHECK_ENCODING(0xA98457F4, a.stp(x20, x21, mem[sp, 64]++));
@@ -112,26 +156,46 @@ TEST(AArch64Assembler, BaseInstructionEncoding) {
 }
 
 TEST(AArch64Assembler, SIMDInstructionEncoding) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(/*allocator=*/nullptr));
   xnn_code_buffer b;
   xnn_allocate_code_memory(&b, XNN_DEFAULT_CODE_BUFFER_SIZE);
   Assembler a(&b);
+
+  CHECK_ENCODING(0x5E0C07DE, a.dup(s30, v30.s()[1]));
+  EXPECT_ERROR(Error::kInvalidOperand, a.dup(s30, v30.s()[4]));
+  EXPECT_ERROR(Error::kInvalidOperand, a.dup(s30, v30.d()[1]));
 
   CHECK_ENCODING(0x5E180610, a.dup(d16, v16.d()[1]));
   EXPECT_ERROR(Error::kInvalidOperand, a.dup(d16, v16.d()[2]));
   EXPECT_ERROR(Error::kInvalidOperand, a.dup(d16, v16.s()[1]));
 
+  CHECK_ENCODING(0x4E0204C4, a.dup(v4.v8h(), v6.h()[0]));
+  CHECK_ENCODING(0x4E0604C5, a.dup(v5.v8h(), v6.h()[1]));
+
   CHECK_ENCODING(0x4EA0F8B0, a.fabs(v16.v4s(), v5.v4s()));
   EXPECT_ERROR(Error::kInvalidOperand, a.fabs(v16.v4s(), v5.v2s()));
+
+  CHECK_ENCODING(0x4E521610, a.fadd(v16.v8h(), v16.v8h(), v18.v8h()));
 
   CHECK_ENCODING(0x4E25D690, a.fadd(v16.v4s(), v20.v4s(), v5.v4s()));
   EXPECT_ERROR(Error::kInvalidOperand, a.fadd(v16.v4s(), v20.v4s(), v5.v2s()));
 
+  CHECK_ENCODING(0x4E5037E3, a.fmax(v3.v8h(), v31.v8h(), v16.v8h()));
+
   CHECK_ENCODING(0x4E30F7E3, a.fmax(v3.v4s(), v31.v4s(), v16.v4s()));
   EXPECT_ERROR(Error::kInvalidOperand, a.fmax(v3.v8h(), v31.v4s(), v16.v4s()));
 
+  CHECK_ENCODING(0x4ED137C2, a.fmin(v2.v8h(), v30.v8h(), v17.v8h()));
+
   CHECK_ENCODING(0x4EB1F7C2, a.fmin(v2.v4s(), v30.v4s(), v17.v4s()));
   EXPECT_ERROR(Error::kInvalidOperand, a.fmin(v2.v4s(), v30.v16b(), v17.v4s()));
+
+  CHECK_ENCODING(0x4F001290, a.fmla(v16.v8h(), v20.v8h(), v0.h()[0]));
+  CHECK_ENCODING(0x4F101290, a.fmla(v16.v8h(), v20.v8h(), v0.h()[1]));
+  CHECK_ENCODING(0x4F001A90, a.fmla(v16.v8h(), v20.v8h(), v0.h()[4]));
+  // Only lane indices 0 to 7 are valid.
+  EXPECT_ERROR(Error::kInvalidLaneIndex, a.fmla(v16.v8h(), v20.v8h(), v0.h()[8]));
+  // Only the first 15 vector registers can be used for half-precision.
+  EXPECT_ERROR(Error::kInvalidOperand, a.fmla(v16.v8h(), v20.v8h(), v16.h()[0]));
 
   CHECK_ENCODING(0x4F801290, a.fmla(v16.v4s(), v20.v4s(), v0.s()[0]));
   EXPECT_ERROR(Error::kInvalidOperand, a.fmla(v16.v4s(), v20.v2s(), v0.s()[0]));
@@ -140,6 +204,9 @@ TEST(AArch64Assembler, SIMDInstructionEncoding) {
 
   CHECK_ENCODING(0x6E29DC61, a.fmul(v1.v4s(), v3.v4s(), v9.v4s()));
   EXPECT_ERROR(Error::kInvalidOperand, a.fmul(v16.v4s(), v20.v4s(), v5.v2s()));
+
+  CHECK_ENCODING(0x4E181C8E, a.ins(v14.d()[1], x4));
+  CHECK_ENCODING(0x4E181C93, a.ins(v19.d()[1], x4));
 
   CHECK_ENCODING(0x6EA0FBC2, a.fneg(v2.v4s(), v30.v4s()));
   EXPECT_ERROR(Error::kInvalidOperand, a.fneg(v2.v4s(), v30.v16b()));
@@ -159,6 +226,9 @@ TEST(AArch64Assembler, SIMDInstructionEncoding) {
   EXPECT_ERROR(Error::kInvalidOperand, a.ld1({v16.v16b(), v17.v16b(), v18.v16b()}, mem[x15], 24));
   EXPECT_ERROR(Error::kInvalidOperand, a.ld1({v16.v8b(), v17.v8b(), v18.v8b()}, mem[x15], 48));
 
+  CHECK_ENCODING(0x4DDF8520, a.ld1({v0.d()}, 1, mem[x9], 8));
+  CHECK_ENCODING(0x4DDF4120, a.ld1({v0.h()}, 4, mem[x9], 2));
+
   CHECK_ENCODING(0x6D433FEE, a.ldp(d14, d15, mem[sp, 48]));
   CHECK_ENCODING(0x6DC33FEE, a.ldp(d14, d15, mem[sp, 48]++));
   CHECK_ENCODING(0x6CC427E8, a.ldp(d8, d9, mem[sp], 64));
@@ -171,8 +241,22 @@ TEST(AArch64Assembler, SIMDInstructionEncoding) {
   EXPECT_ERROR(Error::kInvalidOperand, a.ldp(q20, q21, mem[x5], -1040));
   EXPECT_ERROR(Error::kInvalidOperand, a.ldp(q20, q21, mem[x5], 1024));
 
+  CHECK_ENCODING(0x7C402460, a.ldr(h0, mem[x3], 2));
+
+  CHECK_ENCODING(0xFD4020B0, a.ldr(d16, mem[x5, 64]));
+  EXPECT_ERROR(Error::kInvalidOperand, a.ldr(d16, mem[x5, 32768]));
+
   CHECK_ENCODING(0xFC408460, a.ldr(d0, mem[x3], 8));
+
+  CHECK_ENCODING(0xBD400106, a.ldr(s6, mem[x8]));
+  EXPECT_ERROR(Error::kInvalidOperand, a.ldr(s6, mem[x6, 16384]));
+
   CHECK_ENCODING(0xBC404460, a.ldr(s0, mem[x3], 4));
+
+  CHECK_ENCODING(0x3DC004B9, a.ldr(q25, mem[x5, 16]));
+  EXPECT_ERROR(Error::kInvalidOperand, a.ldr(q25, mem[x5, -16]));  // Negative offset.
+  EXPECT_ERROR(Error::kInvalidOperand, a.ldr(q25, mem[x5, 17]));  // Not multiple of 16.
+  EXPECT_ERROR(Error::kInvalidOperand, a.ldr(q25, mem[x5, 65536]));  // Out of range.
 
   CHECK_ENCODING(0x3CC10460, a.ldr(q0, mem[x3], 16));
   CHECK_ENCODING(0x3CCFF460, a.ldr(q0, mem[x3], 255));
@@ -199,10 +283,36 @@ TEST(AArch64Assembler, SIMDInstructionEncoding) {
   CHECK_ENCODING(0x0EB21E50, a.mov(v16.v8b(), v18.v8b()));
   EXPECT_ERROR(Error::kInvalidOperand, a.mov(v16.v16b(), v18.v8b()));
 
+  CHECK_ENCODING(0x4E183DC3, a.mov(x3, v14.d()[1]));
+  CHECK_ENCODING(0x4E083D02, a.mov(x2, v8.d()[0]));
+  EXPECT_ERROR(Error::kInvalidOperand, a.mov(x3, v14.d()[2]));
+
   CHECK_ENCODING(0x4F000405, a.movi(v5.v4s(), 0));
   CHECK_ENCODING(0x4F008405, a.movi(v5.v8h(), 0));
   CHECK_ENCODING(0x4F00E405, a.movi(v5.v16b(), 0));
   EXPECT_ERROR(Error::kUnimplemented, a.movi(v5.v16b(), 0xFF));
+
+  CHECK_ENCODING(0x0C9F786F, a.st1({v15.v2s()}, mem[x3], 8));
+  CHECK_ENCODING(0x4C9F786F, a.st1({v15.v4s()}, mem[x3], 16));
+  EXPECT_ERROR(Error::kInvalidOperand, a.st1({v15.v4s()}, mem[x3], 8));
+
+  CHECK_ENCODING(0x0C9FA86F, a.st1({v15.v2s(), v16.v2s()}, mem[x3], 16));
+  CHECK_ENCODING(0x4C9FA86F, a.st1({v15.v4s(), v16.v4s()}, mem[x3], 32));
+  EXPECT_ERROR(Error::kInvalidOperand, a.st1({v15.v4s(), v16.v4s()}, mem[x3], 16));
+  EXPECT_ERROR(Error::kInvalidOperand, a.st1({v15.v4s(), v17.v4s()}, mem[x3], 16));
+  EXPECT_ERROR(Error::kInvalidOperand, a.st1({v15.v4s(), v16.v2s()}, mem[x3], 16));
+
+  CHECK_ENCODING(0x0C9F686F, a.st1({v15.v2s(), v16.v2s(), v17.v2s()}, mem[x3], 24));
+  CHECK_ENCODING(0x4C9F686F, a.st1({v15.v4s(), v16.v4s(), v17.v4s()}, mem[x3], 48));
+  EXPECT_ERROR(Error::kInvalidOperand, a.st1({v15.v4s(), v16.v4s(), v17.v4s()}, mem[x3], 24));
+  EXPECT_ERROR(Error::kInvalidOperand, a.st1({v15.v4s(), v17.v4s(), v17.v4s()}, mem[x3], 48));
+  EXPECT_ERROR(Error::kInvalidOperand, a.st1({v15.v4s(), v16.v2s(), v17.v4s()}, mem[x3], 48));
+
+  CHECK_ENCODING(0x0C9F286F, a.st1({v15.v2s(), v16.v2s(), v17.v2s(), v18.v2s()}, mem[x3], 32));
+  CHECK_ENCODING(0x4C9F286F, a.st1({v15.v4s(), v16.v4s(), v17.v4s(), v18.v4s()}, mem[x3], 64));
+  EXPECT_ERROR(Error::kInvalidOperand, a.st1({v15.v4s(), v16.v4s(), v17.v4s(), v18.v4s()}, mem[x3], 32));
+  EXPECT_ERROR(Error::kInvalidOperand, a.st1({v15.v4s(), v17.v4s(), v17.v4s(), v18.v4s()}, mem[x3], 64));
+  EXPECT_ERROR(Error::kInvalidOperand, a.st1({v15.v4s(), v16.v2s(), v17.v4s(), v18.v4s()}, mem[x3], 64));
 
   CHECK_ENCODING(0x4C82746F, a.st1({v15.v8h()}, mem[x3], x2));
 
@@ -256,11 +366,16 @@ TEST(AArch64Assembler, SIMDInstructionEncoding) {
   EXPECT_ERROR(Error::kInvalidOperand, a.str(s16, mem[x6], 256));
   EXPECT_ERROR(Error::kInvalidOperand, a.str(s16, mem[x6], -257));
 
+  CHECK_ENCODING(0x7D0000D4, a.str(h20, mem[x6]));
+  CHECK_ENCODING(0x7D3FFCD4, a.str(h20, mem[x6, 8190]));
+  EXPECT_ERROR(Error::kInvalidOperand, a.str(h20, mem[x6, 1]));
+  EXPECT_ERROR(Error::kInvalidOperand, a.str(h20, mem[x6, -2]));
+  EXPECT_ERROR(Error::kInvalidOperand, a.str(h20, mem[x6, 8192]));
+
   ASSERT_EQ(xnn_status_success, xnn_release_code_memory(&b));
 }
 
 TEST(AArch64Assembler, Label) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(/*allocator=*/nullptr));
   xnn_code_buffer b;
   xnn_allocate_code_memory(&b, XNN_DEFAULT_CODE_BUFFER_SIZE);
   Assembler a(&b);
@@ -316,7 +431,6 @@ TEST(AArch64Assembler, Label) {
 }
 
 TEST(AArch64Assembler, Tbnz) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(/*allocator=*/nullptr));
   xnn_code_buffer b;
   xnn_allocate_code_memory(&b, XNN_DEFAULT_CODE_BUFFER_SIZE);
   Assembler a(&b);
@@ -345,7 +459,6 @@ TEST(AArch64Assembler, Tbnz) {
 }
 
 TEST(AArch64Assembler, Tbz) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(/*allocator=*/nullptr));
   xnn_code_buffer b;
   xnn_allocate_code_memory(&b, XNN_DEFAULT_CODE_BUFFER_SIZE);
   Assembler a(&b);
@@ -374,7 +487,6 @@ TEST(AArch64Assembler, Tbz) {
 }
 
 TEST(AArch64Assembler, UnconditionalBranch) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(/*allocator=*/nullptr));
   xnn_code_buffer b;
   xnn_allocate_code_memory(&b, XNN_DEFAULT_CODE_BUFFER_SIZE);
   Assembler a(&b);
@@ -403,7 +515,6 @@ TEST(AArch64Assembler, UnconditionalBranch) {
 }
 
 TEST(AArch64Assembler, Align) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(/*allocator=*/nullptr));
   xnn_code_buffer b;
   xnn_allocate_code_memory(&b, XNN_DEFAULT_CODE_BUFFER_SIZE);
   Assembler a(&b);
@@ -446,7 +557,6 @@ TEST(AArch64Assembler, Align) {
 }
 
 TEST(AArch64Assembler, AssembleToEndOfBuffer) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(/*allocator=*/nullptr));
   xnn_code_buffer b;
   xnn_allocate_code_memory(&b, XNN_DEFAULT_CODE_BUFFER_SIZE);
 
@@ -478,7 +588,6 @@ TEST(AArch64Assembler, AssembleToEndOfBuffer) {
 }
 
 TEST(AArch64Assembler, FinalizeWithError) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(/*allocator=*/nullptr));
   xnn_code_buffer b;
   xnn_allocate_code_memory(&b, XNN_DEFAULT_CODE_BUFFER_SIZE);
 
@@ -495,7 +604,6 @@ TEST(AArch64Assembler, FinalizeWithError) {
 }
 
 TEST(AArch64Assembler, BindOverflow) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(/*allocator=*/nullptr));
   xnn_code_buffer b;
   // Requested memory is rounded to page size.
   xnn_allocate_code_memory(&b, 4);
@@ -515,6 +623,109 @@ TEST(AArch64Assembler, BindOverflow) {
 
   ASSERT_EQ(xnn_status_success, xnn_release_code_memory(&b));
 }
+
+#if XNN_ARCH_ARM64 && XNN_PLATFORM_JIT
+JitF32HardswishFn GenerateF32Hardswish(MacroAssembler& a, std::vector<VRegister> accs, std::vector<VRegister> tmps) {
+  const VRegister sixth = v0.v4s();
+  const VRegister three = v1.v4s();
+  const VRegister six = v2.v4s();
+  const VRegister zero = v3.v4s();
+
+  // Load params.
+  a.ld3r({sixth, three, six}, mem[x2]);
+  a.movi(zero, 0);
+  // Load inputs.
+  for (size_t i = 0; i < accs.size(); i++) {
+    a.ld1({accs[i].v4s()}, mem[x0], 16);
+  }
+  a.f32_hardswish(
+      sixth, three, six, zero,
+      accs.data(),
+      accs.size(),
+      tmps.data(),
+      tmps.size());
+  // Write results of hardswish.
+  for (size_t i = 0; i < accs.size(); i++) {
+    a.st1({accs[i].v4s()}, mem[x1], 16);
+  }
+  a.ret();
+
+  return reinterpret_cast<JitF32HardswishFn>(a.finalize());
+}
+
+class F32HardswishTest : public testing::TestWithParam<std::vector<VRegister>> {};
+
+TEST_P(F32HardswishTest, F32Hardswish) {
+  xnn_code_buffer buffer;
+  xnn_allocate_code_memory(&buffer, XNN_DEFAULT_CODE_BUFFER_SIZE);
+  MacroAssembler assembler(&buffer);
+
+  const std::vector<VRegister> accs = GetParam();
+  const std::vector<VRegister> tmps = {v16.v4s(), v17.v4s(), v18.v4s(), v19.v4s()};
+
+  xnnpack::ReplicableRandomDevice rng;
+  std::uniform_real_distribution<float> f32dist(-6.0f, 6.0f);
+
+  xnn_f32_hswish_params params;
+  xnn_init_f32_hswish_scalar_params(&params);
+
+  std::vector<float> input(4 * accs.size());
+  std::vector<float> output(4 * accs.size());
+  std::vector<float> expected_output(output);
+
+  std::generate(input.begin(), input.end(), [&]{ return f32dist(rng); });
+  std::fill(output.begin(), output.end(), std::nanf(""));
+  std::fill(expected_output.begin(), expected_output.end(), std::nanf(""));
+
+  // Call generated function.
+  JitF32HardswishFn jit_f32_hardswish_fn = GenerateF32Hardswish(assembler, accs, tmps);
+  EXPECT_EQ(Error::kNoError, assembler.error());
+  xnn_finalize_code_memory(&buffer);
+  jit_f32_hardswish_fn(input.data(), output.data(), &params);
+
+  // Compute reference results.
+  std::transform(input.begin(), input.end(), expected_output.begin(), hardswish);
+
+  // Verify results.
+  for (size_t i = 0; i < output.size(); i++) {
+    EXPECT_NEAR(output[i], expected_output[i], std::max(5.0e-6, std::abs(expected_output[i]) * 1.0e-5))
+        << "at " << i << " / " << output.size() << ", x[" << i << "] = " << input[i];
+  }
+  ASSERT_EQ(xnn_status_success, xnn_release_code_memory(&buffer));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+  AArch64Assembler,
+  F32HardswishTest,
+  testing::Values(
+    std::vector<VRegister>({v4.v4s()}),
+    std::vector<VRegister>({v4.v4s(), v5.v4s(), v6.v4s(), v7.v4s()}),
+    std::vector<VRegister>({v4.v4s(), v5.v4s(), v6.v4s(), v7.v4s(), v20.v4s(), v21.v4s(), v22.v4s(), v23.v4s()})));
+
+typedef void (*MovFn)(uint64_t*);
+
+TEST(MovTest, Mov) {
+  xnn_code_buffer buffer;
+  xnn_allocate_code_memory(&buffer, XNN_DEFAULT_CODE_BUFFER_SIZE);
+  MacroAssembler assm(&buffer);
+
+  uint64_t expected = 0x0123456789ABCDEF;
+  assm.Mov(x1, expected);
+  assm.str(x1, mem[x0]);
+  assm.ret();
+
+  MovFn mov_fn = reinterpret_cast<MovFn>(assm.finalize());
+  xnn_finalize_code_memory(&buffer);
+
+  uint64_t out = 0;
+  mov_fn(&out);
+
+  ASSERT_EQ(xnn_status_success, xnn_release_code_memory(&buffer));
+
+  EXPECT_EQ(expected, out);
+}
+
+#endif  // XNN_ARCH_ARM64 && XNN_PLATFORM_JIT
 
 }  // namespace aarch64
 }  // namespace xnnpack

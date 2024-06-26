@@ -6,17 +6,20 @@
 // This source code is licensed under the BSD-style license found in the
 // LICENSE file in the root directory of this source tree.
 
-#include <gtest/gtest.h>
+#include <xnnpack.h>
+#include <xnnpack/config.h>
+
+#include <cassert>
+#include <cstddef>
 
 #include "max-pooling-operator-tester.h"
-
-#include <xnnpack/params.h>
-
+#include <gtest/gtest.h>
 
 TEST(MAX_POOLING_NHWC_S8, unit_batch_small_1xM_pool) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_s8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.s8.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(2)
@@ -30,9 +33,10 @@ TEST(MAX_POOLING_NHWC_S8, unit_batch_small_1xM_pool) {
 }
 
 TEST(MAX_POOLING_NHWC_S8, unit_batch_small_1xM_pool_with_padding) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_s8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 3; pool_size <= xnn_params.s8.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 3; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       for (size_t padding_left = 0; padding_left <= 1; padding_left++) {
         for (size_t padding_right = 0; padding_right <= 1; padding_right++) {
           MaxPoolingOperatorTester()
@@ -52,9 +56,10 @@ TEST(MAX_POOLING_NHWC_S8, unit_batch_small_1xM_pool_with_padding) {
 }
 
 TEST(MAX_POOLING_NHWC_S8, unit_batch_small_1xM_pool_with_tf_same_padding) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_s8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 3; pool_size <= xnn_params.s8.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 3; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       for (size_t input_width = pool_size; input_width <= pool_size * 2; input_width++) {
         MaxPoolingOperatorTester()
           .batch_size(1)
@@ -71,9 +76,10 @@ TEST(MAX_POOLING_NHWC_S8, unit_batch_small_1xM_pool_with_tf_same_padding) {
 }
 
 TEST(MAX_POOLING_NHWC_S8, unit_batch_small_1xM_pool_with_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_s8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.s8.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(2)
@@ -88,9 +94,10 @@ TEST(MAX_POOLING_NHWC_S8, unit_batch_small_1xM_pool_with_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_S8, unit_batch_small_1xM_pool_with_dilation) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_s8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.s8.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(2)
@@ -107,9 +114,10 @@ TEST(MAX_POOLING_NHWC_S8, unit_batch_small_1xM_pool_with_dilation) {
 }
 
 TEST(MAX_POOLING_NHWC_S8, unit_batch_small_Mx1_pool) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_s8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.s8.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 1)
@@ -123,9 +131,10 @@ TEST(MAX_POOLING_NHWC_S8, unit_batch_small_Mx1_pool) {
 }
 
 TEST(MAX_POOLING_NHWC_S8, unit_batch_small_Mx1_pool_with_padding) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_s8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.s8.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       for (size_t padding_top = 0; padding_top <= 1; padding_top++) {
         for (size_t padding_bottom = 0; padding_bottom <= 1; padding_bottom++) {
           MaxPoolingOperatorTester()
@@ -145,9 +154,10 @@ TEST(MAX_POOLING_NHWC_S8, unit_batch_small_Mx1_pool_with_padding) {
 }
 
 TEST(MAX_POOLING_NHWC_S8, unit_batch_small_Mx1_pool_with_tf_same_padding) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_s8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.s8.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       for (size_t input_height = pool_size; input_height <= pool_size * 2; input_height++) {
         MaxPoolingOperatorTester()
           .batch_size(1)
@@ -164,9 +174,10 @@ TEST(MAX_POOLING_NHWC_S8, unit_batch_small_Mx1_pool_with_tf_same_padding) {
 }
 
 TEST(MAX_POOLING_NHWC_S8, unit_batch_small_Mx1_pool_with_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_s8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.s8.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 3)
@@ -181,9 +192,10 @@ TEST(MAX_POOLING_NHWC_S8, unit_batch_small_Mx1_pool_with_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_S8, unit_batch_small_Mx1_pool_with_dilation) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_s8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.s8.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(2 * pool_size)
@@ -200,9 +212,10 @@ TEST(MAX_POOLING_NHWC_S8, unit_batch_small_Mx1_pool_with_dilation) {
 }
 
 TEST(MAX_POOLING_NHWC_S8, unit_batch_small_pool_with_input_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_s8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.s8.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 1)
@@ -226,9 +239,10 @@ TEST(MAX_POOLING_NHWC_S8, unit_batch_small_pool_with_input_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_S8, unit_batch_small_pool_with_output_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_s8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.s8.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 1)
@@ -252,9 +266,10 @@ TEST(MAX_POOLING_NHWC_S8, unit_batch_small_pool_with_output_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_S8, unit_batch_small_pool_with_qmin) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_s8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.s8.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 1)
@@ -278,9 +293,10 @@ TEST(MAX_POOLING_NHWC_S8, unit_batch_small_pool_with_qmin) {
 }
 
 TEST(MAX_POOLING_NHWC_S8, unit_batch_small_pool_with_qmax) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_s8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.s8.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 1)
@@ -304,9 +320,11 @@ TEST(MAX_POOLING_NHWC_S8, unit_batch_small_pool_with_qmax) {
 }
 
 TEST(MAX_POOLING_NHWC_S8, unit_batch_large_1xM_pool) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_s8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.s8.maxpool.mr + 1; pool_size <= xnn_params.s8.maxpool.mr + xnn_params.s8.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(2)
@@ -320,9 +338,11 @@ TEST(MAX_POOLING_NHWC_S8, unit_batch_large_1xM_pool) {
 }
 
 TEST(MAX_POOLING_NHWC_S8, unit_batch_large_1xM_pool_with_padding) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_s8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.s8.maxpool.mr + 1; pool_size <= xnn_params.s8.maxpool.mr + xnn_params.s8.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       for (size_t padding_left = 0; padding_left <= 1; padding_left++) {
         for (size_t padding_right = 0; padding_right <= 1; padding_right++) {
           MaxPoolingOperatorTester()
@@ -342,9 +362,11 @@ TEST(MAX_POOLING_NHWC_S8, unit_batch_large_1xM_pool_with_padding) {
 }
 
 TEST(MAX_POOLING_NHWC_S8, unit_batch_large_1xM_pool_with_tf_same_padding) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_s8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.s8.maxpool.mr + 1; pool_size <= xnn_params.s8.maxpool.mr + xnn_params.s8.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       for (size_t input_width = pool_size; input_width <= pool_size * 2; input_width++) {
         MaxPoolingOperatorTester()
           .batch_size(1)
@@ -361,9 +383,11 @@ TEST(MAX_POOLING_NHWC_S8, unit_batch_large_1xM_pool_with_tf_same_padding) {
 }
 
 TEST(MAX_POOLING_NHWC_S8, unit_batch_large_1xM_pool_with_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_s8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.s8.maxpool.mr + 1; pool_size <= xnn_params.s8.maxpool.mr + xnn_params.s8.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(2)
@@ -378,9 +402,11 @@ TEST(MAX_POOLING_NHWC_S8, unit_batch_large_1xM_pool_with_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_S8, unit_batch_large_1xM_pool_with_dilation) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_s8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.s8.maxpool.mr + 1; pool_size <= xnn_params.s8.maxpool.mr + xnn_params.s8.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(2)
@@ -397,9 +423,11 @@ TEST(MAX_POOLING_NHWC_S8, unit_batch_large_1xM_pool_with_dilation) {
 }
 
 TEST(MAX_POOLING_NHWC_S8, unit_batch_large_Mx1_pool) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_s8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.s8.maxpool.mr + 1; pool_size <= xnn_params.s8.maxpool.mr + xnn_params.s8.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 1)
@@ -413,9 +441,11 @@ TEST(MAX_POOLING_NHWC_S8, unit_batch_large_Mx1_pool) {
 }
 
 TEST(MAX_POOLING_NHWC_S8, unit_batch_large_Mx1_pool_with_padding) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_s8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.s8.maxpool.mr + 1; pool_size <= xnn_params.s8.maxpool.mr + xnn_params.s8.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       for (size_t padding_top = 0; padding_top <= 1; padding_top++) {
         for (size_t padding_bottom = 0; padding_bottom <= 1; padding_bottom++) {
           MaxPoolingOperatorTester()
@@ -435,9 +465,11 @@ TEST(MAX_POOLING_NHWC_S8, unit_batch_large_Mx1_pool_with_padding) {
 }
 
 TEST(MAX_POOLING_NHWC_S8, unit_batch_large_Mx1_pool_with_tf_same_padding) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_s8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.s8.maxpool.mr + 1; pool_size <= xnn_params.s8.maxpool.mr + xnn_params.s8.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       for (size_t input_height = pool_size; input_height <= pool_size * 2; input_height++) {
         MaxPoolingOperatorTester()
           .batch_size(1)
@@ -454,9 +486,11 @@ TEST(MAX_POOLING_NHWC_S8, unit_batch_large_Mx1_pool_with_tf_same_padding) {
 }
 
 TEST(MAX_POOLING_NHWC_S8, unit_batch_large_Mx1_pool_with_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_s8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.s8.maxpool.mr + 1; pool_size <= xnn_params.s8.maxpool.mr + xnn_params.s8.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 3)
@@ -471,9 +505,11 @@ TEST(MAX_POOLING_NHWC_S8, unit_batch_large_Mx1_pool_with_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_S8, unit_batch_large_Mx1_pool_with_dilation) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_s8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.s8.maxpool.mr + 1; pool_size <= xnn_params.s8.maxpool.mr + xnn_params.s8.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(2 * pool_size)
@@ -490,9 +526,11 @@ TEST(MAX_POOLING_NHWC_S8, unit_batch_large_Mx1_pool_with_dilation) {
 }
 
 TEST(MAX_POOLING_NHWC_S8, unit_batch_large_pool_with_input_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_s8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.s8.maxpool.mr + 1; pool_size <= xnn_params.s8.maxpool.mr + xnn_params.s8.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 1)
@@ -516,9 +554,11 @@ TEST(MAX_POOLING_NHWC_S8, unit_batch_large_pool_with_input_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_S8, unit_batch_large_pool_with_output_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_s8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.s8.maxpool.mr + 1; pool_size <= xnn_params.s8.maxpool.mr + xnn_params.s8.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 1)
@@ -542,9 +582,11 @@ TEST(MAX_POOLING_NHWC_S8, unit_batch_large_pool_with_output_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_S8, unit_batch_large_pool_with_qmin) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_s8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.s8.maxpool.mr + 1; pool_size <= xnn_params.s8.maxpool.mr + xnn_params.s8.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 1)
@@ -568,9 +610,11 @@ TEST(MAX_POOLING_NHWC_S8, unit_batch_large_pool_with_qmin) {
 }
 
 TEST(MAX_POOLING_NHWC_S8, unit_batch_large_pool_with_qmax) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_s8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.s8.maxpool.mr + 1; pool_size <= xnn_params.s8.maxpool.mr + xnn_params.s8.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 1)
@@ -594,9 +638,10 @@ TEST(MAX_POOLING_NHWC_S8, unit_batch_large_pool_with_qmax) {
 }
 
 TEST(MAX_POOLING_NHWC_S8, small_batch_small_pool) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_s8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.s8.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(3)
         .input_height(pool_size + 1)
@@ -618,9 +663,10 @@ TEST(MAX_POOLING_NHWC_S8, small_batch_small_pool) {
 }
 
 TEST(MAX_POOLING_NHWC_S8, small_batch_small_pool_with_input_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_s8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.s8.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(3)
         .input_height(pool_size + 1)
@@ -644,9 +690,10 @@ TEST(MAX_POOLING_NHWC_S8, small_batch_small_pool_with_input_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_S8, small_batch_small_pool_with_output_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_s8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.s8.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(3)
         .input_height(pool_size + 1)
@@ -670,9 +717,11 @@ TEST(MAX_POOLING_NHWC_S8, small_batch_small_pool_with_output_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_S8, small_batch_large_pool) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_s8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.s8.maxpool.mr + 1; pool_size <= xnn_params.s8.maxpool.mr + xnn_params.s8.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(3)
         .input_height(pool_size + 1)
@@ -694,9 +743,11 @@ TEST(MAX_POOLING_NHWC_S8, small_batch_large_pool) {
 }
 
 TEST(MAX_POOLING_NHWC_S8, small_batch_large_pool_with_input_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_s8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.s8.maxpool.mr + 1; pool_size <= xnn_params.s8.maxpool.mr + xnn_params.s8.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(3)
         .input_height(pool_size + 1)
@@ -720,9 +771,11 @@ TEST(MAX_POOLING_NHWC_S8, small_batch_large_pool_with_input_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_S8, small_batch_large_pool_with_output_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_s8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.s8.maxpool.mr + 1; pool_size <= xnn_params.s8.maxpool.mr + xnn_params.s8.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(3)
         .input_height(pool_size + 1)
@@ -831,9 +884,10 @@ TEST(MAX_POOLING_NHWC_S8, setup_swap_height_and_width) {
 
 
 TEST(MAX_POOLING_NHWC_U8, unit_batch_small_1xM_pool) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_u8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.u8.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(2)
@@ -847,9 +901,10 @@ TEST(MAX_POOLING_NHWC_U8, unit_batch_small_1xM_pool) {
 }
 
 TEST(MAX_POOLING_NHWC_U8, unit_batch_small_1xM_pool_with_padding) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_u8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 3; pool_size <= xnn_params.u8.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 3; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       for (size_t padding_left = 0; padding_left <= 1; padding_left++) {
         for (size_t padding_right = 0; padding_right <= 1; padding_right++) {
           MaxPoolingOperatorTester()
@@ -869,9 +924,10 @@ TEST(MAX_POOLING_NHWC_U8, unit_batch_small_1xM_pool_with_padding) {
 }
 
 TEST(MAX_POOLING_NHWC_U8, unit_batch_small_1xM_pool_with_tf_same_padding) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_u8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 3; pool_size <= xnn_params.u8.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 3; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       for (size_t input_width = pool_size; input_width <= pool_size * 2; input_width++) {
         MaxPoolingOperatorTester()
           .batch_size(1)
@@ -888,9 +944,10 @@ TEST(MAX_POOLING_NHWC_U8, unit_batch_small_1xM_pool_with_tf_same_padding) {
 }
 
 TEST(MAX_POOLING_NHWC_U8, unit_batch_small_1xM_pool_with_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_u8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.u8.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(2)
@@ -905,9 +962,10 @@ TEST(MAX_POOLING_NHWC_U8, unit_batch_small_1xM_pool_with_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_U8, unit_batch_small_1xM_pool_with_dilation) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_u8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.u8.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(2)
@@ -924,9 +982,10 @@ TEST(MAX_POOLING_NHWC_U8, unit_batch_small_1xM_pool_with_dilation) {
 }
 
 TEST(MAX_POOLING_NHWC_U8, unit_batch_small_Mx1_pool) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_u8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.u8.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 1)
@@ -940,9 +999,10 @@ TEST(MAX_POOLING_NHWC_U8, unit_batch_small_Mx1_pool) {
 }
 
 TEST(MAX_POOLING_NHWC_U8, unit_batch_small_Mx1_pool_with_padding) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_u8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.u8.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       for (size_t padding_top = 0; padding_top <= 1; padding_top++) {
         for (size_t padding_bottom = 0; padding_bottom <= 1; padding_bottom++) {
           MaxPoolingOperatorTester()
@@ -962,9 +1022,10 @@ TEST(MAX_POOLING_NHWC_U8, unit_batch_small_Mx1_pool_with_padding) {
 }
 
 TEST(MAX_POOLING_NHWC_U8, unit_batch_small_Mx1_pool_with_tf_same_padding) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_u8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.u8.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       for (size_t input_height = pool_size; input_height <= pool_size * 2; input_height++) {
         MaxPoolingOperatorTester()
           .batch_size(1)
@@ -981,9 +1042,10 @@ TEST(MAX_POOLING_NHWC_U8, unit_batch_small_Mx1_pool_with_tf_same_padding) {
 }
 
 TEST(MAX_POOLING_NHWC_U8, unit_batch_small_Mx1_pool_with_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_u8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.u8.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 3)
@@ -998,9 +1060,10 @@ TEST(MAX_POOLING_NHWC_U8, unit_batch_small_Mx1_pool_with_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_U8, unit_batch_small_Mx1_pool_with_dilation) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_u8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.u8.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(2 * pool_size)
@@ -1017,9 +1080,10 @@ TEST(MAX_POOLING_NHWC_U8, unit_batch_small_Mx1_pool_with_dilation) {
 }
 
 TEST(MAX_POOLING_NHWC_U8, unit_batch_small_pool_with_input_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_u8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.u8.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 1)
@@ -1043,9 +1107,10 @@ TEST(MAX_POOLING_NHWC_U8, unit_batch_small_pool_with_input_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_U8, unit_batch_small_pool_with_output_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_u8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.u8.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 1)
@@ -1069,9 +1134,10 @@ TEST(MAX_POOLING_NHWC_U8, unit_batch_small_pool_with_output_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_U8, unit_batch_small_pool_with_qmin) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_u8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.u8.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 1)
@@ -1095,9 +1161,10 @@ TEST(MAX_POOLING_NHWC_U8, unit_batch_small_pool_with_qmin) {
 }
 
 TEST(MAX_POOLING_NHWC_U8, unit_batch_small_pool_with_qmax) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_u8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.u8.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 1)
@@ -1121,9 +1188,11 @@ TEST(MAX_POOLING_NHWC_U8, unit_batch_small_pool_with_qmax) {
 }
 
 TEST(MAX_POOLING_NHWC_U8, unit_batch_large_1xM_pool) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_u8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.u8.maxpool.mr + 1; pool_size <= xnn_params.u8.maxpool.mr + xnn_params.u8.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(2)
@@ -1137,9 +1206,11 @@ TEST(MAX_POOLING_NHWC_U8, unit_batch_large_1xM_pool) {
 }
 
 TEST(MAX_POOLING_NHWC_U8, unit_batch_large_1xM_pool_with_padding) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_u8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.u8.maxpool.mr + 1; pool_size <= xnn_params.u8.maxpool.mr + xnn_params.u8.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       for (size_t padding_left = 0; padding_left <= 1; padding_left++) {
         for (size_t padding_right = 0; padding_right <= 1; padding_right++) {
           MaxPoolingOperatorTester()
@@ -1159,9 +1230,11 @@ TEST(MAX_POOLING_NHWC_U8, unit_batch_large_1xM_pool_with_padding) {
 }
 
 TEST(MAX_POOLING_NHWC_U8, unit_batch_large_1xM_pool_with_tf_same_padding) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_u8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.u8.maxpool.mr + 1; pool_size <= xnn_params.u8.maxpool.mr + xnn_params.u8.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       for (size_t input_width = pool_size; input_width <= pool_size * 2; input_width++) {
         MaxPoolingOperatorTester()
           .batch_size(1)
@@ -1178,9 +1251,11 @@ TEST(MAX_POOLING_NHWC_U8, unit_batch_large_1xM_pool_with_tf_same_padding) {
 }
 
 TEST(MAX_POOLING_NHWC_U8, unit_batch_large_1xM_pool_with_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_u8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.u8.maxpool.mr + 1; pool_size <= xnn_params.u8.maxpool.mr + xnn_params.u8.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(2)
@@ -1195,9 +1270,11 @@ TEST(MAX_POOLING_NHWC_U8, unit_batch_large_1xM_pool_with_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_U8, unit_batch_large_1xM_pool_with_dilation) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_u8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.u8.maxpool.mr + 1; pool_size <= xnn_params.u8.maxpool.mr + xnn_params.u8.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(2)
@@ -1214,9 +1291,11 @@ TEST(MAX_POOLING_NHWC_U8, unit_batch_large_1xM_pool_with_dilation) {
 }
 
 TEST(MAX_POOLING_NHWC_U8, unit_batch_large_Mx1_pool) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_u8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.u8.maxpool.mr + 1; pool_size <= xnn_params.u8.maxpool.mr + xnn_params.u8.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 1)
@@ -1230,9 +1309,11 @@ TEST(MAX_POOLING_NHWC_U8, unit_batch_large_Mx1_pool) {
 }
 
 TEST(MAX_POOLING_NHWC_U8, unit_batch_large_Mx1_pool_with_padding) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_u8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.u8.maxpool.mr + 1; pool_size <= xnn_params.u8.maxpool.mr + xnn_params.u8.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       for (size_t padding_top = 0; padding_top <= 1; padding_top++) {
         for (size_t padding_bottom = 0; padding_bottom <= 1; padding_bottom++) {
           MaxPoolingOperatorTester()
@@ -1252,9 +1333,11 @@ TEST(MAX_POOLING_NHWC_U8, unit_batch_large_Mx1_pool_with_padding) {
 }
 
 TEST(MAX_POOLING_NHWC_U8, unit_batch_large_Mx1_pool_with_tf_same_padding) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_u8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.u8.maxpool.mr + 1; pool_size <= xnn_params.u8.maxpool.mr + xnn_params.u8.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       for (size_t input_height = pool_size; input_height <= pool_size * 2; input_height++) {
         MaxPoolingOperatorTester()
           .batch_size(1)
@@ -1271,9 +1354,11 @@ TEST(MAX_POOLING_NHWC_U8, unit_batch_large_Mx1_pool_with_tf_same_padding) {
 }
 
 TEST(MAX_POOLING_NHWC_U8, unit_batch_large_Mx1_pool_with_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_u8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.u8.maxpool.mr + 1; pool_size <= xnn_params.u8.maxpool.mr + xnn_params.u8.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 3)
@@ -1288,9 +1373,11 @@ TEST(MAX_POOLING_NHWC_U8, unit_batch_large_Mx1_pool_with_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_U8, unit_batch_large_Mx1_pool_with_dilation) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_u8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.u8.maxpool.mr + 1; pool_size <= xnn_params.u8.maxpool.mr + xnn_params.u8.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(2 * pool_size)
@@ -1307,9 +1394,11 @@ TEST(MAX_POOLING_NHWC_U8, unit_batch_large_Mx1_pool_with_dilation) {
 }
 
 TEST(MAX_POOLING_NHWC_U8, unit_batch_large_pool_with_input_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_u8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.u8.maxpool.mr + 1; pool_size <= xnn_params.u8.maxpool.mr + xnn_params.u8.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 1)
@@ -1333,9 +1422,11 @@ TEST(MAX_POOLING_NHWC_U8, unit_batch_large_pool_with_input_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_U8, unit_batch_large_pool_with_output_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_u8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.u8.maxpool.mr + 1; pool_size <= xnn_params.u8.maxpool.mr + xnn_params.u8.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 1)
@@ -1359,9 +1450,11 @@ TEST(MAX_POOLING_NHWC_U8, unit_batch_large_pool_with_output_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_U8, unit_batch_large_pool_with_qmin) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_u8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.u8.maxpool.mr + 1; pool_size <= xnn_params.u8.maxpool.mr + xnn_params.u8.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 1)
@@ -1385,9 +1478,11 @@ TEST(MAX_POOLING_NHWC_U8, unit_batch_large_pool_with_qmin) {
 }
 
 TEST(MAX_POOLING_NHWC_U8, unit_batch_large_pool_with_qmax) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_u8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.u8.maxpool.mr + 1; pool_size <= xnn_params.u8.maxpool.mr + xnn_params.u8.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 1)
@@ -1411,9 +1506,10 @@ TEST(MAX_POOLING_NHWC_U8, unit_batch_large_pool_with_qmax) {
 }
 
 TEST(MAX_POOLING_NHWC_U8, small_batch_small_pool) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_u8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.u8.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(3)
         .input_height(pool_size + 1)
@@ -1435,9 +1531,10 @@ TEST(MAX_POOLING_NHWC_U8, small_batch_small_pool) {
 }
 
 TEST(MAX_POOLING_NHWC_U8, small_batch_small_pool_with_input_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_u8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.u8.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(3)
         .input_height(pool_size + 1)
@@ -1461,9 +1558,10 @@ TEST(MAX_POOLING_NHWC_U8, small_batch_small_pool_with_input_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_U8, small_batch_small_pool_with_output_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_u8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.u8.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(3)
         .input_height(pool_size + 1)
@@ -1487,9 +1585,11 @@ TEST(MAX_POOLING_NHWC_U8, small_batch_small_pool_with_output_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_U8, small_batch_large_pool) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_u8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.u8.maxpool.mr + 1; pool_size <= xnn_params.u8.maxpool.mr + xnn_params.u8.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(3)
         .input_height(pool_size + 1)
@@ -1511,9 +1611,11 @@ TEST(MAX_POOLING_NHWC_U8, small_batch_large_pool) {
 }
 
 TEST(MAX_POOLING_NHWC_U8, small_batch_large_pool_with_input_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_u8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.u8.maxpool.mr + 1; pool_size <= xnn_params.u8.maxpool.mr + xnn_params.u8.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(3)
         .input_height(pool_size + 1)
@@ -1537,9 +1639,11 @@ TEST(MAX_POOLING_NHWC_U8, small_batch_large_pool_with_input_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_U8, small_batch_large_pool_with_output_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_u8_maxpool_config();
+  ASSERT_NE(maxpool_config, nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.u8.maxpool.mr + 1; pool_size <= xnn_params.u8.maxpool.mr + xnn_params.u8.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(3)
         .input_height(pool_size + 1)
@@ -1649,9 +1753,12 @@ TEST(MAX_POOLING_NHWC_U8, setup_swap_height_and_width) {
 
 #ifndef XNN_EXCLUDE_F16_TESTS
 TEST(MAX_POOLING_NHWC_F16, unit_batch_small_1xM_pool) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f16_maxpool_config();
+  if (maxpool_config == nullptr) {
+    GTEST_SKIP();  // F16 unsupported.
+  }
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.f32.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(2)
@@ -1665,9 +1772,12 @@ TEST(MAX_POOLING_NHWC_F16, unit_batch_small_1xM_pool) {
 }
 
 TEST(MAX_POOLING_NHWC_F16, unit_batch_small_1xM_pool_with_padding) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f16_maxpool_config();
+  if (maxpool_config == nullptr) {
+    GTEST_SKIP();  // F16 unsupported.
+  }
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 3; pool_size <= xnn_params.f32.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 3; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       for (size_t padding_left = 0; padding_left <= 1; padding_left++) {
         for (size_t padding_right = 0; padding_right <= 1; padding_right++) {
           MaxPoolingOperatorTester()
@@ -1687,9 +1797,12 @@ TEST(MAX_POOLING_NHWC_F16, unit_batch_small_1xM_pool_with_padding) {
 }
 
 TEST(MAX_POOLING_NHWC_F16, unit_batch_small_1xM_pool_with_tf_same_padding) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f16_maxpool_config();
+  if (maxpool_config == nullptr) {
+    GTEST_SKIP();  // F16 unsupported.
+  }
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 3; pool_size <= xnn_params.f32.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 3; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       for (size_t input_width = pool_size; input_width <= pool_size * 2; input_width++) {
         MaxPoolingOperatorTester()
           .batch_size(1)
@@ -1706,9 +1819,12 @@ TEST(MAX_POOLING_NHWC_F16, unit_batch_small_1xM_pool_with_tf_same_padding) {
 }
 
 TEST(MAX_POOLING_NHWC_F16, unit_batch_small_1xM_pool_with_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f16_maxpool_config();
+  if (maxpool_config == nullptr) {
+    GTEST_SKIP();  // F16 unsupported.
+  }
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.f32.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(2)
@@ -1723,9 +1839,12 @@ TEST(MAX_POOLING_NHWC_F16, unit_batch_small_1xM_pool_with_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_F16, unit_batch_small_1xM_pool_with_dilation) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f16_maxpool_config();
+  if (maxpool_config == nullptr) {
+    GTEST_SKIP();  // F16 unsupported.
+  }
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.f32.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(2)
@@ -1742,9 +1861,12 @@ TEST(MAX_POOLING_NHWC_F16, unit_batch_small_1xM_pool_with_dilation) {
 }
 
 TEST(MAX_POOLING_NHWC_F16, unit_batch_small_Mx1_pool) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f16_maxpool_config();
+  if (maxpool_config == nullptr) {
+    GTEST_SKIP();  // F16 unsupported.
+  }
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.f32.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 1)
@@ -1758,9 +1880,12 @@ TEST(MAX_POOLING_NHWC_F16, unit_batch_small_Mx1_pool) {
 }
 
 TEST(MAX_POOLING_NHWC_F16, unit_batch_small_Mx1_pool_with_padding) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f16_maxpool_config();
+  if (maxpool_config == nullptr) {
+    GTEST_SKIP();  // F16 unsupported.
+  }
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.f32.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       for (size_t padding_top = 0; padding_top <= 1; padding_top++) {
         for (size_t padding_bottom = 0; padding_bottom <= 1; padding_bottom++) {
           MaxPoolingOperatorTester()
@@ -1780,9 +1905,12 @@ TEST(MAX_POOLING_NHWC_F16, unit_batch_small_Mx1_pool_with_padding) {
 }
 
 TEST(MAX_POOLING_NHWC_F16, unit_batch_small_Mx1_pool_with_tf_same_padding) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f16_maxpool_config();
+  if (maxpool_config == nullptr) {
+    GTEST_SKIP();  // F16 unsupported.
+  }
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.f32.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       for (size_t input_height = pool_size; input_height <= pool_size * 2; input_height++) {
         MaxPoolingOperatorTester()
           .batch_size(1)
@@ -1799,9 +1927,12 @@ TEST(MAX_POOLING_NHWC_F16, unit_batch_small_Mx1_pool_with_tf_same_padding) {
 }
 
 TEST(MAX_POOLING_NHWC_F16, unit_batch_small_Mx1_pool_with_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f16_maxpool_config();
+  if (maxpool_config == nullptr) {
+    GTEST_SKIP();  // F16 unsupported.
+  }
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.f32.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 3)
@@ -1816,9 +1947,12 @@ TEST(MAX_POOLING_NHWC_F16, unit_batch_small_Mx1_pool_with_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_F16, unit_batch_small_Mx1_pool_with_dilation) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f16_maxpool_config();
+  if (maxpool_config == nullptr) {
+    GTEST_SKIP();  // F16 unsupported.
+  }
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.f32.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(2 * pool_size)
@@ -1835,9 +1969,12 @@ TEST(MAX_POOLING_NHWC_F16, unit_batch_small_Mx1_pool_with_dilation) {
 }
 
 TEST(MAX_POOLING_NHWC_F16, unit_batch_small_pool_with_input_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f16_maxpool_config();
+  if (maxpool_config == nullptr) {
+    GTEST_SKIP();  // F16 unsupported.
+  }
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.f32.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 1)
@@ -1861,9 +1998,12 @@ TEST(MAX_POOLING_NHWC_F16, unit_batch_small_pool_with_input_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_F16, unit_batch_small_pool_with_output_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f16_maxpool_config();
+  if (maxpool_config == nullptr) {
+    GTEST_SKIP();  // F16 unsupported.
+  }
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.f32.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 1)
@@ -1887,9 +2027,12 @@ TEST(MAX_POOLING_NHWC_F16, unit_batch_small_pool_with_output_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_F16, unit_batch_small_pool_with_qmin) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f16_maxpool_config();
+  if (maxpool_config == nullptr) {
+    GTEST_SKIP();  // F16 unsupported.
+  }
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.f32.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 1)
@@ -1913,9 +2056,12 @@ TEST(MAX_POOLING_NHWC_F16, unit_batch_small_pool_with_qmin) {
 }
 
 TEST(MAX_POOLING_NHWC_F16, unit_batch_small_pool_with_qmax) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f16_maxpool_config();
+  if (maxpool_config == nullptr) {
+    GTEST_SKIP();  // F16 unsupported.
+  }
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.f32.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 1)
@@ -1939,9 +2085,13 @@ TEST(MAX_POOLING_NHWC_F16, unit_batch_small_pool_with_qmax) {
 }
 
 TEST(MAX_POOLING_NHWC_F16, unit_batch_large_1xM_pool) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f16_maxpool_config();
+  if (maxpool_config == nullptr) {
+    GTEST_SKIP();  // F16 unsupported.
+  }
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.f32.maxpool.mr + 1; pool_size <= xnn_params.f32.maxpool.mr + xnn_params.f32.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(2)
@@ -1955,9 +2105,13 @@ TEST(MAX_POOLING_NHWC_F16, unit_batch_large_1xM_pool) {
 }
 
 TEST(MAX_POOLING_NHWC_F16, unit_batch_large_1xM_pool_with_padding) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f16_maxpool_config();
+  if (maxpool_config == nullptr) {
+    GTEST_SKIP();  // F16 unsupported.
+  }
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.f32.maxpool.mr + 1; pool_size <= xnn_params.f32.maxpool.mr + xnn_params.f32.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       for (size_t padding_left = 0; padding_left <= 1; padding_left++) {
         for (size_t padding_right = 0; padding_right <= 1; padding_right++) {
           MaxPoolingOperatorTester()
@@ -1977,9 +2131,13 @@ TEST(MAX_POOLING_NHWC_F16, unit_batch_large_1xM_pool_with_padding) {
 }
 
 TEST(MAX_POOLING_NHWC_F16, unit_batch_large_1xM_pool_with_tf_same_padding) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f16_maxpool_config();
+  if (maxpool_config == nullptr) {
+    GTEST_SKIP();  // F16 unsupported.
+  }
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.f32.maxpool.mr + 1; pool_size <= xnn_params.f32.maxpool.mr + xnn_params.f32.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       for (size_t input_width = pool_size; input_width <= pool_size * 2; input_width++) {
         MaxPoolingOperatorTester()
           .batch_size(1)
@@ -1996,9 +2154,13 @@ TEST(MAX_POOLING_NHWC_F16, unit_batch_large_1xM_pool_with_tf_same_padding) {
 }
 
 TEST(MAX_POOLING_NHWC_F16, unit_batch_large_1xM_pool_with_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f16_maxpool_config();
+  if (maxpool_config == nullptr) {
+    GTEST_SKIP();  // F16 unsupported.
+  }
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.f32.maxpool.mr + 1; pool_size <= xnn_params.f32.maxpool.mr + xnn_params.f32.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(2)
@@ -2013,9 +2175,13 @@ TEST(MAX_POOLING_NHWC_F16, unit_batch_large_1xM_pool_with_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_F16, unit_batch_large_1xM_pool_with_dilation) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f16_maxpool_config();
+  if (maxpool_config == nullptr) {
+    GTEST_SKIP();  // F16 unsupported.
+  }
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.f32.maxpool.mr + 1; pool_size <= xnn_params.f32.maxpool.mr + xnn_params.f32.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(2)
@@ -2032,9 +2198,13 @@ TEST(MAX_POOLING_NHWC_F16, unit_batch_large_1xM_pool_with_dilation) {
 }
 
 TEST(MAX_POOLING_NHWC_F16, unit_batch_large_Mx1_pool) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f16_maxpool_config();
+  if (maxpool_config == nullptr) {
+    GTEST_SKIP();  // F16 unsupported.
+  }
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.f32.maxpool.mr + 1; pool_size <= xnn_params.f32.maxpool.mr + xnn_params.f32.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 1)
@@ -2048,9 +2218,13 @@ TEST(MAX_POOLING_NHWC_F16, unit_batch_large_Mx1_pool) {
 }
 
 TEST(MAX_POOLING_NHWC_F16, unit_batch_large_Mx1_pool_with_padding) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f16_maxpool_config();
+  if (maxpool_config == nullptr) {
+    GTEST_SKIP();  // F16 unsupported.
+  }
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.f32.maxpool.mr + 1; pool_size <= xnn_params.f32.maxpool.mr + xnn_params.f32.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       for (size_t padding_top = 0; padding_top <= 1; padding_top++) {
         for (size_t padding_bottom = 0; padding_bottom <= 1; padding_bottom++) {
           MaxPoolingOperatorTester()
@@ -2070,9 +2244,13 @@ TEST(MAX_POOLING_NHWC_F16, unit_batch_large_Mx1_pool_with_padding) {
 }
 
 TEST(MAX_POOLING_NHWC_F16, unit_batch_large_Mx1_pool_with_tf_same_padding) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f16_maxpool_config();
+  if (maxpool_config == nullptr) {
+    GTEST_SKIP();  // F16 unsupported.
+  }
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.f32.maxpool.mr + 1; pool_size <= xnn_params.f32.maxpool.mr + xnn_params.f32.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       for (size_t input_height = pool_size; input_height <= pool_size * 2; input_height++) {
         MaxPoolingOperatorTester()
           .batch_size(1)
@@ -2089,9 +2267,13 @@ TEST(MAX_POOLING_NHWC_F16, unit_batch_large_Mx1_pool_with_tf_same_padding) {
 }
 
 TEST(MAX_POOLING_NHWC_F16, unit_batch_large_Mx1_pool_with_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f16_maxpool_config();
+  if (maxpool_config == nullptr) {
+    GTEST_SKIP();  // F16 unsupported.
+  }
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.f32.maxpool.mr + 1; pool_size <= xnn_params.f32.maxpool.mr + xnn_params.f32.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 3)
@@ -2106,9 +2288,13 @@ TEST(MAX_POOLING_NHWC_F16, unit_batch_large_Mx1_pool_with_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_F16, unit_batch_large_Mx1_pool_with_dilation) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f16_maxpool_config();
+  if (maxpool_config == nullptr) {
+    GTEST_SKIP();  // F16 unsupported.
+  }
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.f32.maxpool.mr + 1; pool_size <= xnn_params.f32.maxpool.mr + xnn_params.f32.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(2 * pool_size)
@@ -2125,9 +2311,13 @@ TEST(MAX_POOLING_NHWC_F16, unit_batch_large_Mx1_pool_with_dilation) {
 }
 
 TEST(MAX_POOLING_NHWC_F16, unit_batch_large_pool_with_input_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f16_maxpool_config();
+  if (maxpool_config == nullptr) {
+    GTEST_SKIP();  // F16 unsupported.
+  }
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.f32.maxpool.mr + 1; pool_size <= xnn_params.f32.maxpool.mr + xnn_params.f32.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 1)
@@ -2151,9 +2341,13 @@ TEST(MAX_POOLING_NHWC_F16, unit_batch_large_pool_with_input_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_F16, unit_batch_large_pool_with_output_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f16_maxpool_config();
+  if (maxpool_config == nullptr) {
+    GTEST_SKIP();  // F16 unsupported.
+  }
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.f32.maxpool.mr + 1; pool_size <= xnn_params.f32.maxpool.mr + xnn_params.f32.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 1)
@@ -2177,9 +2371,13 @@ TEST(MAX_POOLING_NHWC_F16, unit_batch_large_pool_with_output_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_F16, unit_batch_large_pool_with_qmin) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f16_maxpool_config();
+  if (maxpool_config == nullptr) {
+    GTEST_SKIP();  // F16 unsupported.
+  }
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.f32.maxpool.mr + 1; pool_size <= xnn_params.f32.maxpool.mr + xnn_params.f32.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 1)
@@ -2203,9 +2401,13 @@ TEST(MAX_POOLING_NHWC_F16, unit_batch_large_pool_with_qmin) {
 }
 
 TEST(MAX_POOLING_NHWC_F16, unit_batch_large_pool_with_qmax) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f16_maxpool_config();
+  if (maxpool_config == nullptr) {
+    GTEST_SKIP();  // F16 unsupported.
+  }
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.f32.maxpool.mr + 1; pool_size <= xnn_params.f32.maxpool.mr + xnn_params.f32.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 1)
@@ -2229,9 +2431,12 @@ TEST(MAX_POOLING_NHWC_F16, unit_batch_large_pool_with_qmax) {
 }
 
 TEST(MAX_POOLING_NHWC_F16, small_batch_small_pool) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f16_maxpool_config();
+  if (maxpool_config == nullptr) {
+    GTEST_SKIP();  // F16 unsupported.
+  }
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.f32.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(3)
         .input_height(pool_size + 1)
@@ -2253,9 +2458,12 @@ TEST(MAX_POOLING_NHWC_F16, small_batch_small_pool) {
 }
 
 TEST(MAX_POOLING_NHWC_F16, small_batch_small_pool_with_input_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f16_maxpool_config();
+  if (maxpool_config == nullptr) {
+    GTEST_SKIP();  // F16 unsupported.
+  }
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.f32.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(3)
         .input_height(pool_size + 1)
@@ -2279,9 +2487,12 @@ TEST(MAX_POOLING_NHWC_F16, small_batch_small_pool_with_input_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_F16, small_batch_small_pool_with_output_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f16_maxpool_config();
+  if (maxpool_config == nullptr) {
+    GTEST_SKIP();  // F16 unsupported.
+  }
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.f32.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(3)
         .input_height(pool_size + 1)
@@ -2305,9 +2516,13 @@ TEST(MAX_POOLING_NHWC_F16, small_batch_small_pool_with_output_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_F16, small_batch_large_pool) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f16_maxpool_config();
+  if (maxpool_config == nullptr) {
+    GTEST_SKIP();  // F16 unsupported.
+  }
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.f32.maxpool.mr + 1; pool_size <= xnn_params.f32.maxpool.mr + xnn_params.f32.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(3)
         .input_height(pool_size + 1)
@@ -2329,9 +2544,13 @@ TEST(MAX_POOLING_NHWC_F16, small_batch_large_pool) {
 }
 
 TEST(MAX_POOLING_NHWC_F16, small_batch_large_pool_with_input_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f16_maxpool_config();
+  if (maxpool_config == nullptr) {
+    GTEST_SKIP();  // F16 unsupported.
+  }
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.f32.maxpool.mr + 1; pool_size <= xnn_params.f32.maxpool.mr + xnn_params.f32.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(3)
         .input_height(pool_size + 1)
@@ -2355,9 +2574,13 @@ TEST(MAX_POOLING_NHWC_F16, small_batch_large_pool_with_input_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_F16, small_batch_large_pool_with_output_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f16_maxpool_config();
+  if (maxpool_config == nullptr) {
+    GTEST_SKIP();  // F16 unsupported.
+  }
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.f32.maxpool.mr + 1; pool_size <= xnn_params.f32.maxpool.mr + xnn_params.f32.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(3)
         .input_height(pool_size + 1)
@@ -2467,9 +2690,10 @@ TEST(MAX_POOLING_NHWC_F16, setup_swap_height_and_width) {
 
 
 TEST(MAX_POOLING_NHWC_F32, unit_batch_small_1xM_pool) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f32_maxpool_config();
+  assert(maxpool_config != nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.f32.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(2)
@@ -2483,9 +2707,10 @@ TEST(MAX_POOLING_NHWC_F32, unit_batch_small_1xM_pool) {
 }
 
 TEST(MAX_POOLING_NHWC_F32, unit_batch_small_1xM_pool_with_padding) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f32_maxpool_config();
+  assert(maxpool_config != nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 3; pool_size <= xnn_params.f32.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 3; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       for (size_t padding_left = 0; padding_left <= 1; padding_left++) {
         for (size_t padding_right = 0; padding_right <= 1; padding_right++) {
           MaxPoolingOperatorTester()
@@ -2505,9 +2730,10 @@ TEST(MAX_POOLING_NHWC_F32, unit_batch_small_1xM_pool_with_padding) {
 }
 
 TEST(MAX_POOLING_NHWC_F32, unit_batch_small_1xM_pool_with_tf_same_padding) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f32_maxpool_config();
+  assert(maxpool_config != nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 3; pool_size <= xnn_params.f32.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 3; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       for (size_t input_width = pool_size; input_width <= pool_size * 2; input_width++) {
         MaxPoolingOperatorTester()
           .batch_size(1)
@@ -2524,9 +2750,10 @@ TEST(MAX_POOLING_NHWC_F32, unit_batch_small_1xM_pool_with_tf_same_padding) {
 }
 
 TEST(MAX_POOLING_NHWC_F32, unit_batch_small_1xM_pool_with_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f32_maxpool_config();
+  assert(maxpool_config != nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.f32.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(2)
@@ -2541,9 +2768,10 @@ TEST(MAX_POOLING_NHWC_F32, unit_batch_small_1xM_pool_with_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_F32, unit_batch_small_1xM_pool_with_dilation) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f32_maxpool_config();
+  assert(maxpool_config != nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.f32.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(2)
@@ -2560,9 +2788,10 @@ TEST(MAX_POOLING_NHWC_F32, unit_batch_small_1xM_pool_with_dilation) {
 }
 
 TEST(MAX_POOLING_NHWC_F32, unit_batch_small_Mx1_pool) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f32_maxpool_config();
+  assert(maxpool_config != nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.f32.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 1)
@@ -2576,9 +2805,10 @@ TEST(MAX_POOLING_NHWC_F32, unit_batch_small_Mx1_pool) {
 }
 
 TEST(MAX_POOLING_NHWC_F32, unit_batch_small_Mx1_pool_with_padding) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f32_maxpool_config();
+  assert(maxpool_config != nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.f32.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       for (size_t padding_top = 0; padding_top <= 1; padding_top++) {
         for (size_t padding_bottom = 0; padding_bottom <= 1; padding_bottom++) {
           MaxPoolingOperatorTester()
@@ -2598,9 +2828,10 @@ TEST(MAX_POOLING_NHWC_F32, unit_batch_small_Mx1_pool_with_padding) {
 }
 
 TEST(MAX_POOLING_NHWC_F32, unit_batch_small_Mx1_pool_with_tf_same_padding) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f32_maxpool_config();
+  assert(maxpool_config != nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.f32.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       for (size_t input_height = pool_size; input_height <= pool_size * 2; input_height++) {
         MaxPoolingOperatorTester()
           .batch_size(1)
@@ -2617,9 +2848,10 @@ TEST(MAX_POOLING_NHWC_F32, unit_batch_small_Mx1_pool_with_tf_same_padding) {
 }
 
 TEST(MAX_POOLING_NHWC_F32, unit_batch_small_Mx1_pool_with_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f32_maxpool_config();
+  assert(maxpool_config != nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.f32.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 3)
@@ -2634,9 +2866,10 @@ TEST(MAX_POOLING_NHWC_F32, unit_batch_small_Mx1_pool_with_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_F32, unit_batch_small_Mx1_pool_with_dilation) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f32_maxpool_config();
+  assert(maxpool_config != nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.f32.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(2 * pool_size)
@@ -2653,9 +2886,10 @@ TEST(MAX_POOLING_NHWC_F32, unit_batch_small_Mx1_pool_with_dilation) {
 }
 
 TEST(MAX_POOLING_NHWC_F32, unit_batch_small_pool_with_input_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f32_maxpool_config();
+  assert(maxpool_config != nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.f32.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 1)
@@ -2679,9 +2913,10 @@ TEST(MAX_POOLING_NHWC_F32, unit_batch_small_pool_with_input_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_F32, unit_batch_small_pool_with_output_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f32_maxpool_config();
+  assert(maxpool_config != nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.f32.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 1)
@@ -2705,9 +2940,10 @@ TEST(MAX_POOLING_NHWC_F32, unit_batch_small_pool_with_output_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_F32, unit_batch_small_pool_with_qmin) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f32_maxpool_config();
+  assert(maxpool_config != nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.f32.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 1)
@@ -2731,9 +2967,10 @@ TEST(MAX_POOLING_NHWC_F32, unit_batch_small_pool_with_qmin) {
 }
 
 TEST(MAX_POOLING_NHWC_F32, unit_batch_small_pool_with_qmax) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f32_maxpool_config();
+  assert(maxpool_config != nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.f32.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 1)
@@ -2757,9 +2994,11 @@ TEST(MAX_POOLING_NHWC_F32, unit_batch_small_pool_with_qmax) {
 }
 
 TEST(MAX_POOLING_NHWC_F32, unit_batch_large_1xM_pool) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f32_maxpool_config();
+  assert(maxpool_config != nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.f32.maxpool.mr + 1; pool_size <= xnn_params.f32.maxpool.mr + xnn_params.f32.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(2)
@@ -2773,9 +3012,11 @@ TEST(MAX_POOLING_NHWC_F32, unit_batch_large_1xM_pool) {
 }
 
 TEST(MAX_POOLING_NHWC_F32, unit_batch_large_1xM_pool_with_padding) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f32_maxpool_config();
+  assert(maxpool_config != nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.f32.maxpool.mr + 1; pool_size <= xnn_params.f32.maxpool.mr + xnn_params.f32.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       for (size_t padding_left = 0; padding_left <= 1; padding_left++) {
         for (size_t padding_right = 0; padding_right <= 1; padding_right++) {
           MaxPoolingOperatorTester()
@@ -2795,9 +3036,11 @@ TEST(MAX_POOLING_NHWC_F32, unit_batch_large_1xM_pool_with_padding) {
 }
 
 TEST(MAX_POOLING_NHWC_F32, unit_batch_large_1xM_pool_with_tf_same_padding) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f32_maxpool_config();
+  assert(maxpool_config != nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.f32.maxpool.mr + 1; pool_size <= xnn_params.f32.maxpool.mr + xnn_params.f32.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       for (size_t input_width = pool_size; input_width <= pool_size * 2; input_width++) {
         MaxPoolingOperatorTester()
           .batch_size(1)
@@ -2814,9 +3057,11 @@ TEST(MAX_POOLING_NHWC_F32, unit_batch_large_1xM_pool_with_tf_same_padding) {
 }
 
 TEST(MAX_POOLING_NHWC_F32, unit_batch_large_1xM_pool_with_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f32_maxpool_config();
+  assert(maxpool_config != nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.f32.maxpool.mr + 1; pool_size <= xnn_params.f32.maxpool.mr + xnn_params.f32.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(2)
@@ -2831,9 +3076,11 @@ TEST(MAX_POOLING_NHWC_F32, unit_batch_large_1xM_pool_with_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_F32, unit_batch_large_1xM_pool_with_dilation) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f32_maxpool_config();
+  assert(maxpool_config != nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.f32.maxpool.mr + 1; pool_size <= xnn_params.f32.maxpool.mr + xnn_params.f32.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(2)
@@ -2850,9 +3097,11 @@ TEST(MAX_POOLING_NHWC_F32, unit_batch_large_1xM_pool_with_dilation) {
 }
 
 TEST(MAX_POOLING_NHWC_F32, unit_batch_large_Mx1_pool) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f32_maxpool_config();
+  assert(maxpool_config != nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.f32.maxpool.mr + 1; pool_size <= xnn_params.f32.maxpool.mr + xnn_params.f32.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 1)
@@ -2866,9 +3115,11 @@ TEST(MAX_POOLING_NHWC_F32, unit_batch_large_Mx1_pool) {
 }
 
 TEST(MAX_POOLING_NHWC_F32, unit_batch_large_Mx1_pool_with_padding) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f32_maxpool_config();
+  assert(maxpool_config != nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.f32.maxpool.mr + 1; pool_size <= xnn_params.f32.maxpool.mr + xnn_params.f32.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       for (size_t padding_top = 0; padding_top <= 1; padding_top++) {
         for (size_t padding_bottom = 0; padding_bottom <= 1; padding_bottom++) {
           MaxPoolingOperatorTester()
@@ -2888,9 +3139,11 @@ TEST(MAX_POOLING_NHWC_F32, unit_batch_large_Mx1_pool_with_padding) {
 }
 
 TEST(MAX_POOLING_NHWC_F32, unit_batch_large_Mx1_pool_with_tf_same_padding) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f32_maxpool_config();
+  assert(maxpool_config != nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.f32.maxpool.mr + 1; pool_size <= xnn_params.f32.maxpool.mr + xnn_params.f32.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       for (size_t input_height = pool_size; input_height <= pool_size * 2; input_height++) {
         MaxPoolingOperatorTester()
           .batch_size(1)
@@ -2907,9 +3160,11 @@ TEST(MAX_POOLING_NHWC_F32, unit_batch_large_Mx1_pool_with_tf_same_padding) {
 }
 
 TEST(MAX_POOLING_NHWC_F32, unit_batch_large_Mx1_pool_with_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f32_maxpool_config();
+  assert(maxpool_config != nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.f32.maxpool.mr + 1; pool_size <= xnn_params.f32.maxpool.mr + xnn_params.f32.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 3)
@@ -2924,9 +3179,11 @@ TEST(MAX_POOLING_NHWC_F32, unit_batch_large_Mx1_pool_with_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_F32, unit_batch_large_Mx1_pool_with_dilation) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f32_maxpool_config();
+  assert(maxpool_config != nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.f32.maxpool.mr + 1; pool_size <= xnn_params.f32.maxpool.mr + xnn_params.f32.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(2 * pool_size)
@@ -2943,9 +3200,11 @@ TEST(MAX_POOLING_NHWC_F32, unit_batch_large_Mx1_pool_with_dilation) {
 }
 
 TEST(MAX_POOLING_NHWC_F32, unit_batch_large_pool_with_input_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f32_maxpool_config();
+  assert(maxpool_config != nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.f32.maxpool.mr + 1; pool_size <= xnn_params.f32.maxpool.mr + xnn_params.f32.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 1)
@@ -2969,9 +3228,11 @@ TEST(MAX_POOLING_NHWC_F32, unit_batch_large_pool_with_input_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_F32, unit_batch_large_pool_with_output_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f32_maxpool_config();
+  assert(maxpool_config != nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.f32.maxpool.mr + 1; pool_size <= xnn_params.f32.maxpool.mr + xnn_params.f32.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 1)
@@ -2995,9 +3256,11 @@ TEST(MAX_POOLING_NHWC_F32, unit_batch_large_pool_with_output_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_F32, unit_batch_large_pool_with_qmin) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f32_maxpool_config();
+  assert(maxpool_config != nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.f32.maxpool.mr + 1; pool_size <= xnn_params.f32.maxpool.mr + xnn_params.f32.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 1)
@@ -3021,9 +3284,11 @@ TEST(MAX_POOLING_NHWC_F32, unit_batch_large_pool_with_qmin) {
 }
 
 TEST(MAX_POOLING_NHWC_F32, unit_batch_large_pool_with_qmax) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f32_maxpool_config();
+  assert(maxpool_config != nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.f32.maxpool.mr + 1; pool_size <= xnn_params.f32.maxpool.mr + xnn_params.f32.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(1)
         .input_height(pool_size + 1)
@@ -3047,9 +3312,10 @@ TEST(MAX_POOLING_NHWC_F32, unit_batch_large_pool_with_qmax) {
 }
 
 TEST(MAX_POOLING_NHWC_F32, small_batch_small_pool) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f32_maxpool_config();
+  assert(maxpool_config != nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.f32.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(3)
         .input_height(pool_size + 1)
@@ -3071,9 +3337,10 @@ TEST(MAX_POOLING_NHWC_F32, small_batch_small_pool) {
 }
 
 TEST(MAX_POOLING_NHWC_F32, small_batch_small_pool_with_input_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f32_maxpool_config();
+  assert(maxpool_config != nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.f32.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(3)
         .input_height(pool_size + 1)
@@ -3097,9 +3364,10 @@ TEST(MAX_POOLING_NHWC_F32, small_batch_small_pool_with_input_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_F32, small_batch_small_pool_with_output_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f32_maxpool_config();
+  assert(maxpool_config != nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = 2; pool_size <= xnn_params.f32.maxpool.mr; pool_size++) {
+    for (size_t pool_size = 2; pool_size <= maxpool_config->first_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(3)
         .input_height(pool_size + 1)
@@ -3123,9 +3391,11 @@ TEST(MAX_POOLING_NHWC_F32, small_batch_small_pool_with_output_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_F32, small_batch_large_pool) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f32_maxpool_config();
+  assert(maxpool_config != nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.f32.maxpool.mr + 1; pool_size <= xnn_params.f32.maxpool.mr + xnn_params.f32.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(3)
         .input_height(pool_size + 1)
@@ -3147,9 +3417,11 @@ TEST(MAX_POOLING_NHWC_F32, small_batch_large_pool) {
 }
 
 TEST(MAX_POOLING_NHWC_F32, small_batch_large_pool_with_input_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f32_maxpool_config();
+  assert(maxpool_config != nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.f32.maxpool.mr + 1; pool_size <= xnn_params.f32.maxpool.mr + xnn_params.f32.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(3)
         .input_height(pool_size + 1)
@@ -3173,9 +3445,11 @@ TEST(MAX_POOLING_NHWC_F32, small_batch_large_pool_with_input_stride) {
 }
 
 TEST(MAX_POOLING_NHWC_F32, small_batch_large_pool_with_output_stride) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  const struct xnn_maxpool_config* maxpool_config = xnn_init_f32_maxpool_config();
+  assert(maxpool_config != nullptr);
   for (size_t channels = 1; channels <= 100; channels += 15) {
-    for (size_t pool_size = xnn_params.f32.maxpool.mr + 1; pool_size <= xnn_params.f32.maxpool.mr + xnn_params.f32.maxpool.qr; pool_size++) {
+    for (size_t pool_size = maxpool_config->first_pass_tile_size + 1;
+         pool_size <= maxpool_config->first_pass_tile_size + maxpool_config->remainder_pass_tile_size; pool_size++) {
       MaxPoolingOperatorTester()
         .batch_size(3)
         .input_height(pool_size + 1)

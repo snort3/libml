@@ -9,6 +9,9 @@
 #include "threadpool-common.h"
 
 /* Windows headers */
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
 #include <windows.h>
 
 /* Public library header */
@@ -21,7 +24,7 @@
 
 
 static void checkin_worker_thread(struct pthreadpool* threadpool, uint32_t event_index) {
-	if (pthreadpool_decrement_fetch_release_size_t(&threadpool->active_threads) == 0) {
+	if (pthreadpool_decrement_fetch_acquire_release_size_t(&threadpool->active_threads) == 0) {
 		SetEvent(threadpool->completion_event[event_index]);
 	}
 }

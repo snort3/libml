@@ -14,8 +14,7 @@
 
 #include <xnnpack.h>
 #include <xnnpack/node-type.h>
-#include <xnnpack/operator-type.h>
-#include <xnnpack/ukernel-type.h>
+#include <xnnpack/common.h>
 
 #ifndef XNN_LOG_LEVEL
   #error "Undefined XNN_LOG_LEVEL"
@@ -57,16 +56,9 @@ extern "C" {
   inline static const char* xnn_datatype_to_string(enum xnn_datatype type) {
     return "Unknown";
   }
-
-  inline static const char* xnn_node_type_to_string(enum xnn_node_type type) {
-    return "Unknown";
-  }
 #else
   const char* xnn_datatype_to_string(enum xnn_datatype type);
-  const char* xnn_node_type_to_string(enum xnn_node_type type);
 #endif
-const char* xnn_operator_type_to_string(enum xnn_operator_type type);
-const char* xnn_ukernel_type_to_string(enum xnn_ukernel_type type);
 
 #ifdef __cplusplus
 }  // extern "C"
@@ -125,3 +117,9 @@ XNN_LOG_ARGUMENTS_FORMAT inline static void xnn_log_fatal(const char* format, ..
   #endif
   abort();
 }
+
+#if XNN_LOG_LEVEL >= XNN_LOG_DEBUG
+  #define XNN_LOG_UNREACHABLE(...) do { xnn_log_fatal(__VA_ARGS__); } while (0)
+#else
+  #define XNN_LOG_UNREACHABLE(...) XNN_UNREACHABLE
+#endif

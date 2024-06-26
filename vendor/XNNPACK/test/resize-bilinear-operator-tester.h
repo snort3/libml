@@ -5,25 +5,29 @@
 
 #pragma once
 
-#include <gtest/gtest.h>
+#include <xnnpack.h>
+#include <xnnpack/aligned-allocator.h>
+#include <xnnpack/common.h>
 
 #include <algorithm>
-#include <cmath>
 #include <cassert>
+#include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
-#include <functional>
+#include <limits>
+#include <memory>
+#include <numeric>
 #include <random>
 #include <vector>
 
-#include <fp16.h>
-
-#include <xnnpack.h>
-
+#include "replicable_random_device.h"
+#include <gtest/gtest.h>
+#include <fp16/fp16.h>
 
 class ResizeBilinearOperatorTester {
  public:
-  inline ResizeBilinearOperatorTester& input_size(size_t input_height, size_t input_width) {
+  ResizeBilinearOperatorTester& input_size(size_t input_height, size_t input_width) {
     assert(input_height >= 1);
     assert(input_width >= 1);
     this->input_height_ = input_height;
@@ -31,27 +35,27 @@ class ResizeBilinearOperatorTester {
     return *this;
   }
 
-  inline ResizeBilinearOperatorTester& input_height(size_t input_height) {
+  ResizeBilinearOperatorTester& input_height(size_t input_height) {
     assert(input_height >= 1);
     this->input_height_ = input_height;
     return *this;
   }
 
-  inline size_t input_height() const {
+  size_t input_height() const {
     return this->input_height_;
   }
 
-  inline ResizeBilinearOperatorTester& input_width(size_t input_width) {
+  ResizeBilinearOperatorTester& input_width(size_t input_width) {
     assert(input_width >= 1);
     this->input_width_ = input_width;
     return *this;
   }
 
-  inline size_t input_width() const {
+  size_t input_width() const {
     return this->input_width_;
   }
 
-  inline ResizeBilinearOperatorTester& output_size(size_t output_height, size_t output_width) {
+  ResizeBilinearOperatorTester& output_size(size_t output_height, size_t output_width) {
     assert(output_height >= 1);
     assert(output_width >= 1);
     this->output_height_ = output_height;
@@ -59,27 +63,27 @@ class ResizeBilinearOperatorTester {
     return *this;
   }
 
-  inline ResizeBilinearOperatorTester& output_height(size_t output_height) {
+  ResizeBilinearOperatorTester& output_height(size_t output_height) {
     assert(output_height >= 1);
     this->output_height_ = output_height;
     return *this;
   }
 
-  inline size_t output_height() const {
+  size_t output_height() const {
     return this->output_height_;
   }
 
-  inline ResizeBilinearOperatorTester& output_width(size_t output_width) {
+  ResizeBilinearOperatorTester& output_width(size_t output_width) {
     assert(output_width >= 1);
     this->output_width_ = output_width;
     return *this;
   }
 
-  inline size_t output_width() const {
+  size_t output_width() const {
     return this->output_width_;
   }
 
-  inline float height_scale() const {
+  float height_scale() const {
     if (align_corners() && output_height() > 1) {
       return float(input_height() - 1) / float(output_height() - 1);
     } else {
@@ -87,7 +91,7 @@ class ResizeBilinearOperatorTester {
     }
   }
 
-  inline float width_scale() const {
+  float width_scale() const {
     if (align_corners() && output_width() > 1) {
       return float(input_width() - 1) / float(output_width() - 1);
     } else {
@@ -95,33 +99,33 @@ class ResizeBilinearOperatorTester {
     }
   }
 
-  inline ResizeBilinearOperatorTester& channels(size_t channels) {
+  ResizeBilinearOperatorTester& channels(size_t channels) {
     assert(channels != 0);
     this->channels_ = channels;
     return *this;
   }
 
-  inline size_t channels() const {
+  size_t channels() const {
     return this->channels_;
   }
 
-  inline ResizeBilinearOperatorTester& batch_size(size_t batch_size) {
+  ResizeBilinearOperatorTester& batch_size(size_t batch_size) {
     assert(batch_size != 0);
     this->batch_size_ = batch_size;
     return *this;
   }
 
-  inline size_t batch_size() const {
+  size_t batch_size() const {
     return this->batch_size_;
   }
 
-  inline ResizeBilinearOperatorTester& input_pixel_stride(size_t input_pixel_stride) {
+  ResizeBilinearOperatorTester& input_pixel_stride(size_t input_pixel_stride) {
     assert(input_pixel_stride != 0);
     this->input_pixel_stride_ = input_pixel_stride;
     return *this;
   }
 
-  inline size_t input_pixel_stride() const {
+  size_t input_pixel_stride() const {
     if (this->input_pixel_stride_ == 0) {
       return channels();
     } else {
@@ -130,13 +134,13 @@ class ResizeBilinearOperatorTester {
     }
   }
 
-  inline ResizeBilinearOperatorTester& output_pixel_stride(size_t output_pixel_stride) {
+  ResizeBilinearOperatorTester& output_pixel_stride(size_t output_pixel_stride) {
     assert(output_pixel_stride != 0);
     this->output_pixel_stride_ = output_pixel_stride;
     return *this;
   }
 
-  inline size_t output_pixel_stride() const {
+  size_t output_pixel_stride() const {
     if (this->output_pixel_stride_ == 0) {
       return channels();
     } else {
@@ -145,7 +149,7 @@ class ResizeBilinearOperatorTester {
     }
   }
 
-  inline ResizeBilinearOperatorTester& next_input_size(uint32_t next_input_height, uint32_t next_input_width) {
+  ResizeBilinearOperatorTester& next_input_size(uint32_t next_input_height, uint32_t next_input_width) {
     assert(next_input_height >= 1);
     assert(next_input_width >= 1);
     this->next_input_height_ = next_input_height;
@@ -153,13 +157,13 @@ class ResizeBilinearOperatorTester {
     return *this;
   }
 
-  inline ResizeBilinearOperatorTester& next_input_height(uint32_t next_input_height) {
+  ResizeBilinearOperatorTester& next_input_height(uint32_t next_input_height) {
     assert(next_input_height >= 1);
     this->next_input_height_ = next_input_height;
     return *this;
   }
 
-  inline uint32_t next_input_height() const {
+  uint32_t next_input_height() const {
     if (this->next_input_height_ == 0) {
       return input_height();
     } else {
@@ -167,13 +171,13 @@ class ResizeBilinearOperatorTester {
     }
   }
 
-  inline ResizeBilinearOperatorTester& next_input_width(uint32_t next_input_width) {
+  ResizeBilinearOperatorTester& next_input_width(uint32_t next_input_width) {
     assert(next_input_width >= 1);
     this->next_input_width_ = next_input_width;
     return *this;
   }
 
-  inline uint32_t next_input_width() const {
+  uint32_t next_input_width() const {
     if (this->next_input_width_ == 0) {
       return input_width();
     } else {
@@ -181,13 +185,13 @@ class ResizeBilinearOperatorTester {
     }
   }
 
-  inline ResizeBilinearOperatorTester& next_batch_size(size_t next_batch_size) {
+  ResizeBilinearOperatorTester& next_batch_size(size_t next_batch_size) {
     assert(next_batch_size >= 1);
     this->next_batch_size_ = next_batch_size;
     return *this;
   }
 
-  inline size_t next_batch_size() const {
+  size_t next_batch_size() const {
     if (this->next_batch_size_ == 0) {
       return batch_size();
     } else {
@@ -195,31 +199,40 @@ class ResizeBilinearOperatorTester {
     }
   }
 
-  inline ResizeBilinearOperatorTester& align_corners(bool align_corners) {
+  ResizeBilinearOperatorTester& align_corners(bool align_corners) {
     this->align_corners_ = align_corners;
     return *this;
   }
 
-  inline bool align_corners() const {
+  bool align_corners() const {
     return this->align_corners_;
   }
 
-  inline ResizeBilinearOperatorTester& tf_legacy_mode(bool tf_legacy_mode) {
+  ResizeBilinearOperatorTester& tf_legacy_mode(bool tf_legacy_mode) {
     this->tf_legacy_mode_ = tf_legacy_mode;
     return *this;
   }
 
-  inline bool tf_legacy_mode() const {
+  bool tf_legacy_mode() const {
     return this->tf_legacy_mode_;
   }
 
-  inline ResizeBilinearOperatorTester& iterations(size_t iterations) {
+  ResizeBilinearOperatorTester& iterations(size_t iterations) {
     this->iterations_ = iterations;
     return *this;
   }
 
-  inline size_t iterations() const {
+  size_t iterations() const {
     return this->iterations_;
+  }
+
+  ResizeBilinearOperatorTester& transient_indirection_buffer(bool transient_indirection_buffer) {
+    this->transient_indirection_buffer_ = transient_indirection_buffer;
+    return *this;
+  }
+
+  bool transient_indirection_buffer() const {
+    return this->transient_indirection_buffer_;
   }
 
   void TestNHWCxF16() const {
@@ -227,8 +240,7 @@ class ResizeBilinearOperatorTester {
       ASSERT_FALSE(tf_legacy_mode());
     }
 
-    std::random_device random_device;
-    auto rng = std::mt19937(random_device());
+    xnnpack::ReplicableRandomDevice rng;
     std::uniform_real_distribution<float> f32dist;
 
     std::vector<uint16_t> input(XNN_EXTRA_BYTES / sizeof(uint16_t) +
@@ -267,9 +279,18 @@ class ResizeBilinearOperatorTester {
       ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
       xnn_operator_t resize_bilinear_op = nullptr;
 
+      uint32_t flags = 0;
+      if (align_corners()) {
+        flags |= XNN_FLAG_ALIGN_CORNERS;
+      }
+      if (tf_legacy_mode()) {
+        flags |= XNN_FLAG_TENSORFLOW_LEGACY_MODE;
+      }
+      if (transient_indirection_buffer()) {
+        flags |= XNN_FLAG_TRANSIENT_INDIRECTION_BUFFER;
+      }
       const xnn_status status = xnn_create_resize_bilinear2d_nhwc_f16(
-          channels(), input_pixel_stride(), output_pixel_stride(),
-          (align_corners() ? XNN_FLAG_ALIGN_CORNERS : 0) | (tf_legacy_mode() ? XNN_FLAG_TENSORFLOW_LEGACY_MODE : 0),
+          output_height(), output_width(), flags,
           &resize_bilinear_op);
       if (status == xnn_status_unsupported_hardware) {
         GTEST_SKIP();
@@ -280,16 +301,35 @@ class ResizeBilinearOperatorTester {
       // Smart pointer to automatically delete resize_bilinear_op.
       std::unique_ptr<xnn_operator, decltype(&xnn_delete_operator)> auto_resize_bilinear_op(resize_bilinear_op, xnn_delete_operator);
 
+      size_t workspace_size = transient_indirection_buffer() ? 0 : SIZE_MAX;
+      size_t workspace_alignment = SIZE_MAX;
       ASSERT_EQ(xnn_status_success,
-        xnn_setup_resize_bilinear2d_nhwc_f16(
+        xnn_reshape_resize_bilinear2d_nhwc_f16(
           resize_bilinear_op,
           batch_size(), input_height(), input_width(),
-          output_height(), output_width(),
-          input.data(), output.data(),
-          nullptr /* thread pool */));
+          channels(), input_pixel_stride(), output_pixel_stride(),
+          &workspace_size, &workspace_alignment,
+          /*threadpool=*/nullptr));
+      std::vector<char, AlignedAllocator<char, XNN_ALLOCATION_ALIGNMENT>> workspace(workspace_size);
+      std::iota(workspace.begin(), workspace.end(), 0);
+      if (transient_indirection_buffer()) {
+        ASSERT_NE(workspace_size, 0);
+        ASSERT_EQ(workspace_alignment, XNN_ALLOCATION_ALIGNMENT);
+        ASSERT_EQ(xnn_status_success,
+          xnn_setup_resize_bilinear2d_nhwc_f16(
+            resize_bilinear_op,
+            workspace.data(), input.data(), output.data()));
+      } else {
+        ASSERT_EQ(workspace_size, 0);
+        ASSERT_EQ(workspace_alignment, 1);
+        ASSERT_EQ(xnn_status_success,
+          xnn_setup_resize_bilinear2d_nhwc_f16(
+            resize_bilinear_op,
+            /*workspace=*/nullptr, input.data(), output.data()));
+      }
 
       ASSERT_EQ(xnn_status_success,
-        xnn_run_operator(resize_bilinear_op, nullptr /* thread pool */));
+        xnn_run_operator(resize_bilinear_op, /*threadpool=*/nullptr));
 
       // Verify results.
       for (size_t i = 0; i < batch_size(); i++) {
@@ -313,8 +353,7 @@ class ResizeBilinearOperatorTester {
       ASSERT_FALSE(tf_legacy_mode());
     }
 
-    std::random_device random_device;
-    auto rng = std::mt19937(random_device());
+    xnnpack::ReplicableRandomDevice rng;
     std::uniform_real_distribution<float> f32dist;
 
     std::vector<float> input((batch_size() * input_height() * input_width() - 1) * input_pixel_stride() + channels() + XNN_EXTRA_BYTES / sizeof(float));
@@ -352,26 +391,55 @@ class ResizeBilinearOperatorTester {
       ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
       xnn_operator_t resize_bilinear_op = nullptr;
 
+      uint32_t flags = 0;
+      if (align_corners()) {
+        flags |= XNN_FLAG_ALIGN_CORNERS;
+      }
+      if (tf_legacy_mode()) {
+        flags |= XNN_FLAG_TENSORFLOW_LEGACY_MODE;
+      }
+      if (transient_indirection_buffer()) {
+        flags |= XNN_FLAG_TRANSIENT_INDIRECTION_BUFFER;
+      }
       ASSERT_EQ(xnn_status_success,
         xnn_create_resize_bilinear2d_nhwc_f32(
-          channels(), input_pixel_stride(), output_pixel_stride(),
-          (align_corners() ? XNN_FLAG_ALIGN_CORNERS : 0) | (tf_legacy_mode() ? XNN_FLAG_TENSORFLOW_LEGACY_MODE : 0),
+          output_height(), output_width(), flags,
           &resize_bilinear_op));
       ASSERT_NE(nullptr, resize_bilinear_op);
 
       // Smart pointer to automatically delete resize_bilinear_op.
       std::unique_ptr<xnn_operator, decltype(&xnn_delete_operator)> auto_resize_bilinear_op(resize_bilinear_op, xnn_delete_operator);
 
+      size_t workspace_size = transient_indirection_buffer() ? 0 : SIZE_MAX;
+      size_t workspace_alignment = SIZE_MAX;
       ASSERT_EQ(xnn_status_success,
-        xnn_setup_resize_bilinear2d_nhwc_f32(
+        xnn_reshape_resize_bilinear2d_nhwc_f32(
           resize_bilinear_op,
           batch_size(), input_height(), input_width(),
-          output_height(), output_width(),
-          input.data(), output.data(),
-          nullptr /* thread pool */));
+          channels(), input_pixel_stride(), output_pixel_stride(),
+          &workspace_size, &workspace_alignment,
+          /*threadpool=*/nullptr));
+
+      std::vector<char, AlignedAllocator<char, XNN_ALLOCATION_ALIGNMENT>> workspace(workspace_size);
+      std::iota(workspace.begin(), workspace.end(), 0);
+      if (transient_indirection_buffer()) {
+        ASSERT_NE(workspace_size, 0);
+        ASSERT_EQ(workspace_alignment, XNN_ALLOCATION_ALIGNMENT);
+        ASSERT_EQ(xnn_status_success,
+          xnn_setup_resize_bilinear2d_nhwc_f32(
+            resize_bilinear_op,
+            workspace.data(), input.data(), output.data()));
+      } else {
+        ASSERT_EQ(workspace_size, 0);
+        ASSERT_EQ(workspace_alignment, 1);
+        ASSERT_EQ(xnn_status_success,
+          xnn_setup_resize_bilinear2d_nhwc_f32(
+            resize_bilinear_op,
+            /*workspace=*/nullptr, input.data(), output.data()));
+      }
 
       ASSERT_EQ(xnn_status_success,
-        xnn_run_operator(resize_bilinear_op, nullptr /* thread pool */));
+        xnn_run_operator(resize_bilinear_op, /*threadpool=*/nullptr));
 
       // Verify results.
       for (size_t i = 0; i < batch_size(); i++) {
@@ -394,8 +462,7 @@ class ResizeBilinearOperatorTester {
       ASSERT_FALSE(tf_legacy_mode());
     }
 
-    std::random_device random_device;
-    auto rng = std::mt19937(random_device());
+    xnnpack::ReplicableRandomDevice rng;
     std::uniform_int_distribution<int32_t> i8dist(
       std::numeric_limits<int8_t>::min(), std::numeric_limits<int8_t>::max());
 
@@ -434,26 +501,55 @@ class ResizeBilinearOperatorTester {
       ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
       xnn_operator_t resize_bilinear_op = nullptr;
 
+      uint32_t flags = 0;
+      if (align_corners()) {
+        flags |= XNN_FLAG_ALIGN_CORNERS;
+      }
+      if (tf_legacy_mode()) {
+        flags |= XNN_FLAG_TENSORFLOW_LEGACY_MODE;
+      }
+      if (transient_indirection_buffer()) {
+        flags |= XNN_FLAG_TRANSIENT_INDIRECTION_BUFFER;
+      }
       ASSERT_EQ(xnn_status_success,
         xnn_create_resize_bilinear2d_nhwc_s8(
-          channels(), input_pixel_stride(), output_pixel_stride(),
-          (align_corners() ? XNN_FLAG_ALIGN_CORNERS : 0) | (tf_legacy_mode() ? XNN_FLAG_TENSORFLOW_LEGACY_MODE : 0),
+          output_height(), output_width(), flags,
           &resize_bilinear_op));
       ASSERT_NE(nullptr, resize_bilinear_op);
 
       // Smart pointer to automatically delete resize_bilinear_op.
       std::unique_ptr<xnn_operator, decltype(&xnn_delete_operator)> auto_resize_bilinear_op(resize_bilinear_op, xnn_delete_operator);
 
+      size_t workspace_size = transient_indirection_buffer() ? 0 : SIZE_MAX;
+      size_t workspace_alignment = SIZE_MAX;
       ASSERT_EQ(xnn_status_success,
-        xnn_setup_resize_bilinear2d_nhwc_s8(
+        xnn_reshape_resize_bilinear2d_nhwc_s8(
           resize_bilinear_op,
           batch_size(), input_height(), input_width(),
-          output_height(), output_width(),
-          input.data(), output.data(),
-          nullptr /* thread pool */));
+          channels(), input_pixel_stride(), output_pixel_stride(),
+          &workspace_size, &workspace_alignment,
+          /*threadpool=*/nullptr));
+
+      std::vector<char, AlignedAllocator<char, XNN_ALLOCATION_ALIGNMENT>> workspace(workspace_size);
+      std::iota(workspace.begin(), workspace.end(), 0);
+      if (transient_indirection_buffer()) {
+        ASSERT_NE(workspace_size, 0);
+        ASSERT_EQ(workspace_alignment, XNN_ALLOCATION_ALIGNMENT);
+        ASSERT_EQ(xnn_status_success,
+          xnn_setup_resize_bilinear2d_nhwc_s8(
+            resize_bilinear_op,
+            workspace.data(), input.data(), output.data()));
+      } else {
+        ASSERT_EQ(workspace_size, 0);
+        ASSERT_EQ(workspace_alignment, 1);
+        ASSERT_EQ(xnn_status_success,
+          xnn_setup_resize_bilinear2d_nhwc_s8(
+            resize_bilinear_op,
+            /*workspace=*/nullptr, input.data(), output.data()));
+      }
 
       ASSERT_EQ(xnn_status_success,
-        xnn_run_operator(resize_bilinear_op, nullptr /* thread pool */));
+        xnn_run_operator(resize_bilinear_op, /*threadpool=*/nullptr));
 
       // Verify results.
       for (size_t i = 0; i < batch_size(); i++) {
@@ -477,8 +573,7 @@ class ResizeBilinearOperatorTester {
       ASSERT_FALSE(tf_legacy_mode());
     }
 
-    std::random_device random_device;
-    auto rng = std::mt19937(random_device());
+    xnnpack::ReplicableRandomDevice rng;
     std::uniform_int_distribution<int32_t> u8dist(
       std::numeric_limits<uint8_t>::min(), std::numeric_limits<uint8_t>::max());
 
@@ -517,26 +612,55 @@ class ResizeBilinearOperatorTester {
       ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
       xnn_operator_t resize_bilinear_op = nullptr;
 
+      uint32_t flags = 0;
+      if (align_corners()) {
+        flags |= XNN_FLAG_ALIGN_CORNERS;
+      }
+      if (tf_legacy_mode()) {
+        flags |= XNN_FLAG_TENSORFLOW_LEGACY_MODE;
+      }
+      if (transient_indirection_buffer()) {
+        flags |= XNN_FLAG_TRANSIENT_INDIRECTION_BUFFER;
+      }
       ASSERT_EQ(xnn_status_success,
         xnn_create_resize_bilinear2d_nhwc_u8(
-          channels(), input_pixel_stride(), output_pixel_stride(),
-          (align_corners() ? XNN_FLAG_ALIGN_CORNERS : 0) | (tf_legacy_mode() ? XNN_FLAG_TENSORFLOW_LEGACY_MODE : 0),
+          output_height(), output_width(), flags,
           &resize_bilinear_op));
       ASSERT_NE(nullptr, resize_bilinear_op);
 
       // Smart pointer to automatically delete resize_bilinear_op.
       std::unique_ptr<xnn_operator, decltype(&xnn_delete_operator)> auto_resize_bilinear_op(resize_bilinear_op, xnn_delete_operator);
 
+      size_t workspace_size = transient_indirection_buffer() ? 0 : SIZE_MAX;
+      size_t workspace_alignment = SIZE_MAX;
       ASSERT_EQ(xnn_status_success,
-        xnn_setup_resize_bilinear2d_nhwc_u8(
+        xnn_reshape_resize_bilinear2d_nhwc_u8(
           resize_bilinear_op,
           batch_size(), input_height(), input_width(),
-          output_height(), output_width(),
-          input.data(), output.data(),
-          nullptr /* thread pool */));
+          channels(), input_pixel_stride(), output_pixel_stride(),
+          &workspace_size, &workspace_alignment,
+          /*threadpool=*/nullptr));
+
+      std::vector<char, AlignedAllocator<char, XNN_ALLOCATION_ALIGNMENT>> workspace(workspace_size);
+      std::iota(workspace.begin(), workspace.end(), 0);
+      if (transient_indirection_buffer()) {
+        ASSERT_NE(workspace_size, 0);
+        ASSERT_EQ(workspace_alignment, XNN_ALLOCATION_ALIGNMENT);
+        ASSERT_EQ(xnn_status_success,
+          xnn_setup_resize_bilinear2d_nhwc_u8(
+            resize_bilinear_op,
+            workspace.data(), input.data(), output.data()));
+      } else {
+        ASSERT_EQ(workspace_size, 0);
+        ASSERT_EQ(workspace_alignment, 1);
+        ASSERT_EQ(xnn_status_success,
+          xnn_setup_resize_bilinear2d_nhwc_u8(
+            resize_bilinear_op,
+            /*workspace=*/nullptr, input.data(), output.data()));
+      }
 
       ASSERT_EQ(xnn_status_success,
-        xnn_run_operator(resize_bilinear_op, nullptr /* thread pool */));
+        xnn_run_operator(resize_bilinear_op, /*threadpool=*/nullptr));
 
       // Verify results.
       for (size_t i = 0; i < batch_size(); i++) {
@@ -555,13 +679,103 @@ class ResizeBilinearOperatorTester {
     }
   }
 
+  void TestNCHWxF16() const {
+    if (align_corners()) {
+      ASSERT_FALSE(tf_legacy_mode());
+    }
+
+    xnnpack::ReplicableRandomDevice rng;
+    std::uniform_real_distribution<float> f32dist;
+
+    std::vector<uint16_t> input((batch_size() * input_height() * input_width() - 1) * input_pixel_stride() + channels() + XNN_EXTRA_BYTES / sizeof(uint16_t));
+    std::vector<uint16_t> output((batch_size() * output_height() * output_width() - 1) * output_pixel_stride() + channels());
+    std::vector<float> output_ref(batch_size() * output_height() * output_width() * channels());
+    for (size_t iteration = 0; iteration < iterations(); iteration++) {
+      std::generate(input.begin(), input.end(), [&]() { return fp16_ieee_from_fp32_value(f32dist(rng)); });
+      std::fill(output.begin(), output.end(), UINT16_C(0x7E00) /* NaN */);
+
+      // Compute reference results.
+      const float offset = (tf_legacy_mode() || align_corners()) ? 0.0f : 0.5f;
+      const int64_t input_num_pixels = input_height() * input_width();
+      const int64_t input_num_elements = input_num_pixels * input_pixel_stride();
+      const int64_t output_num_pixels = output_height() * output_width();
+      const int64_t output_num_elements = output_num_pixels * channels();
+      for (size_t batch_index = 0; batch_index < batch_size(); batch_index++) {
+        for (size_t output_y = 0; output_y < output_height(); output_y++) {
+          const float input_y = (float(output_y) + offset) * height_scale() - offset;
+          const int64_t input_y_top = std::max<int64_t>(int64_t(std::floor(input_y)), 0);
+          const int64_t input_y_bottom = std::min<int64_t>(int64_t(std::ceil(input_y)), input_height() - 1);
+          const float y_alpha = fp16_ieee_to_fp32_value(fp16_ieee_from_fp32_value(input_y - std::floor(input_y)));
+          for (size_t output_x = 0; output_x < output_width(); output_x++) {
+            const float input_x = (float(output_x) + offset) * width_scale() - offset;
+            const int64_t input_x_left = std::max<int64_t>(int64_t(std::floor(input_x)), 0);
+            const int64_t input_x_right = std::min<int64_t>(int64_t(std::ceil(input_x)), input_width() - 1);
+            const float x_alpha = fp16_ieee_to_fp32_value(fp16_ieee_from_fp32_value(input_x - std::floor(input_x)));
+            for (size_t c = 0; c < channels(); c++) {
+              output_ref[batch_index * output_num_elements + c * output_num_pixels + output_y * output_width() + output_x] =
+                fp16_ieee_to_fp32_value(input[batch_index * input_num_elements + c * input_num_pixels + input_y_top * input_width() + input_x_left]) * (1.0f - y_alpha) * (1.0f - x_alpha) +
+                fp16_ieee_to_fp32_value(input[batch_index * input_num_elements + c * input_num_pixels + input_y_top * input_width() + input_x_right]) * (1.0f - y_alpha) * x_alpha +
+                fp16_ieee_to_fp32_value(input[batch_index * input_num_elements + c * input_num_pixels + input_y_bottom * input_width() + input_x_left]) * y_alpha * (1.0f - x_alpha) +
+                fp16_ieee_to_fp32_value(input[batch_index * input_num_elements + c * input_num_pixels + input_y_bottom * input_width() + input_x_right]) * y_alpha * x_alpha;
+            }
+          }
+        }
+      }
+
+      // Create, setup, run, and destroy Resize Bilinear operator.
+      ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+      xnn_operator_t resize_bilinear_op = nullptr;
+
+      const xnn_status status = xnn_create_resize_bilinear2d_nchw_f16(
+          output_height(), output_width(),
+          (align_corners() ? XNN_FLAG_ALIGN_CORNERS : 0) | (tf_legacy_mode() ? XNN_FLAG_TENSORFLOW_LEGACY_MODE : 0),
+          &resize_bilinear_op);
+      if (status == xnn_status_unsupported_hardware) {
+        GTEST_SKIP();
+      }
+      ASSERT_EQ(xnn_status_success, status);
+      ASSERT_NE(nullptr, resize_bilinear_op);
+
+      // Smart pointer to automatically delete resize_bilinear_op.
+      std::unique_ptr<xnn_operator, decltype(&xnn_delete_operator)> auto_resize_bilinear_op(resize_bilinear_op, xnn_delete_operator);
+
+      ASSERT_EQ(xnn_status_success,
+        xnn_reshape_resize_bilinear2d_nchw_f16(
+          resize_bilinear_op,
+          batch_size(), input_height(), input_width(),
+          channels(), input_pixel_stride(), output_pixel_stride(),
+          /*threadpool=*/nullptr));
+
+      ASSERT_EQ(xnn_status_success,
+        xnn_setup_resize_bilinear2d_nchw_f16(
+          resize_bilinear_op,
+          input.data(), output.data()));
+
+      ASSERT_EQ(xnn_status_success,
+        xnn_run_operator(resize_bilinear_op, /*threadpool=*/nullptr));
+
+      // Verify results.
+      for (size_t i = 0; i < batch_size(); i++) {
+        for (size_t y = 0; y < output_height(); y++) {
+          for (size_t x = 0; x < output_width(); x++) {
+            for (size_t c = 0; c < channels(); c++) {
+              ASSERT_NEAR(fp16_ieee_to_fp32_value(output[i * output_num_elements +  c * output_num_pixels + y * output_width() + x]),
+                  output_ref[i * output_num_elements +  c * output_num_pixels + y * output_width() + x],
+                  std::max(1.0e-3f, std::abs(output_ref[i * output_num_elements +  c * output_num_pixels + y * output_width() + x]) * 1.0e-2f)) <<
+                "in batch index " << i << ", pixel (" << y << ", " << x << "), channel " << c;
+            }
+          }
+        }
+      }
+    }
+  }
+
   void TestNCHWxF32() const {
     if (align_corners()) {
       ASSERT_FALSE(tf_legacy_mode());
     }
 
-    std::random_device random_device;
-    auto rng = std::mt19937(random_device());
+    xnnpack::ReplicableRandomDevice rng;
     std::uniform_real_distribution<float> f32dist;
 
     std::vector<float> input((batch_size() * input_height() * input_width() - 1) * input_pixel_stride() + channels() + XNN_EXTRA_BYTES / sizeof(float));
@@ -603,26 +817,33 @@ class ResizeBilinearOperatorTester {
       ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
       xnn_operator_t resize_bilinear_op = nullptr;
 
-      ASSERT_EQ(xnn_status_success,
+      const xnn_status status =
         xnn_create_resize_bilinear2d_nchw_f32(
-          channels(), input_pixel_stride(), output_pixel_stride(),
+          output_height(), output_width(),
           (align_corners() ? XNN_FLAG_ALIGN_CORNERS : 0) | (tf_legacy_mode() ? XNN_FLAG_TENSORFLOW_LEGACY_MODE : 0),
-          &resize_bilinear_op));
+          &resize_bilinear_op);
+      if (status == xnn_status_unsupported_hardware) {
+        GTEST_SKIP();
+      }
       ASSERT_NE(nullptr, resize_bilinear_op);
 
       // Smart pointer to automatically delete resize_bilinear_op.
       std::unique_ptr<xnn_operator, decltype(&xnn_delete_operator)> auto_resize_bilinear_op(resize_bilinear_op, xnn_delete_operator);
 
       ASSERT_EQ(xnn_status_success,
-        xnn_setup_resize_bilinear2d_nchw_f32(
+        xnn_reshape_resize_bilinear2d_nchw_f32(
           resize_bilinear_op,
           batch_size(), input_height(), input_width(),
-          output_height(), output_width(),
-          input.data(), output.data(),
-          nullptr /* thread pool */));
+          channels(), input_pixel_stride(), output_pixel_stride(),
+          /*threadpool=*/nullptr));
 
       ASSERT_EQ(xnn_status_success,
-        xnn_run_operator(resize_bilinear_op, nullptr /* thread pool */));
+        xnn_setup_resize_bilinear2d_nchw_f32(
+          resize_bilinear_op,
+          input.data(), output.data()));
+
+      ASSERT_EQ(xnn_status_success,
+        xnn_run_operator(resize_bilinear_op, /*threadpool=*/nullptr));
 
       // Verify results.
       for (size_t i = 0; i < batch_size(); i++) {
@@ -655,4 +876,5 @@ class ResizeBilinearOperatorTester {
   bool align_corners_{false};
   bool tf_legacy_mode_{false};
   size_t iterations_{1};
+  bool transient_indirection_buffer_{false};
 };

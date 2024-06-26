@@ -8,9 +8,14 @@ table KeywordsInTable {
   is: ABC = void;
   private: public;
   type: int;
+  default: bool = false;
 }
 
 union KeywordsInUnion {
   static: KeywordsInTable,
   internal: KeywordsInTable,
+}
+
+table Table2 {
+  type: KeywordsInUnion;
 }

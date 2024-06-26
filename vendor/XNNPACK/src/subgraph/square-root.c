@@ -12,6 +12,7 @@
 #include <xnnpack/log.h>
 #include <xnnpack/operator.h>
 #include <xnnpack/params.h>
+#include <xnnpack/reshape-helpers.h>
 #include <xnnpack/subgraph.h>
 #include <xnnpack/subgraph-validation.h>
 
@@ -21,89 +22,101 @@ static enum xnn_status create_square_root_operator(
   const struct xnn_value* values,
   size_t num_values,
   struct xnn_operator_data* opdata,
-  const struct xnn_caches* caches)
+  struct xnn_code_cache* code_cache,
+  xnn_weights_cache_t weights_cache)
 {
-  assert(node->compute_type == xnn_compute_type_fp32);
-
   assert(node->num_inputs == 1);
-  const uint32_t input_id = node->inputs[0];
-  assert(input_id != XNN_INVALID_VALUE_ID);
-  assert(input_id < num_values);
-
   assert(node->num_outputs == 1);
-  const uint32_t output_id = node->outputs[0];
-  assert(output_id != XNN_INVALID_VALUE_ID);
-  assert(output_id < num_values);
-
-  const size_t num_input_dims = values[input_id].shape.num_dims;
-  const size_t channel_dim = num_input_dims == 0 ? 1 : values[input_id].shape.dim[num_input_dims - 1];
 
   enum xnn_status status;
   switch (node->compute_type) {
     case xnn_compute_type_fp32:
       status = xnn_create_square_root_nc_f32(
-        channel_dim /* channels */, channel_dim /* input stride */, channel_dim /* output stride */,
         node->flags,
         &opdata->operator_objects[0]);
       break;
-#ifndef XNN_NO_F16_OPERATORS
     case xnn_compute_type_fp16:
       status = xnn_create_square_root_nc_f16(
-        channel_dim /* channels */, channel_dim /* input stride */, channel_dim /* output stride */,
         node->flags,
         &opdata->operator_objects[0]);
       break;
-#endif  // !defined(XNN_NO_F16_OPERATORS)
     default:
       XNN_UNREACHABLE;
-  }
-  if (status == xnn_status_success) {
-    opdata->batch_size = xnn_shape_multiply_non_channel_dims(&values[input_id].shape);
-    opdata->inputs[0] = input_id;
-    opdata->outputs[0] = output_id;
   }
   return status;
 }
 
+static enum xnn_status reshape_square_root_operator(
+  struct xnn_operator_data* opdata,
+  struct xnn_value* values,
+  size_t num_values,
+  pthreadpool_t threadpool)
+{
+  const uint32_t input_id = opdata->inputs[0];
+  assert(input_id < num_values);
+  const size_t batch_size = xnn_shape_multiply_non_channel_dims(&values[input_id].shape);
+  const size_t num_input_dims = values[input_id].shape.num_dims;
+  const size_t channel_dim = num_input_dims == 0 ? 1 : values[input_id].shape.dim[num_input_dims - 1];
+  const size_t old_workspace_size = opdata->workspace_size;
+  enum xnn_status status = xnn_status_invalid_state;
+
+  switch (opdata->operator_objects[0]->type) {
+    case xnn_operator_type_square_root_nc_f32:
+      status = xnn_reshape_square_root_nc_f32(
+        opdata->operator_objects[0],
+        batch_size,
+        channel_dim /* channels */, channel_dim /* input stride */, channel_dim /* output stride */,
+        threadpool);
+      break;
+    case xnn_operator_type_square_root_nc_f16:
+      status = xnn_reshape_square_root_nc_f16(
+        opdata->operator_objects[0],
+        batch_size,
+        channel_dim /* channels */, channel_dim /* input stride */, channel_dim /* output stride */,
+        threadpool);
+      break;
+    default:
+      XNN_UNREACHABLE;
+  }
+  if (status != xnn_status_success) {
+    return status;
+  }
+  return resize_unary_elementwise_output_tensor(opdata, values, num_values, old_workspace_size, threadpool);
+}
+
 static enum xnn_status setup_square_root_operator(
   const struct xnn_operator_data* opdata,
-  const struct xnn_blob* blobs,
-  size_t num_blobs,
+  const struct xnn_value* values,
+  size_t num_values,
   pthreadpool_t threadpool)
 {
   const uint32_t input_id = opdata->inputs[0];
   assert(input_id != XNN_INVALID_VALUE_ID);
-  assert(input_id < num_blobs);
+  assert(input_id < num_values);
 
   const uint32_t output_id = opdata->outputs[0];
   assert(output_id != XNN_INVALID_VALUE_ID);
-  assert(output_id < num_blobs);
+  assert(output_id < num_values);
 
-  const struct xnn_blob* input_blob = blobs + input_id;
-  const void* input_data = input_blob->data;
+  const struct xnn_value* input_value = values + input_id;
+  const void* input_data = input_value->data;
   assert(input_data != NULL);
 
-  const struct xnn_blob* output_blob = blobs + output_id;
-  void* output_data = output_blob->data;
+  const struct xnn_value* output_value = values + output_id;
+  void* output_data = output_value->data;
   assert(output_data != NULL);
 
   switch (opdata->operator_objects[0]->type) {
     case xnn_operator_type_square_root_nc_f32:
       return xnn_setup_square_root_nc_f32(
         opdata->operator_objects[0],
-        opdata->batch_size,
         input_data,
-        output_data,
-        threadpool);
-#ifndef XNN_NO_F16_OPERATORS
+        output_data);
     case xnn_operator_type_square_root_nc_f16:
       return xnn_setup_square_root_nc_f16(
         opdata->operator_objects[0],
-        opdata->batch_size,
         input_data,
-        output_data,
-        threadpool);
-#endif  // !defined(XNN_NO_F16_OPERATORS)
+        output_data);
     default:
       XNN_UNREACHABLE;
   }
@@ -134,6 +147,7 @@ enum xnn_status xnn_define_square_root(
   }
 
   switch (input_value->datatype) {
+    case xnn_datatype_fp16:
     case xnn_datatype_fp32:
       break;
     default:
@@ -155,8 +169,13 @@ enum xnn_status xnn_define_square_root(
     return status;
   }
 
+  enum xnn_compute_type compute_type = xnn_compute_type_invalid;
   switch (output_value->datatype) {
+    case xnn_datatype_fp16:
+      compute_type = xnn_compute_type_fp16;
+      break;
     case xnn_datatype_fp32:
+      compute_type = xnn_compute_type_fp32;
       break;
     default:
       xnn_log_error(
@@ -172,7 +191,7 @@ enum xnn_status xnn_define_square_root(
   }
 
   node->type = xnn_node_type_square_root;
-  node->compute_type = xnn_compute_type_fp32;
+  node->compute_type = compute_type;
   node->num_inputs = 1;
   node->inputs[0] = input_id;
   node->num_outputs = 1;
@@ -180,6 +199,7 @@ enum xnn_status xnn_define_square_root(
   node->flags = flags;
 
   node->create = create_square_root_operator;
+  node->reshape = reshape_square_root_operator;
   node->setup = setup_square_root_operator;
 
   return xnn_status_success;

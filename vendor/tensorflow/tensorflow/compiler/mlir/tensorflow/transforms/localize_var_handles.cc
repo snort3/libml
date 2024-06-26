@@ -16,17 +16,17 @@ limitations under the License.
 #include <memory>
 
 #include "llvm/ADT/DenseSet.h"
-#include "llvm/ADT/STLExtras.h"
+#include "llvm/ADT/StringRef.h"
 #include "llvm/Support/Casting.h"
-#include "mlir/Dialect/Func/IR/FuncOps.h"  // from @llvm-project
-#include "mlir/IR/Attributes.h"  // from @llvm-project
-#include "mlir/IR/Block.h"  // from @llvm-project
+#include "mlir/Analysis/DataFlow/ConstantPropagationAnalysis.h"  // from @llvm-project
+#include "mlir/Analysis/DataFlow/DeadCodeAnalysis.h"  // from @llvm-project
+#include "mlir/Analysis/DataFlowFramework.h"  // from @llvm-project
 #include "mlir/IR/Builders.h"  // from @llvm-project
 #include "mlir/IR/BuiltinOps.h"  // from @llvm-project
 #include "mlir/IR/Operation.h"  // from @llvm-project
 #include "mlir/IR/Value.h"  // from @llvm-project
 #include "mlir/Pass/Pass.h"  // from @llvm-project
-#include "mlir/Pass/PassRegistry.h"  // from @llvm-project
+#include "mlir/Support/LogicalResult.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/tensorflow/analysis/resource_dataflow.h"
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_ops.h"
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_saved_model.h"
@@ -50,19 +50,19 @@ struct LocalizeVarHandlesPass
 void MaybeCreateVarHandleForOp(Operation* op, DataFlowSolver& solver) {
   Value resource;
   if (auto read = llvm::dyn_cast<TF::ReadVariableOp>(op)) {
-    resource = read.resource();
+    resource = read.getResource();
   } else if (auto write = llvm::dyn_cast<TF::AssignVariableOp>(op)) {
-    resource = write.resource();
+    resource = write.getResource();
   } else if (auto next = llvm::dyn_cast<TF::IteratorGetNextOp>(op)) {
-    resource = next.iterator();
+    resource = next.getIterator();
   }
 
   if (llvm::dyn_cast_or_null<TF::VarHandleOp>(resource.getDefiningOp())) {
     return;  // We're already directly after a VarHandleOp.
   }
 
-  const TF::ResourceDataflowAnalysis::StateT* state =
-      solver.lookupState<TF::ResourceDataflowAnalysis::StateT>(resource);
+  const TF::ResourceDataflowState* state =
+      solver.lookupState<TF::ResourceDataflowState>(resource);
   if (!state) {
     // Can't actually happen. Even for gaps in the dataflow, we'll receive
     // the initial state.
@@ -79,11 +79,11 @@ void MaybeCreateVarHandleForOp(Operation* op, DataFlowSolver& solver) {
     container = "";
     shared_name = global.getSymName();
   } else if (auto handle = llvm::dyn_cast<TF::VarHandleOp>(source)) {
-    container = handle.container();
-    shared_name = handle.shared_name();
+    container = handle.getContainer();
+    shared_name = handle.getSharedName();
   } else if (auto it = llvm::dyn_cast<TF::IteratorOp>(source)) {
-    container = it.container();
-    shared_name = it.shared_name();
+    container = it.getContainer();
+    shared_name = it.getSharedName();
   } else {
     // Can't happen, as long as this file and resource_dataflow.cc are in sync.
     return;
@@ -98,7 +98,7 @@ void MaybeCreateVarHandleForOp(Operation* op, DataFlowSolver& solver) {
     // See core/kernels/data/iterator_ops.cc.)
     resource_op = builder.create<TF::IteratorOp>(
         op->getLoc(), resource.getType(), shared_name, container,
-        it.output_types(), it.output_shapes());
+        it.getOutputTypes(), it.getOutputShapes());
   } else {
     resource_op = builder.create<TF::VarHandleOp>(
         op->getLoc(), resource.getType(), container, shared_name);
@@ -111,7 +111,8 @@ void LocalizeVarHandlesPass::runOnOperation() {
 
   DataFlowSolver solver;
   solver.load<dataflow::DeadCodeAnalysis>();
-  solver.load<TF::ResourceDataflowAnalysis>();
+  solver.load<dataflow::SparseConstantPropagation>();
+  TF::LoadResourceDataflowAnalysis(solver);
   if (failed(solver.initializeAndRun(module))) return signalPassFailure();
 
   OpBuilder globalBuilder(module.getBodyRegion());

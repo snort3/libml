@@ -15,7 +15,6 @@
 
 import os.path
 import sys
-import imp
 PY_VERSION = sys.version_info[:2]
 
 import ctypes
@@ -47,7 +46,14 @@ import MyGame.Example.ArrayTable  # refers to generated code
 import MyGame.Example.ArrayStruct  # refers to generated code
 import MyGame.Example.NestedStruct  # refers to generated code
 import MyGame.Example.TestEnum  # refers to generated code
+import MyGame.Example.NestedUnion.NestedUnionTest  # refers to generated code
+import MyGame.Example.NestedUnion.Vec3  # refers to generated code
+import MyGame.Example.NestedUnion.Any  # refers to generated code
+import MyGame.Example.NestedUnion.Test  # refers to generated code
+import MyGame.Example.NestedUnion.Color  # refers to generated code
 import monster_test_generated  # the one-file version
+import optional_scalars
+import optional_scalars.ScalarStuff
 
 
 def create_namespace_shortcut(is_onefile):
@@ -124,7 +130,7 @@ class TestWireFormat(unittest.TestCase):
 class TestObjectBasedAPI(unittest.TestCase):
   """ Tests the generated object based API."""
 
-  def test_consistenty_with_repeated_pack_and_unpack(self):
+  def test_consistency_with_repeated_pack_and_unpack(self):
     """ Checks the serialization and deserialization between a buffer and
 
         its python object. It tests in the same way as the C++ object API test,
@@ -188,13 +194,13 @@ class TestObjectBasedAPI(unittest.TestCase):
     self.assertEqual(monster2.InventoryAsNumpy(), 0)
     self.assertEqual(monster2.InventoryLength(), 0)
     self.assertTrue(monster2.InventoryIsNone())
-    self.assertTrue(monster2.Color() is 8)
+    self.assertEqual(monster2.Color(), 8)
     self.assertEqual(monster2.TestType(), 0)
     self.assertTrue(monster2.Test() is None)
     self.assertTrue(monster2.Test4(0) is None)
     self.assertEqual(monster2.Test4Length(), 0)
     self.assertTrue(monster2.Test4IsNone())
-    self.assertTrue(monster2.Testarrayofstring(0) is '')
+    self.assertEqual(monster2.Testarrayofstring(0), '')
     self.assertEqual(monster2.TestarrayofstringLength(), 0)
     self.assertTrue(monster2.TestarrayofstringIsNone())
     self.assertTrue(monster2.Testarrayoftables(0) is None)
@@ -206,7 +212,7 @@ class TestObjectBasedAPI(unittest.TestCase):
     self.assertEqual(monster2.TestnestedflatbufferLength(), 0)
     self.assertTrue(monster2.TestnestedflatbufferIsNone())
     self.assertTrue(monster2.Testempty() is None)
-    self.assertTrue(monster2.Testbool() is False)
+    self.assertFalse(monster2.Testbool())
     self.assertEqual(monster2.Testhashs32Fnv1(), 0)
     self.assertEqual(monster2.Testhashu32Fnv1(), 0)
     self.assertEqual(monster2.Testhashs64Fnv1(), 0)
@@ -222,7 +228,7 @@ class TestObjectBasedAPI(unittest.TestCase):
     self.assertEqual(monster2.Testf(), 3.14159)
     self.assertEqual(monster2.Testf2(), 3.0)
     self.assertEqual(monster2.Testf3(), 0.0)
-    self.assertTrue(monster2.Testarrayofstring2(0) is '')
+    self.assertEqual(monster2.Testarrayofstring2(0), '')
     self.assertEqual(monster2.Testarrayofstring2Length(), 0)
     self.assertTrue(monster2.Testarrayofstring2IsNone())
     self.assertTrue(monster2.Testarrayofsortedstruct(0) is None)
@@ -273,6 +279,35 @@ class TestObjectBasedAPI(unittest.TestCase):
     self.assertEqual(monster2.VectorOfEnumsAsNumpy(), 0)
     self.assertEqual(monster2.VectorOfEnumsLength(), 0)
     self.assertTrue(monster2.VectorOfEnumsIsNone())
+
+  def test_optional_scalars_with_pack_and_unpack(self):
+    """ Serializes and deserializes between a buffer with optional values (no
+        specific values are filled when the buffer is created) and its python
+        object.
+    """
+    # Creates a flatbuffer with optional values.
+    b1 = flatbuffers.Builder(0)
+    optional_scalars.ScalarStuff.ScalarStuffStart(b1)
+    gen_opt = optional_scalars.ScalarStuff.ScalarStuffEnd(b1)
+    b1.Finish(gen_opt)
+
+    # Converts the flatbuffer into the object class.
+    opts1 = optional_scalars.ScalarStuff.ScalarStuff.GetRootAs(b1.Bytes, b1.Head())
+    optsT1 = optional_scalars.ScalarStuff.ScalarStuffT.InitFromObj(opts1)
+
+    # Packs the object class into another flatbuffer.
+    b2 = flatbuffers.Builder(0)
+    b2.Finish(optsT1.Pack(b2))
+    opts2 = optional_scalars.ScalarStuff.ScalarStuff.GetRootAs(b2.Bytes, b2.Head())
+    optsT2 = optional_scalars.ScalarStuff.ScalarStuffT.InitFromObj(opts2)
+    # Checks the default values.
+    self.assertTrue(opts2.JustI8() == 0)
+    self.assertTrue(opts2.MaybeF32() is None)
+    self.assertTrue(opts2.DefaultBool() is True)
+    self.assertTrue(optsT2.justU16 == 0)
+    self.assertTrue(optsT2.maybeEnum is None)
+    self.assertTrue(optsT2.defaultU64 == 42)
+
 
 
 class TestAllMutableCodePathsOfExampleSchema(unittest.TestCase):
@@ -659,24 +694,23 @@ def CheckReadBuffer(buf, offset, sizePrefix=False, file_identifier=None):
   ]))
 
   try:
-    imp.find_module('numpy')
     # if numpy exists, then we should be able to get the
     # vector as a numpy array
     import numpy as np
 
     asserter(monster.InventoryAsNumpy().sum() == 10)
-    asserter(monster.InventoryAsNumpy().dtype == np.dtype('uint8'))
+    asserter(monster.InventoryAsNumpy().dtype == np.dtype('<u1'))
 
     VectorOfLongs = monster.VectorOfLongsAsNumpy()
-    asserter(VectorOfLongs.dtype == np.dtype('int64'))
+    asserter(VectorOfLongs.dtype == np.dtype('<i8'))
     for i in range(5):
       asserter(VectorOfLongs[i] == 10**(i * 2))
 
     VectorOfDoubles = monster.VectorOfDoublesAsNumpy()
-    asserter(VectorOfDoubles.dtype == np.dtype('float64'))
-    asserter(VectorOfDoubles[0] == np.finfo('float64').min)
+    asserter(VectorOfDoubles.dtype == np.dtype('<f8'))
+    asserter(VectorOfDoubles[0] == np.finfo('<f8').min)
     asserter(VectorOfDoubles[1] == 0.0)
-    asserter(VectorOfDoubles[2] == np.finfo('float64').max)
+    asserter(VectorOfDoubles[2] == np.finfo('<f8').max)
 
   except ImportError:
     # If numpy does not exist, trying to get vector as numpy
@@ -821,33 +855,33 @@ class TestFuzz(unittest.TestCase):
           check(table, 'bool', self.boolVal,
                 table.GetSlot(f, False, N.BoolFlags))
         elif choice == 1:
-          check(table, 'int8', self.int8Val, table.GetSlot(f, 0, N.Int8Flags))
+          check(table, '<i1', self.int8Val, table.GetSlot(f, 0, N.Int8Flags))
         elif choice == 2:
-          check(table, 'uint8', self.uint8Val,
+          check(table, '<u1', self.uint8Val,
                 table.GetSlot(f, 0, N.Uint8Flags))
         elif choice == 3:
-          check(table, 'int16', self.int16Val,
+          check(table, '<i2', self.int16Val,
                 table.GetSlot(f, 0, N.Int16Flags))
         elif choice == 4:
-          check(table, 'uint16', self.uint16Val,
+          check(table, '<u2', self.uint16Val,
                 table.GetSlot(f, 0, N.Uint16Flags))
         elif choice == 5:
-          check(table, 'int32', self.int32Val,
+          check(table, '<i4', self.int32Val,
                 table.GetSlot(f, 0, N.Int32Flags))
         elif choice == 6:
-          check(table, 'uint32', self.uint32Val,
+          check(table, '<u4', self.uint32Val,
                 table.GetSlot(f, 0, N.Uint32Flags))
         elif choice == 7:
-          check(table, 'int64', self.int64Val,
+          check(table, '<i8', self.int64Val,
                 table.GetSlot(f, 0, N.Int64Flags))
         elif choice == 8:
-          check(table, 'uint64', self.uint64Val,
+          check(table, '<u8', self.uint64Val,
                 table.GetSlot(f, 0, N.Uint64Flags))
         elif choice == 9:
-          check(table, 'float32', self.float32Val,
+          check(table, '<f4', self.float32Val,
                 table.GetSlot(f, 0, N.Float32Flags))
         elif choice == 10:
-          check(table, 'float64', self.float64Val,
+          check(table, '<f8', self.float64Val,
                 table.GetSlot(f, 0, N.Float64Flags))
         else:
           raise RuntimeError('unreachable')
@@ -947,6 +981,48 @@ class TestByteLayout(unittest.TestCase):
     b.EndVector()
     self.assertBuilderEquals(b, [2, 0, 0, 0, 0xBA, 0xDC, 0xCD, 0xAB])
 
+  def test_create_ascii_shared_string(self):
+    b = flatbuffers.Builder(0)
+    b.CreateSharedString(u'foo', encoding='ascii')
+    b.CreateSharedString(u'foo', encoding='ascii')
+
+    # 0-terminated, no pad:
+    self.assertBuilderEquals(b, [3, 0, 0, 0, 'f', 'o', 'o', 0])
+    b.CreateSharedString(u'moop', encoding='ascii')
+    b.CreateSharedString(u'moop', encoding='ascii')
+    # 0-terminated, 3-byte pad:
+    self.assertBuilderEquals(b, [
+        4, 0, 0, 0, 'm', 'o', 'o', 'p', 0, 0, 0, 0, 3, 0, 0, 0, 'f', 'o', 'o', 0
+    ])
+
+  def test_create_utf8_shared_string(self):
+    b = flatbuffers.Builder(0)
+    b.CreateSharedString(u'Цлїςσδε')
+    b.CreateSharedString(u'Цлїςσδε')
+    self.assertBuilderEquals(b, '\x0e\x00\x00\x00\xd0\xa6\xd0\xbb\xd1\x97' \
+        '\xcf\x82\xcf\x83\xce\xb4\xce\xb5\x00\x00')
+
+    b.CreateSharedString(u'ﾌﾑｱﾑｶﾓｹﾓ')
+    b.CreateSharedString(u'ﾌﾑｱﾑｶﾓｹﾓ')
+    self.assertBuilderEquals(b, '\x18\x00\x00\x00\xef\xbe\x8c\xef\xbe\x91' \
+        '\xef\xbd\xb1\xef\xbe\x91\xef\xbd\xb6\xef\xbe\x93\xef\xbd\xb9\xef' \
+        '\xbe\x93\x00\x00\x00\x00\x0e\x00\x00\x00\xd0\xa6\xd0\xbb\xd1\x97' \
+        '\xcf\x82\xcf\x83\xce\xb4\xce\xb5\x00\x00')
+
+  def test_create_arbitrary_shared_string(self):
+    b = flatbuffers.Builder(0)
+    s = '\x01\x02\x03'
+    b.CreateSharedString(s)  # Default encoding is utf-8.
+    b.CreateSharedString(s)
+    # 0-terminated, no pad:
+    self.assertBuilderEquals(b, [3, 0, 0, 0, 1, 2, 3, 0])
+    s2 = '\x04\x05\x06\x07'
+    b.CreateSharedString(s2)  # Default encoding is utf-8.
+    b.CreateSharedString(s2)
+    # 0-terminated, 3-byte pad:
+    self.assertBuilderEquals(
+        b, [4, 0, 0, 0, 4, 5, 6, 7, 0, 0, 0, 0, 3, 0, 0, 0, 1, 2, 3, 0])
+
   def test_create_ascii_string(self):
     b = flatbuffers.Builder(0)
     b.CreateString(u'foo', encoding='ascii')
@@ -996,7 +1072,6 @@ class TestByteLayout(unittest.TestCase):
 
   def test_create_numpy_vector_int8(self):
     try:
-      imp.find_module('numpy')
       # if numpy exists, then we should be able to get the
       # vector as a numpy array
       import numpy as np
@@ -1042,7 +1117,6 @@ class TestByteLayout(unittest.TestCase):
 
   def test_create_numpy_vector_uint16(self):
     try:
-      imp.find_module('numpy')
       # if numpy exists, then we should be able to get the
       # vector as a numpy array
       import numpy as np
@@ -1096,7 +1170,6 @@ class TestByteLayout(unittest.TestCase):
 
   def test_create_numpy_vector_int64(self):
     try:
-      imp.find_module('numpy')
       # if numpy exists, then we should be able to get the
       # vector as a numpy array
       import numpy as np
@@ -1183,7 +1256,6 @@ class TestByteLayout(unittest.TestCase):
 
   def test_create_numpy_vector_float32(self):
     try:
-      imp.find_module('numpy')
       # if numpy exists, then we should be able to get the
       # vector as a numpy array
       import numpy as np
@@ -1246,7 +1318,6 @@ class TestByteLayout(unittest.TestCase):
 
   def test_create_numpy_vector_float64(self):
     try:
-      imp.find_module('numpy')
       # if numpy exists, then we should be able to get the
       # vector as a numpy array
       import numpy as np
@@ -1333,14 +1404,13 @@ class TestByteLayout(unittest.TestCase):
 
   def test_create_numpy_vector_bool(self):
     try:
-      imp.find_module('numpy')
       # if numpy exists, then we should be able to get the
       # vector as a numpy array
       import numpy as np
 
       # Systems endian:
       b = flatbuffers.Builder(0)
-      x = np.array([True, False, True], dtype=np.bool)
+      x = np.array([True, False, True], dtype=bool)
       b.CreateNumpyVector(x)
       self.assertBuilderEquals(
           b,
@@ -1380,7 +1450,6 @@ class TestByteLayout(unittest.TestCase):
 
   def test_create_numpy_vector_reject_strings(self):
     try:
-      imp.find_module('numpy')
       # if numpy exists, then we should be able to get the
       # vector as a numpy array
       import numpy as np
@@ -1398,7 +1467,6 @@ class TestByteLayout(unittest.TestCase):
 
   def test_create_numpy_vector_reject_object(self):
     try:
-      imp.find_module('numpy')
       # if numpy exists, then we should be able to get the
       # vector as a numpy array
       import numpy as np
@@ -1949,10 +2017,10 @@ class TestByteLayout(unittest.TestCase):
         ])
 
 
-def make_monster_from_generated_code(sizePrefix=False, file_identifier=None):
+def make_monster_from_generated_code(b=None, sizePrefix=False, file_identifier=None):
   """ Use generated code to build the example Monster. """
-
-  b = flatbuffers.Builder(0)
+  if b is None:
+    b = flatbuffers.Builder(0)
   string = b.CreateString('MyMonster')
   test1 = b.CreateString('test1')
   test2 = b.CreateString('test2')
@@ -2265,9 +2333,10 @@ class TestAllCodePathsOfExampleSchema(unittest.TestCase):
     self.assertEqual(2, mon2.Testnestedflatbuffer(1))
     self.assertEqual(4, mon2.Testnestedflatbuffer(2))
     try:
-      imp.find_module('numpy')
       # if numpy exists, then we should be able to get the
       # vector as a numpy array
+      import numpy as np
+
       self.assertEqual([0, 2, 4], mon2.TestnestedflatbufferAsNumpy().tolist())
     except ImportError:
       assertRaises(self, lambda: mon2.TestnestedflatbufferAsNumpy(),
@@ -2552,6 +2621,13 @@ class TestExceptions(unittest.TestCase):
     assertRaises(self, lambda: b.PrependUOffsetTRelative(1),
                  flatbuffers.builder.OffsetArithmeticError)
 
+  def test_create_shared_string_is_nested_error(self):
+    b = flatbuffers.Builder(0)
+    b.StartObject(0)
+    s = 'test1'
+    assertRaises(self, lambda: b.CreateSharedString(s),
+                 flatbuffers.builder.IsNestedError)
+
   def test_create_string_is_nested_error(self):
     b = flatbuffers.Builder(0)
     b.StartObject(0)
@@ -2611,23 +2687,122 @@ class TestFixedLengthArrays(unittest.TestCase):
     self.assertEqual(table.A().B(), \
         [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14])
     self.assertEqual(table.A().C(), 1)
-    self.assertEqual(table.A().D(nested, 0).A(), [1, 2])
-    self.assertEqual(table.A().D(nested, 1).A(), [3, 4])
-    self.assertEqual(table.A().D(nested, 0).B(), \
+    self.assertEqual(table.A().D(0).A(), [1, 2])
+    self.assertEqual(table.A().D(1).A(), [3, 4])
+    self.assertEqual(table.A().D(0).B(), \
         MyGame.Example.TestEnum.TestEnum.B)
-    self.assertEqual(table.A().D(nested, 1).B(), \
+    self.assertEqual(table.A().D(1).B(), \
         MyGame.Example.TestEnum.TestEnum.C)
-    self.assertEqual(table.A().D(nested, 0).C(), \
+    self.assertEqual(table.A().D(0).C(), \
         [MyGame.Example.TestEnum.TestEnum.A, \
          MyGame.Example.TestEnum.TestEnum.B])
-    self.assertEqual(table.A().D(nested, 1).C(), \
+    self.assertEqual(table.A().D(1).C(), \
         [MyGame.Example.TestEnum.TestEnum.C, \
          MyGame.Example.TestEnum.TestEnum.B])
-    self.assertEqual(table.A().D(nested, 0).D(), [-1, 1])
-    self.assertEqual(table.A().D(nested, 1).D(), [-2, 2])
+    self.assertEqual(table.A().D(0).D(), [-1, 1])
+    self.assertEqual(table.A().D(1).D(), [-2, 2])
     self.assertEqual(table.A().E(), 2)
     self.assertEqual(table.A().F(), [-1, 1])
+    self.assertEqual(table.A().D(0).D(0), -1)
+    self.assertEqual(table.A().D(0).D(1), 1)
+    self.assertEqual(table.A().D(1).D(0), -2)
+    self.assertEqual(table.A().D(1).D(1), 2)
 
+class TestNestedUnionTables(unittest.TestCase):
+
+  def test_nested_union_tables(self):
+    nestUnion = MyGame.Example.NestedUnion.NestedUnionTest.NestedUnionTestT()
+    nestUnion.name = b"testUnion1"
+    nestUnion.id = 1
+    nestUnion.data = MyGame.Example.NestedUnion.Vec3.Vec3T()
+    nestUnion.dataType = MyGame.Example.NestedUnion.Any.Any.Vec3
+    nestUnion.data.x = 4.278975356
+    nestUnion.data.y = 5.32
+    nestUnion.data.z = -6.464
+    nestUnion.data.test1 = 0.9
+    nestUnion.data.test2 = MyGame.Example.NestedUnion.Color.Color.Red
+    nestUnion.data.test3 = MyGame.Example.NestedUnion.Test.TestT()
+    nestUnion.data.test3.a = 5
+    nestUnion.data.test3.b = 2
+
+    b = flatbuffers.Builder(0)
+    b.Finish(nestUnion.Pack(b))
+
+    nestUnionDecode = MyGame.Example.NestedUnion.NestedUnionTest.NestedUnionTest.GetRootAs(b.Bytes, b.Head())
+    nestUnionDecodeT = MyGame.Example.NestedUnion.NestedUnionTest.NestedUnionTestT.InitFromObj(nestUnionDecode)
+    self.assertEqual(nestUnionDecodeT.name, nestUnion.name)
+    self.assertEqual(nestUnionDecodeT.id, nestUnion.id)
+    self.assertEqual(nestUnionDecodeT.dataType, nestUnion.dataType)
+    self.assertEqual(nestUnionDecodeT.data.x, nestUnion.data.x)
+    self.assertEqual(nestUnionDecodeT.data.y, nestUnion.data.y)
+    self.assertEqual(nestUnionDecodeT.data.z, nestUnion.data.z)
+    self.assertEqual(nestUnionDecodeT.data.test1, nestUnion.data.test1)
+    self.assertEqual(nestUnionDecodeT.data.test2, nestUnion.data.test2)
+    self.assertEqual(nestUnionDecodeT.data.test3.a, nestUnion.data.test3.a)
+    self.assertEqual(nestUnionDecodeT.data.test3.b, nestUnion.data.test3.b)
+
+    nestUnionDecodeTFromBuf = MyGame.Example.NestedUnion.NestedUnionTest.NestedUnionTestT.InitFromPackedBuf(b.Bytes, b.Head())
+    self.assertEqual(nestUnionDecodeTFromBuf.name, nestUnion.name)
+    self.assertEqual(nestUnionDecodeTFromBuf.id, nestUnion.id)
+    self.assertEqual(nestUnionDecodeTFromBuf.dataType, nestUnion.dataType)
+    self.assertEqual(nestUnionDecodeTFromBuf.data.x, nestUnion.data.x)
+    self.assertEqual(nestUnionDecodeTFromBuf.data.y, nestUnion.data.y)
+    self.assertEqual(nestUnionDecodeTFromBuf.data.z, nestUnion.data.z)
+    self.assertEqual(nestUnionDecodeTFromBuf.data.test1, nestUnion.data.test1)
+    self.assertEqual(nestUnionDecodeTFromBuf.data.test2, nestUnion.data.test2)
+    self.assertEqual(nestUnionDecodeTFromBuf.data.test3.a, nestUnion.data.test3.a)
+    self.assertEqual(nestUnionDecodeTFromBuf.data.test3.b, nestUnion.data.test3.b)
+
+
+    nestUnionDecodeTFromBuf2 = MyGame.Example.NestedUnion.NestedUnionTest.NestedUnionTestT.InitFromPackedBuf(b.Output())
+    self.assertEqual(nestUnionDecodeTFromBuf2.name, nestUnion.name)
+    self.assertEqual(nestUnionDecodeTFromBuf2.id, nestUnion.id)
+    self.assertEqual(nestUnionDecodeTFromBuf2.dataType, nestUnion.dataType)
+    self.assertEqual(nestUnionDecodeTFromBuf2.data.x, nestUnion.data.x)
+    self.assertEqual(nestUnionDecodeTFromBuf2.data.y, nestUnion.data.y)
+    self.assertEqual(nestUnionDecodeTFromBuf2.data.z, nestUnion.data.z)
+    self.assertEqual(nestUnionDecodeTFromBuf2.data.test1, nestUnion.data.test1)
+    self.assertEqual(nestUnionDecodeTFromBuf2.data.test2, nestUnion.data.test2)
+    self.assertEqual(nestUnionDecodeTFromBuf2.data.test3.a, nestUnion.data.test3.a)
+    self.assertEqual(nestUnionDecodeTFromBuf2.data.test3.b, nestUnion.data.test3.b)
+
+
+class TestBuilderClear(unittest.TestCase):
+
+  def test_consistency(self):
+    """ Checks if clear resets the state of the builder. """
+    b = flatbuffers.Builder(0)
+
+    # Add some data to the buffer
+    off1 = b.CreateString('a' * 1024)
+    want = b.Bytes[b.Head():]
+
+    # Reset the builder
+    b.Clear()
+
+    # Readd the same data into the buffer
+    off2 = b.CreateString('a' * 1024)
+    got = b.Bytes[b.Head():]
+
+    # Expect to get the same data into the buffer at the same offset
+    self.assertEqual(off1, off2)
+    self.assertEqual(want, got)
+
+  def test_repeated_clear_after_builder_reuse(self):
+    init_buf = None
+    init_off = None
+    b = flatbuffers.Builder(0)
+
+    for i in range(5):
+      buf, off = make_monster_from_generated_code(b)
+      b.Clear()
+
+      if i > 0:
+        self.assertEqual(init_buf, buf)
+        self.assertEqual(init_off, off)
+      else:
+        init_buf = buf
+        init_off = off
 
 def CheckAgainstGoldDataGo():
   try:
@@ -2774,6 +2949,18 @@ def BenchmarkMakeMonsterFromGeneratedCode(count, length):
          (count, length, duration, rate, data_rate)))
 
 
+def BenchmarkBuilderClear(count, length):
+  b = flatbuffers.Builder(length)
+  duration = timeit.timeit(stmt=lambda: make_monster_from_generated_code(b),
+                           number=count)
+  rate = float(count) / duration
+  data = float(length * count) / float(1024 * 1024)
+  data_rate = data / float(duration)
+
+  print(('built %d %d-byte flatbuffers (reused buffer) in %.2fsec:'
+         ' %.2f/sec, %.2fMB/sec' % (count, length, duration, rate, data_rate)))
+
+
 def backward_compatible_run_tests(**kwargs):
   if PY_VERSION < (2, 6):
     sys.stderr.write('Python version less than 2.6 are not supported')
@@ -2802,10 +2989,10 @@ def backward_compatible_run_tests(**kwargs):
 def main():
   import os
   import sys
-  if not len(sys.argv) == 5:
+  if not len(sys.argv) == 6:
     sys.stderr.write('Usage: %s <benchmark vtable count> '
                      '<benchmark read count> <benchmark build count> '
-                     '<is_onefile>\n' % sys.argv[0])
+                     '<benchmark clear builder> <is_onefile>\n' % sys.argv[0])
     sys.stderr.write('       Provide COMPARE_GENERATED_TO_GO=1   to check'
                      'for bytewise comparison to Go data.\n')
     sys.stderr.write('       Provide COMPARE_GENERATED_TO_JAVA=1 to check'
@@ -2813,9 +3000,9 @@ def main():
     sys.stderr.flush()
     sys.exit(1)
 
-  kwargs = dict(argv=sys.argv[:-4])
+  kwargs = dict(argv=sys.argv[:-5])
 
-  create_namespace_shortcut(sys.argv[4].lower() == 'true')
+  create_namespace_shortcut(sys.argv[5].lower() == 'true')
 
   # show whether numpy is present, as it changes the test logic:
   try:
@@ -2840,6 +3027,7 @@ def main():
   bench_vtable = int(sys.argv[1])
   bench_traverse = int(sys.argv[2])
   bench_build = int(sys.argv[3])
+  bench_clear = int(sys.argv[4])
   if bench_vtable:
     BenchmarkVtableDeduplication(bench_vtable)
   if bench_traverse:
@@ -2848,7 +3036,9 @@ def main():
   if bench_build:
     buf, off = make_monster_from_generated_code()
     BenchmarkMakeMonsterFromGeneratedCode(bench_build, len(buf))
-
+  if bench_clear:
+    buf, off = make_monster_from_generated_code()
+    BenchmarkBuilderClear(bench_build, len(buf))
 
 if __name__ == '__main__':
   main()

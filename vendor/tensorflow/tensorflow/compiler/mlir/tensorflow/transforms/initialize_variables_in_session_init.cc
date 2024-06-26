@@ -22,6 +22,7 @@ limitations under the License.
 #include "mlir/IR/BuiltinOps.h"  // from @llvm-project
 #include "mlir/IR/SymbolTable.h"  // from @llvm-project
 #include "mlir/Pass/Pass.h"  // from @llvm-project
+#include "mlir/Support/LLVM.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_ops_a_m.h"
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_ops_n_z.h"
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_saved_model.h"
@@ -54,9 +55,6 @@ void InitializeVariable(TF::VarHandleOp var_handle_op,
                                   const_op.getResult()});
 }
 
-constexpr char kTfSavedModelExportedNameAttr[] =
-    "tf_saved_model.exported_names";
-
 func::FuncOp CreateSessionInitFunc(ModuleOp module) {
   constexpr char kSessionInitFuncName[] = "SessionInitializerFunction";
 
@@ -65,8 +63,10 @@ func::FuncOp CreateSessionInitFunc(ModuleOp module) {
       FunctionType::get(module.getContext(), /*inputs=*/{}, /*results=*/{});
   auto func = builder.create<func::FuncOp>(module->getLoc(),
                                            kSessionInitFuncName, func_type);
-  func->setAttr(kTfSavedModelExportedNameAttr,
+  func->setAttr(kTfSavedModelExportedNamesAttr,
                 builder.getStrArrayAttr({kSessionInitFuncName}));
+  func->setAttr(kTfSavedModelInitializerTypeAttr,
+                builder.getStringAttr(kTfSavedModelInitializerRestoreType));
   func.setVisibility(mlir::func::FuncOp::Visibility::Public);
   auto func_builder = OpBuilder::atBlockBegin(func.addEntryBlock());
   func_builder.create<mlir::func::ReturnOp>(func.getLoc());
@@ -89,15 +89,22 @@ func::FuncOp GetOrCreateSessionInitFunc(ModuleOp module) {
   SessionInitializerOp session_init_op = GetSessionInitializerOp(module);
   if (!session_init_op) return CreateSessionInitFunc(module);
 
-  SymbolTable symbol_table(module);
-  if (!session_init_op.getInitializers().empty()) {
-    func::FuncOp init_func_op = symbol_table.lookup<mlir::func::FuncOp>(
-        session_init_op.getInitializers()[0]
-            .cast<FlatSymbolRefAttr>()
-            .getValue());
+  auto init_func_op = GetInitializerFunction(
+      module, /*initializer_type=*/kTfSavedModelInitializerRestoreType);
+  if (init_func_op) {
     return init_func_op;
+  } else if (!session_init_op.getInitializers().empty()) {
+    // When the init function with type "restore_op" is not found, fall back to
+    // taking the init function corresponding to the first symbol in the
+    // initializers list to be backwards-compatible, before
+    // tf_saved_model.initializer_type attribute was introduced.
+    SymbolTable symbol_table(module);
+    return symbol_table.lookup<func::FuncOp>(
+        mlir::cast<FlatSymbolRefAttr>(session_init_op.getInitializers()[0])
+            .getValue());
+  } else {
+    return CreateSessionInitFunc(module);
   }
-  return CreateSessionInitFunc(module);
 }
 
 }  // namespace
@@ -107,8 +114,8 @@ LogicalResult InitializeVariablesInSessionInitializer(
   const tensorflow::DeviceMgr* mgr = nullptr;
   auto status = session->LocalDeviceManager(&mgr);
   if (!status.ok()) {
-    module->emitError("failed to fetch device manager: " +
-                      status.error_message());
+    module->emitError(
+        absl::StrCat("failed to fetch device manager: ", status.message()));
     return failure();
   }
 

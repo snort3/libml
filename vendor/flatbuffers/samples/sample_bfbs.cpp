@@ -46,7 +46,8 @@ int main(int /*argc*/, const char * /*argv*/[]) {
 
   // inizialize parser by deserializing bfbs schema
   flatbuffers::Parser parser2;
-  ok = parser2.Deserialize((uint8_t *)bfbs_file.c_str(), bfbs_file.length());
+  ok = parser2.Deserialize(reinterpret_cast<const uint8_t *>(bfbs_file.c_str()),
+                           bfbs_file.length());
   assert(ok);
 
   // parse json in parser from fbs and bfbs
@@ -58,13 +59,13 @@ int main(int /*argc*/, const char * /*argv*/[]) {
   // to ensure it is correct, we now generate text back from the binary,
   // and compare the two:
   std::string jsongen1;
-  if (!GenerateText(parser1, parser1.builder_.GetBufferPointer(), &jsongen1)) {
+  if (GenText(parser1, parser1.builder_.GetBufferPointer(), &jsongen1)) {
     printf("Couldn't serialize parsed data to JSON!\n");
     return 1;
   }
 
   std::string jsongen2;
-  if (!GenerateText(parser2, parser2.builder_.GetBufferPointer(), &jsongen2)) {
+  if (GenText(parser2, parser2.builder_.GetBufferPointer(), &jsongen2)) {
     printf("Couldn't serialize parsed data to JSON!\n");
     return 1;
   }

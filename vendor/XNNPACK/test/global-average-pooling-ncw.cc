@@ -3,10 +3,58 @@
 // This source code is licensed under the BSD-style license found in the
 // LICENSE file in the root directory of this source tree.
 
-#include <gtest/gtest.h>
+#include <xnnpack.h>
+
+#include <cstddef>
 
 #include "global-average-pooling-operator-tester.h"
+#include <gtest/gtest.h>
 
+TEST(GLOBAL_AVERAGE_POOLING_NCW_F16, single_channel) {
+  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  GlobalAveragePoolingOperatorTester()
+    .width(27)
+    .channels(1)
+    .TestNCWxF16();
+}
+
+TEST(GLOBAL_AVERAGE_POOLING_NCW_F16, varying_channels) {
+  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  for (size_t channels = 2; channels <= 16; channels += 3) {
+    GlobalAveragePoolingOperatorTester()
+      .width(27)
+      .channels(channels)
+      .TestNCWxF16();
+  }
+}
+
+TEST(GLOBAL_AVERAGE_POOLING_NCW_F16, varying_width) {
+  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  for (size_t width = 25; width <= 31; width++) {
+    GlobalAveragePoolingOperatorTester()
+      .width(width)
+      .channels(19)
+      .TestNCWxF16();
+  }
+}
+
+TEST(GLOBAL_AVERAGE_POOLING_NCW_F16, qmin) {
+  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  GlobalAveragePoolingOperatorTester()
+    .width(27)
+    .channels(19)
+    .qmin(128)
+    .TestNCWxF16();
+}
+
+TEST(GLOBAL_AVERAGE_POOLING_NCW_F16, qmax) {
+  ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));
+  GlobalAveragePoolingOperatorTester()
+    .width(27)
+    .channels(19)
+    .qmax(128)
+    .TestNCWxF16();
+}
 
 TEST(GLOBAL_AVERAGE_POOLING_NCW_F32, single_channel) {
   ASSERT_EQ(xnn_status_success, xnn_initialize(nullptr /* allocator */));

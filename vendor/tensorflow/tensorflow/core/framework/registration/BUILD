@@ -6,6 +6,7 @@ load(
 load("//tensorflow:tensorflow.default.bzl", "tf_selective_registration_deps")
 
 package(
+    # copybara:uncomment default_applicable_licenses = ["//tensorflow:license"],
     default_visibility = [
         "//tensorflow/core:__subpackages__",
     ],
@@ -48,5 +49,6 @@ tf_cc_test(
         "//tensorflow/core:test",
         "//tensorflow/core:test_main",
         "//tensorflow/core:testlib",
+        "@com_google_googletest//:gtest_main",
     ],
 )

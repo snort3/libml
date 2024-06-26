@@ -5,6 +5,7 @@
 
 #include <assert.h>
 #include <stdint.h>  // For size_t.
+#include <string.h>
 
 #include <xnnpack.h>
 #include <xnnpack/log.h>
@@ -13,30 +14,10 @@
 #include <xnnpack/subgraph.h>
 #include <xnnpack/subgraph-validation.h>
 
-static size_t calculate_batch_size(const struct xnn_value* input, size_t axis)
-{
-  size_t batch_size = 1;
-  for (size_t i = 0; i < axis; i++) {
-    batch_size *= input->shape.dim[i];
-  }
-  return batch_size;
-}
-
-static size_t calculate_input_stride(const struct xnn_value* input, size_t axis)
-{
-  size_t input_stride = 1;
-  for (size_t i = axis; i < input->shape.num_dims; i++) {
-    input_stride *= input->shape.dim[i];
-  }
-  return input_stride;
-}
 
 static enum xnn_status create_even_split_operator_helper(
     const uint32_t output_id,
     const struct xnn_node* node,
-    size_t channels,
-    size_t input_stride,
-    size_t output_stride,
     struct xnn_operator_data* opdata,
     size_t index)
 {
@@ -46,31 +27,53 @@ static enum xnn_status create_even_split_operator_helper(
   }
 
   switch (node->compute_type) {
-    #ifndef XNN_NO_F16_OPERATORS
-      case xnn_compute_type_fp16: {
-        return xnn_create_copy_nc_x16(
-            channels, input_stride, output_stride, node->flags, &opdata->operator_objects[index]);
-      }
-    #endif  // !defined(XNN_NO_F16_OPERATORS)
-    case xnn_compute_type_fp32: {
+    case xnn_compute_type_fp16:
+      return xnn_create_copy_nc_x16(
+          node->flags, &opdata->operator_objects[index]);
+    case xnn_compute_type_fp32:
       return xnn_create_copy_nc_x32(
-          channels, input_stride, output_stride, node->flags, &opdata->operator_objects[index]);
-    }
-    #ifndef XNN_NO_QS8_OPERATORS
-      case xnn_compute_type_qs8:
-    #endif  // !defined(XNN_NO_QS8_OPERATORS)
-    #ifndef XNN_NO_QU8_OPERATORS
-      case xnn_compute_type_qu8:
-    #endif  // !defined(XNN_NO_QU8_OPERATORS)
-    #if !defined(XNN_NO_QS8_OPERATORS) || !defined(XNN_NO_QU8_OPERATORS)
-      {
-        return xnn_create_copy_nc_x8(
-            channels, input_stride, output_stride, node->flags, &opdata->operator_objects[index]);
-      }
-    #endif  // !defined(XNN_NO_QS8_OPERATORS) || !defined(XNN_NO_QU8_OPERATORS)
+          node->flags, &opdata->operator_objects[index]);
+    case xnn_compute_type_qs8:
+    case xnn_compute_type_qu8:
+      return xnn_create_copy_nc_x8(
+          node->flags, &opdata->operator_objects[index]);
     default:
       XNN_UNREACHABLE;
   }
+}
+
+static enum xnn_status create_even_split_n_operator(
+  const struct xnn_node* node,
+  const struct xnn_value* values,
+  size_t num_values,
+  struct xnn_operator_data* opdata,
+  struct xnn_code_cache* code_cache,
+  size_t num_splits,
+  xnn_weights_cache_t weights_cache)
+{
+  assert(node->num_inputs == 1);
+  assert(node->num_outputs == num_splits);
+  uint32_t output_id[XNN_MAX_OPERATOR_OBJECTS];
+  for (size_t i = 0; i < num_splits; ++i) {
+    output_id[i] = opdata->outputs[i];
+    assert(output_id[i] != XNN_INVALID_VALUE_ID);
+    assert(output_id[i] < num_values);
+    if (values[output_id[i]].type == xnn_value_type_invalid) {
+      output_id[i] = XNN_INVALID_VALUE_ID;
+    }
+  }
+
+  const int32_t axis = node->params.even_split.axis;
+  opdata->axis = axis;
+  enum xnn_status status;
+  for (size_t i = 0; i < num_splits; ++i) {
+    status = create_even_split_operator_helper(output_id[i], node, opdata, i);
+    if (status != xnn_status_success) {
+      return status;
+    }
+  }
+
+  return status;
 }
 
 static enum xnn_status create_even_split2_operator(
@@ -78,50 +81,10 @@ static enum xnn_status create_even_split2_operator(
   const struct xnn_value* values,
   size_t num_values,
   struct xnn_operator_data* opdata,
-  const struct xnn_caches* caches)
+  struct xnn_code_cache* code_cache,
+  xnn_weights_cache_t weights_cache)
 {
-  assert(node->num_inputs == 1);
-  const uint32_t input_id = node->inputs[0];
-  assert(input_id != XNN_INVALID_VALUE_ID);
-  assert(input_id < num_values);
-
-  assert(node->num_outputs == 2);
-  uint32_t output1_id = node->outputs[0];
-  assert(output1_id != XNN_INVALID_VALUE_ID);
-  assert(output1_id < num_values);
-  if (values[output1_id].type == xnn_value_type_invalid) {
-    output1_id = XNN_INVALID_VALUE_ID;
-  }
-  uint32_t output2_id = node->outputs[1];
-  assert(output2_id != XNN_INVALID_VALUE_ID);
-  assert(output2_id < num_values);
-  if (values[output2_id].type == xnn_value_type_invalid) {
-    output2_id = XNN_INVALID_VALUE_ID;
-  }
-
-  const size_t axis = node->params.even_split.axis;
-  const size_t batch_size = calculate_batch_size(&values[input_id], axis);
-  const size_t input_stride = calculate_input_stride(&values[input_id], axis);
-  assert(input_stride % 2 == 0);
-  const size_t channels = input_stride / 2;
-  const size_t output_stride = channels;
-
-  enum xnn_status status;
-  status = create_even_split_operator_helper(output1_id, node, channels, input_stride, output_stride, opdata, 0);
-  if (status != xnn_status_success) {
-    return status;
-  }
-  status = create_even_split_operator_helper(output2_id, node, channels, input_stride, output_stride, opdata, 1);
-  if (status != xnn_status_success) {
-    return status;
-  }
-
-  opdata->inputs[0] = input_id;
-  opdata->outputs[0] = output1_id;
-  opdata->outputs[1] = output2_id;
-  opdata->batch_size = batch_size;
-
-  return status;
+  return create_even_split_n_operator(node, values, num_values, opdata, code_cache, /*num_splits=*/2, weights_cache);
 }
 
 static enum xnn_status create_even_split3_operator(
@@ -129,55 +92,10 @@ static enum xnn_status create_even_split3_operator(
   const struct xnn_value* values,
   size_t num_values,
   struct xnn_operator_data* opdata,
-  const struct xnn_caches* caches)
+  struct xnn_code_cache* code_cache,
+  xnn_weights_cache_t weights_cache)
 {
-  assert(node->num_inputs == 1);
-  const uint32_t input_id = node->inputs[0];
-  assert(input_id != XNN_INVALID_VALUE_ID);
-  assert(input_id < num_values);
-
-  assert(node->num_outputs == 3);
-  uint32_t output1_id = node->outputs[0];
-  if (values[output1_id].type == xnn_value_type_invalid) {
-    output1_id = XNN_INVALID_VALUE_ID;
-  }
-  uint32_t output2_id = node->outputs[1];
-  if (values[output2_id].type == xnn_value_type_invalid) {
-    output2_id = XNN_INVALID_VALUE_ID;
-  }
-  uint32_t output3_id = node->outputs[2];
-  if (values[output3_id].type == xnn_value_type_invalid) {
-    output3_id = XNN_INVALID_VALUE_ID;
-  }
-
-  const size_t axis = node->params.even_split.axis;
-  const size_t batch_size = calculate_batch_size(&values[input_id], axis);
-  const size_t input_stride = calculate_input_stride(&values[input_id], axis);
-  assert(input_stride % 3 == 0);
-  const size_t channels = input_stride / 3;
-  const size_t output_stride = channels;
-
-  enum xnn_status status;
-  status = create_even_split_operator_helper(output1_id, node, channels, input_stride, output_stride, opdata, 0);
-  if (status != xnn_status_success) {
-    return status;
-  }
-  status = create_even_split_operator_helper(output2_id, node, channels, input_stride, output_stride, opdata, 1);
-  if (status != xnn_status_success) {
-    return status;
-  }
-  status = create_even_split_operator_helper(output3_id, node, channels, input_stride, output_stride, opdata, 2);
-  if (status != xnn_status_success) {
-    return status;
-  }
-
-  opdata->inputs[0] = input_id;
-  opdata->outputs[0] = output1_id;
-  opdata->outputs[1] = output2_id;
-  opdata->outputs[2] = output3_id;
-  opdata->batch_size = batch_size;
-
-  return status;
+  return create_even_split_n_operator(node, values, num_values, opdata, code_cache, /*num_splits=*/3, weights_cache);
 }
 
 static enum xnn_status create_even_split4_operator(
@@ -185,216 +103,238 @@ static enum xnn_status create_even_split4_operator(
   const struct xnn_value* values,
   size_t num_values,
   struct xnn_operator_data* opdata,
-  const struct xnn_caches* caches)
+  struct xnn_code_cache* code_cache,
+  xnn_weights_cache_t weights_cache)
 {
-  assert(node->num_inputs == 1);
-  const uint32_t input_id = node->inputs[0];
-  assert(input_id != XNN_INVALID_VALUE_ID);
-  assert(input_id < num_values);
-
-  assert(node->num_outputs == 4);
-  uint32_t output1_id = node->outputs[0];
-  if (values[output1_id].type == xnn_value_type_invalid) {
-    output1_id = XNN_INVALID_VALUE_ID;
-  }
-  uint32_t output2_id = node->outputs[1];
-  if (values[output2_id].type == xnn_value_type_invalid) {
-    output2_id = XNN_INVALID_VALUE_ID;
-  }
-  uint32_t output3_id = node->outputs[2];
-  if (values[output3_id].type == xnn_value_type_invalid) {
-    output3_id = XNN_INVALID_VALUE_ID;
-  }
-  uint32_t output4_id = node->outputs[3];
-  if (values[output4_id].type == xnn_value_type_invalid) {
-    output4_id = XNN_INVALID_VALUE_ID;
-  }
-
-  const size_t axis = node->params.even_split.axis;
-  const size_t batch_size = calculate_batch_size(&values[input_id], axis);
-  const size_t input_stride = calculate_input_stride(&values[input_id], axis);
-  assert(input_stride % 4 == 0);
-  const size_t channels = input_stride / 4;
-  const size_t output_stride = channels;
-
-  enum xnn_status status;
-  status = create_even_split_operator_helper(output1_id, node, channels, input_stride, output_stride, opdata, 0);
-  if (status != xnn_status_success) {
-    return status;
-  }
-  status = create_even_split_operator_helper(output2_id, node, channels, input_stride, output_stride, opdata, 1);
-  if (status != xnn_status_success) {
-    return status;
-  }
-  status = create_even_split_operator_helper(output3_id, node, channels, input_stride, output_stride, opdata, 2);
-  if (status != xnn_status_success) {
-    return status;
-  }
-  status = create_even_split_operator_helper(output4_id, node, channels, input_stride, output_stride, opdata, 3);
-  if (status != xnn_status_success) {
-    return status;
-  }
-
-  opdata->inputs[0] = input_id;
-  opdata->outputs[0] = output1_id;
-  opdata->outputs[1] = output2_id;
-  opdata->outputs[2] = output3_id;
-  opdata->outputs[3] = output4_id;
-  opdata->batch_size = batch_size;
-
-  return status;
+  return create_even_split_n_operator(node, values, num_values, opdata, code_cache, /*num_splits=*/4, weights_cache);
 }
 
-static enum xnn_status setup_even_split_operator_helper(
-  const struct xnn_blob* blobs,
-  const uint32_t num_blobs,
-  const struct xnn_operator_data* opdata,
+static enum xnn_status reshape_even_split_operator_helper(
+  const struct xnn_value* values,
+  const uint32_t num_values,
+  struct xnn_operator_data* opdata,
   size_t index,
-  const size_t channels,
-  const void* input_data,
+  size_t num_splits,
+  int32_t axis,
   pthreadpool_t threadpool)
 {
+  const uint32_t input_id = opdata->inputs[0];
+  assert(input_id != XNN_INVALID_VALUE_ID);
+  assert(input_id < num_values);
   const uint32_t output_id = opdata->outputs[index];
-  if (output_id == XNN_INVALID_VALUE_ID) {
+  assert(output_id != XNN_INVALID_VALUE_ID);
+  assert(output_id < num_values);
+  if (values[output_id].allocation_type == xnn_allocation_type_invalid) {
     assert(opdata->operator_objects[index] == NULL);
     // output_id was removed during optimization.
     return xnn_status_success;
   }
+  const size_t input_stride = xnn_shape_multiply_trailing_dims(&values[input_id].shape, axis);
+  assert(input_stride % num_splits == 0);
+  const size_t channels = input_stride / num_splits;
+  const size_t output_stride = channels;
 
-  assert(output_id < num_blobs);
-  const struct xnn_blob* output_blob = blobs + output_id;
-  void* output_data = output_blob->data;
-  assert(output_data != NULL);
-
-  switch (opdata->operator_objects[0]->type) {
-    #ifndef XNN_NO_F16_OPERATORS
-      case xnn_operator_type_copy_nc_x16: {
-        return xnn_setup_copy_nc_x16(
-          opdata->operator_objects[index], opdata->batch_size, (const uint16_t*) input_data + index * channels,
-          output_data, threadpool);
-      }
-    #endif  // !defined(XNN_NO_F16_OPERATORS)
-    case xnn_operator_type_copy_nc_x32: {
-      return xnn_setup_copy_nc_x32(
-        opdata->operator_objects[index], opdata->batch_size, (const uint32_t*) input_data + index * channels,
-        output_data, threadpool);
-    }
-    #if !defined(XNN_NO_QS8_OPERATORS) || !defined(XNN_NO_QU8_OPERATORS)
-      case xnn_operator_type_copy_nc_x8: {
-        return xnn_setup_copy_nc_x8(
-          opdata->operator_objects[index], opdata->batch_size, (const uint8_t*) input_data + index * channels,
-          output_data, threadpool);
-      }
-    #endif  // !defined(XNN_NO_QS8_OPERATORS) || !defined(XNN_NO_QU8_OPERATORS)
+  switch (opdata->operator_objects[index]->type) {
+    case xnn_operator_type_copy_nc_x16:
+      return xnn_reshape_copy_nc_x16(
+        opdata->operator_objects[index], opdata->batch_size, channels, input_stride, output_stride, threadpool);
+    case xnn_operator_type_copy_nc_x32:
+      return xnn_reshape_copy_nc_x32(
+        opdata->operator_objects[index], opdata->batch_size, channels, input_stride, output_stride, threadpool);
+    case xnn_operator_type_copy_nc_x8:
+      return xnn_reshape_copy_nc_x8(
+        opdata->operator_objects[index], opdata->batch_size, channels, input_stride, output_stride, threadpool);
     default:
       XNN_UNREACHABLE;
   }
 }
 
-static enum xnn_status setup_even_split2_operator(
+static enum xnn_status reshape_even_split_n_operator(
+  struct xnn_operator_data* opdata,
+  struct xnn_value* values,
+  size_t num_values,
+  size_t num_splits,
+  pthreadpool_t threadpool)
+{
+  enum xnn_status status = xnn_status_success;
+
+  assert(opdata->num_inputs == 1);
+  const uint32_t input_id = opdata->inputs[0];
+  assert(input_id != XNN_INVALID_VALUE_ID);
+  assert(input_id < num_values);
+  const struct xnn_value* input_value = values + input_id;
+
+  int32_t axis = opdata->axis;
+  if (axis < 0) {
+    axis += input_value->shape.num_dims;
+  }
+  // Check that the split dimension can be evenly split into outputs.
+  if (axis >= input_value->shape.num_dims) {
+    xnn_log_error(
+      "failed to reshape Even Split operator with the input ID #%" PRIu32
+      ": split dimension (%d) exceeds the number of dimensions (%zu)",
+      input_id, axis, input_value->shape.num_dims);
+    return xnn_status_invalid_parameter;
+  }
+  opdata->batch_size = xnn_shape_multiply_leading_dims(&input_value->shape, axis);
+
+  const size_t axis_elements = input_value->shape.dim[axis] / num_splits;
+  const size_t old_workspace_size = opdata->workspace_size;
+  bool reallocation_required = false;
+  for (size_t i = 0; i < num_splits; ++i) {
+    status = reshape_even_split_operator_helper(values, num_values, opdata, i, num_splits, axis, threadpool);
+    if (status != xnn_status_success) {
+      return status;
+    }
+    const uint32_t output_n_id = opdata->outputs[i];
+    assert(output_n_id != XNN_INVALID_VALUE_ID);
+    assert(output_n_id < num_values);
+    struct xnn_value* output_n_value = values + output_n_id;
+    if (output_n_value->allocation_type == xnn_allocation_type_invalid) {
+      // output_id was removed during optimization.
+      continue;
+    }
+    memcpy(output_n_value->shape.dim, input_value->shape.dim, input_value->shape.num_dims * sizeof(size_t));
+    output_n_value->shape.num_dims = input_value->shape.num_dims;
+    output_n_value->shape.dim[axis] = axis_elements;
+    const size_t new_size = xnn_tensor_get_size(output_n_value);
+    if (new_size > output_n_value->size) {
+      output_n_value->size = new_size;
+      reallocation_required = true;
+    }
+  }
+  if (reallocation_required || opdata->workspace_size > old_workspace_size) {
+    return xnn_status_reallocation_required;
+  }
+  return status;
+}
+
+static enum xnn_status reshape_even_split2_operator(
+  struct xnn_operator_data* opdata,
+  struct xnn_value* values,
+  size_t num_values,
+  pthreadpool_t threadpool)
+{
+  return reshape_even_split_n_operator(opdata, values, num_values, /*num_splits=*/2, threadpool);
+}
+
+static enum xnn_status reshape_even_split3_operator(
+  struct xnn_operator_data* opdata,
+  struct xnn_value* values,
+  size_t num_values,
+  pthreadpool_t threadpool)
+{
+  return reshape_even_split_n_operator(opdata, values, num_values, /*num_splits=*/3, threadpool);
+}
+
+static enum xnn_status reshape_even_split4_operator(
+  struct xnn_operator_data* opdata,
+  struct xnn_value* values,
+  size_t num_values,
+  pthreadpool_t threadpool)
+{
+  return reshape_even_split_n_operator(opdata, values, num_values, /*num_splits=*/4, threadpool);
+}
+
+static enum xnn_status setup_even_split_operator_helper(
+  const struct xnn_value* values,
+  const uint32_t num_values,
   const struct xnn_operator_data* opdata,
-  const struct xnn_blob* blobs,
-  size_t num_blobs,
+  size_t index,
+  const void* input_data,
+  pthreadpool_t threadpool)
+{
+  const uint32_t output_id = opdata->outputs[index];
+  assert(output_id != XNN_INVALID_VALUE_ID);
+  assert(output_id < num_values);
+  if (values[output_id].allocation_type == xnn_allocation_type_invalid) {
+    assert(opdata->operator_objects[index] == NULL);
+    // output_id was removed during optimization.
+    return xnn_status_success;
+  }
+
+  const size_t channels = opdata->operator_objects[index]->channels;
+
+  assert(output_id < num_values);
+  const struct xnn_value* output_value = values + output_id;
+  void* output_data = output_value->data;
+  assert(output_data != NULL);
+
+  switch (opdata->operator_objects[index]->type) {
+    case xnn_operator_type_copy_nc_x16:
+      return xnn_setup_copy_nc_x16(
+        opdata->operator_objects[index], (const uint16_t*) input_data + index * channels,
+        output_data);
+    case xnn_operator_type_copy_nc_x32:
+      return xnn_setup_copy_nc_x32(
+        opdata->operator_objects[index], (const uint32_t*) input_data + index * channels,
+        output_data);
+    case xnn_operator_type_copy_nc_x8:
+      return xnn_setup_copy_nc_x8(
+        opdata->operator_objects[index], (const uint8_t*) input_data + index * channels,
+        output_data);
+    default:
+      XNN_UNREACHABLE;
+  }
+}
+
+static enum xnn_status setup_even_split_n_operator(
+  const struct xnn_operator_data* opdata,
+  const struct xnn_value* values,
+  size_t num_values,
+  size_t num_splits,
   pthreadpool_t threadpool)
 {
   const uint32_t input_id = opdata->inputs[0];
   assert(input_id != XNN_INVALID_VALUE_ID);
-  assert(input_id < num_blobs);
+  assert(input_id < num_values);
 
-  const struct xnn_blob* input_blob = blobs + input_id;
-  const void* input_data = input_blob->data;
+  const struct xnn_value* input_value = values + input_id;
+  const void* input_data = input_value->data;
   assert(input_data != NULL);
 
-  const size_t channels = opdata->operator_objects[0]->channels;
   enum xnn_status status = xnn_status_success;
 
-  status = setup_even_split_operator_helper(blobs, num_blobs, opdata, 0, channels, input_data, threadpool);
-  if (status != xnn_status_success) {
-    return status;
-  }
-  status = setup_even_split_operator_helper(blobs, num_blobs, opdata, 1, channels, input_data, threadpool);
-  if (status != xnn_status_success) {
-    return status;
+  for (size_t i = 0; i < num_splits; ++i) {
+    status = setup_even_split_operator_helper(values, num_values, opdata, i, input_data, threadpool);
+    if (status != xnn_status_success) {
+      return status;
+    }
   }
 
   return status;
+}
+
+static enum xnn_status setup_even_split2_operator(
+  const struct xnn_operator_data* opdata,
+  const struct xnn_value* values,
+  size_t num_values,
+  pthreadpool_t threadpool)
+{
+  return setup_even_split_n_operator(opdata, values, num_values, /*num_splits=*/2, threadpool);;
 }
 
 static enum xnn_status setup_even_split3_operator(
   const struct xnn_operator_data* opdata,
-  const struct xnn_blob* blobs,
-  size_t num_blobs,
-  pthreadpool_t
-  threadpool)
+  const struct xnn_value* values,
+  size_t num_values,
+  pthreadpool_t threadpool)
 {
-  const uint32_t input_id = opdata->inputs[0];
-  assert(input_id != XNN_INVALID_VALUE_ID);
-  assert(input_id < num_blobs);
-
-  const struct xnn_blob* input_blob = blobs + input_id;
-  const void* input_data = input_blob->data;
-  assert(input_data != NULL);
-
-  const size_t channels = opdata->operator_objects[0]->channels;
-  enum xnn_status status = xnn_status_success;
-
-  status = setup_even_split_operator_helper(blobs, num_blobs, opdata, 0, channels, input_data, threadpool);
-  if (status != xnn_status_success) {
-    return status;
-  }
-  status = setup_even_split_operator_helper(blobs, num_blobs, opdata, 1, channels, input_data, threadpool);
-  if (status != xnn_status_success) {
-    return status;
-  }
-  status = setup_even_split_operator_helper(blobs, num_blobs, opdata, 2, channels, input_data, threadpool);
-  if (status != xnn_status_success) {
-    return status;
-  }
-
-  return status;
+  return setup_even_split_n_operator(opdata, values, num_values, /*num_splits=*/3, threadpool);;
 }
 
 static enum xnn_status setup_even_split4_operator(
   const struct xnn_operator_data* opdata,
-  const struct xnn_blob* blobs,
-  size_t num_blobs,
-  pthreadpool_t
-  threadpool)
+  const struct xnn_value* values,
+  size_t num_values,
+  pthreadpool_t threadpool)
 {
-  const uint32_t input_id = opdata->inputs[0];
-  assert(input_id != XNN_INVALID_VALUE_ID);
-  assert(input_id < num_blobs);
-
-  const struct xnn_blob* input_blob = blobs + input_id;
-  const void* input_data = input_blob->data;
-  assert(input_data != NULL);
-
-  const size_t channels = opdata->operator_objects[0]->channels;
-  enum xnn_status status = xnn_status_success;
-
-  status = setup_even_split_operator_helper(blobs, num_blobs, opdata, 0, channels, input_data, threadpool);
-  if (status != xnn_status_success) {
-    return status;
-  }
-  status = setup_even_split_operator_helper(blobs, num_blobs, opdata, 1, channels, input_data, threadpool);
-  if (status != xnn_status_success) {
-    return status;
-  }
-  status = setup_even_split_operator_helper(blobs, num_blobs, opdata, 2, channels, input_data, threadpool);
-  if (status != xnn_status_success) {
-    return status;
-  }
-  status = setup_even_split_operator_helper(blobs, num_blobs, opdata, 3, channels, input_data, threadpool);
-  if (status != xnn_status_success) {
-    return status;
-  }
-
-  return status;
+  return setup_even_split_n_operator(opdata, values, num_values, /*num_splits=*/4, threadpool);;
 }
 
 enum xnn_status check_output_value(
   xnn_subgraph_t subgraph,
-  size_t split_dim,
+  int32_t split_dim,
   uint32_t input_id,
   uint32_t output_id,
   const char* nth,
@@ -414,26 +354,6 @@ enum xnn_status check_output_value(
     return status;
   }
 
-  if (input_value->shape.num_dims != output_value->shape.num_dims) {
-    xnn_log_error(
-      "failed to define %s operator with %s output ID #%" PRIu32
-      ": mismatch number of dimensions, input has %zu, %s output has %zu",
-      xnn_node_type_to_string(node_type), nth, output_id, input_value->shape.num_dims,
-      nth, output_value->shape.num_dims);
-    return xnn_status_invalid_parameter;
-  }
-
-  for (size_t i = 0; i < input_value->shape.num_dims; i++) {
-    if (i != split_dim && input_value->shape.dim[i] != output_value->shape.dim[i]) {
-      xnn_log_error(
-        "failed to define %s operator with %s output ID #%" PRIu32
-        ": mismatch dimension %zu, %s output has %zu, input has %zu",
-        xnn_node_type_to_string(node_type), nth, output_id, i, nth, output_value->shape.dim[i],
-        input_value->shape.dim[i]);
-      return xnn_status_invalid_parameter;
-    }
-  }
-
   status = xnn_subgraph_check_datatype_matches(node_type, input_id, input_value, output_id, output_value);
   if (status != xnn_status_success) {
     return status;
@@ -442,7 +362,6 @@ enum xnn_status check_output_value(
   return xnn_status_success;
 }
 
-#if !defined(XNN_NO_QS8_OPERATORS) || !defined(XNN_NO_QU8_OPERATORS)
 enum xnn_status check_output_compute_type(
   xnn_subgraph_t subgraph,
   uint32_t input_id,
@@ -470,12 +389,11 @@ enum xnn_status check_output_compute_type(
   }
   return xnn_status_success;
 }
-#endif  // !defined( XNN_NO_QS8_OPERATORS) || !defined(XNN_NO_QU8_OPERATORS)
 
 enum xnn_status xnn_define_even_split_n(
   enum xnn_node_type node_type,
   xnn_subgraph_t subgraph,
-  size_t split_dim,
+  int32_t split_dim,
   uint32_t input_id,
   size_t num_outputs,
   const uint32_t* output_ids,
@@ -499,68 +417,42 @@ enum xnn_status xnn_define_even_split_n(
     return status;
   }
 
-  check_output_value(subgraph, split_dim, input_id, output_ids[0], "first", node_type);
-  check_output_value(subgraph, split_dim, input_id, output_ids[1], "second", node_type);
+  status = check_output_value(subgraph, split_dim, input_id, output_ids[0], "first", node_type);
+  if (status != xnn_status_success) {
+    return status;
+  }
+  status = check_output_value(subgraph, split_dim, input_id, output_ids[1], "second", node_type);
+  if (status != xnn_status_success) {
+    return status;
+  }
 
   if (num_outputs > 2) {
-    check_output_value(subgraph, split_dim, input_id, output_ids[2], "third", node_type);
+    status = check_output_value(subgraph, split_dim, input_id, output_ids[2], "third", node_type);
+    if (status != xnn_status_success) {
+      return status;
+    }
   }
   if (num_outputs > 3) {
-    check_output_value(subgraph, split_dim, input_id, output_ids[3], "fourth", node_type);
-  }
-
-  // Check that the split dimension can be evenly split into outputs.
-  if (split_dim >= input_value->shape.num_dims) {
-    xnn_log_error(
-      "failed to define %s operator with the input ID #%" PRIu32
-      ": split dimension (%zu) exceeds the number of dimensions (%zu)",
-      xnn_node_type_to_string(node_type), input_id, split_dim, input_value->shape.num_dims);
-    return xnn_status_invalid_parameter;
-  }
-
-  if (input_value->shape.dim[split_dim] % num_outputs != 0) {
-    xnn_log_error(
-      "failed to define %s operator with the input ID #%" PRIu32
-      ": split dimension %zu has value %zu which cannot be evenly split into %zu",
-      xnn_node_type_to_string(node_type), input_id, split_dim, input_value->shape.dim[split_dim], num_outputs);
-    return xnn_status_invalid_parameter;
-  }
-
-  // Check that the split dimensions of output add up;
-  size_t output_dimensions_sum = 0;
-  for (size_t i = 0; i < num_outputs; i++) {
-    const struct xnn_value* output_value = &subgraph->values[output_ids[i]];
-    output_dimensions_sum += output_value->shape.dim[split_dim];
-  }
-
-  if (output_dimensions_sum != input_value->shape.dim[split_dim]) {
-    xnn_log_error(
-      "failed to define %s operator with the input ID #%" PRIu32
-      ": input split dimension value (%zu) does not match the sum of output split dimensions value %zu",
-      xnn_node_type_to_string(node_type), input_id, input_value->shape.dim[split_dim], output_dimensions_sum);
-    return xnn_status_invalid_parameter;
+    status = check_output_value(subgraph, split_dim, input_id, output_ids[3], "fourth", node_type);
+    if (status != xnn_status_success) {
+      return status;
+    }
   }
 
   enum xnn_compute_type compute_type = xnn_compute_type_invalid;
   switch (input_value->datatype) {
-#ifndef XNN_NO_F16_OPERATORS
     case xnn_datatype_fp16:
       compute_type = xnn_compute_type_fp16;
       break;
-#endif  // !defined(XNN_NO_F16_OPERATORS)
     case xnn_datatype_fp32:
       compute_type = xnn_compute_type_fp32;
       break;
-#ifndef XNN_NO_QS8_OPERATORS
     case xnn_datatype_qint8:
       compute_type = xnn_compute_type_qs8;
       break;
-#endif  // !defined(XNN_NO_QS8_OPERATORS)
-#ifndef XNN_NO_QU8_OPERATORS
     case xnn_datatype_quint8:
       compute_type = xnn_compute_type_qu8;
       break;
-#endif  // !defined(XNN_NO_QU8_OPERATORS)
     default:
       xnn_log_error(
         "failed to define %s operator with input ID #%" PRIu32 ": unsupported Value datatype %s (%d)",
@@ -569,19 +461,16 @@ enum xnn_status xnn_define_even_split_n(
       return xnn_status_invalid_parameter;
   }
 
-  #if !defined(XNN_NO_QS8_OPERATORS) || !defined(XNN_NO_QU8_OPERATORS)
-    if (compute_type == xnn_compute_type_qs8 || compute_type == xnn_compute_type_qu8) {
-      check_output_compute_type(subgraph, input_id, output_ids[0], "first", node_type);
-      check_output_compute_type(subgraph, input_id, output_ids[1], "second", node_type);
-      if (num_outputs > 2) {
-        check_output_compute_type(subgraph, input_id, output_ids[2], "third", node_type);
-      }
-      if (num_outputs > 3) {
-        check_output_compute_type(subgraph, input_id, output_ids[3], "fourth", node_type);
-      }
+  if (compute_type == xnn_compute_type_qs8 || compute_type == xnn_compute_type_qu8) {
+    check_output_compute_type(subgraph, input_id, output_ids[0], "first", node_type);
+    check_output_compute_type(subgraph, input_id, output_ids[1], "second", node_type);
+    if (num_outputs > 2) {
+      check_output_compute_type(subgraph, input_id, output_ids[2], "third", node_type);
     }
-  #endif  // !defined( XNN_NO_QS8_OPERATORS) || !defined(XNN_NO_QU8_OPERATORS)
-
+    if (num_outputs > 3) {
+      check_output_compute_type(subgraph, input_id, output_ids[3], "fourth", node_type);
+    }
+  }
 
   struct xnn_node* node = xnn_subgraph_new_node(subgraph);
   if (node == NULL) {
@@ -599,17 +488,20 @@ enum xnn_status xnn_define_even_split_n(
   switch (num_outputs) {
     case 2:
       node->create = create_even_split2_operator;
+      node->reshape = reshape_even_split2_operator;
       node->setup = setup_even_split2_operator;
       break;
     case 3:
       node->outputs[2] = output_ids[2];
       node->create = create_even_split3_operator;
+      node->reshape = reshape_even_split3_operator;
       node->setup = setup_even_split3_operator;
       break;
     case 4:
       node->outputs[2] = output_ids[2];
       node->outputs[3] = output_ids[3];
       node->create = create_even_split4_operator;
+      node->reshape = reshape_even_split4_operator;
       node->setup = setup_even_split4_operator;
       break;
     default:
@@ -622,7 +514,7 @@ enum xnn_status xnn_define_even_split_n(
 
 enum xnn_status xnn_define_even_split2(
   xnn_subgraph_t subgraph,
-  size_t split_dim,
+  int32_t split_dim,
   uint32_t input_id,
   uint32_t output1_id,
   uint32_t output2_id,
@@ -635,7 +527,7 @@ enum xnn_status xnn_define_even_split2(
 
 enum xnn_status xnn_define_even_split3(
   xnn_subgraph_t subgraph,
-  size_t split_dim,
+  int32_t split_dim,
   uint32_t input_id,
   uint32_t output1_id,
   uint32_t output2_id,
@@ -649,7 +541,7 @@ enum xnn_status xnn_define_even_split3(
 
 enum xnn_status xnn_define_even_split4(
   xnn_subgraph_t subgraph,
-  size_t split_dim,
+  int32_t split_dim,
   uint32_t input_id,
   uint32_t output1_id,
   uint32_t output2_id,

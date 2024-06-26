@@ -5,18 +5,23 @@
 
 #include <xnnpack.h>
 #include <xnnpack/aarch32-assembler.h>
-#include <xnnpack/allocator.h>
+#include <xnnpack/assembler.h>
 #include <xnnpack/common.h>
+#include <xnnpack/memory.h>
+#include <xnnpack/microparams-init.h>
+#include <xnnpack/microparams.h>
 
-#include <ios>
+#include <cstddef>
+#include <cstdint>
+#include <random>
 
 #include "assembler-helpers.h"
+#include "replicable_random_device.h"
 #include <gtest/gtest.h>
 
 namespace xnnpack {
 namespace aarch32 {
 TEST(AArch32Assembler, InstructionEncoding) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(/*allocator=*/nullptr));
   xnn_code_buffer b;
   xnn_allocate_code_memory(&b, XNN_DEFAULT_CODE_BUFFER_SIZE);
   Assembler a(&b);
@@ -27,6 +32,8 @@ TEST(AArch32Assembler, InstructionEncoding) {
   CHECK_ENCODING(0xE29D5008, a.adds(r5, r13, 8));
 
   CHECK_ENCODING(0xE2025007, a.and_(r5, r2, 7));
+
+  CHECK_ENCODING(0xE12FFF38, a.blx(r8));
 
   CHECK_ENCODING(0xE3CC2003, a.bic(r2, r12, 3));
 
@@ -53,6 +60,9 @@ TEST(AArch32Assembler, InstructionEncoding) {
   CHECK_ENCODING(0x31A0C003, a.movlo(r12, r3));
   CHECK_ENCODING(0x91A0A00C, a.movls(r10, r12));
   CHECK_ENCODING(0xE1A0A00C, a.mov(r10, r12));
+
+  CHECK_ENCODING(0xE30D3EAD, a.mov(r3, 0xDEAD));
+  CHECK_ENCODING(0xE34D3EAD, a.movt(r3, 0xDEAD));
 
   CHECK_ENCODING(0xE320F000, a.nop());
 
@@ -184,10 +194,14 @@ TEST(AArch32Assembler, InstructionEncoding) {
   CHECK_ENCODING(0xF2C0E050, a.vmov(q15, 0));
   EXPECT_ERROR(Error::kInvalidOperand, a.vmov(q15, 1));
 
+  CHECK_ENCODING(0xEE1E4A10, a.vmov(r4, s28));
+  CHECK_ENCODING(0xEE0E4A10, a.vmov(s28, r4));
   CHECK_ENCODING(0xEEB0EA4F, a.vmov(s28, s30));
   CHECK_ENCODING(0xF2245114, a.vmov(d5, d4));
   CHECK_ENCODING(0xF26101B1, a.vmov(d16, d17));
   CHECK_ENCODING(0xEC420B1F, a.vmov(d15, r0, r2));
+  CHECK_ENCODING(0xEC454B18, a.vmov(d8, r4, r5));
+  CHECK_ENCODING(0xEC554B18, a.vmov(r4, r5, d8));
   CHECK_ENCODING(0xF26041F0, a.vmov(q10, q8));
 
   CHECK_ENCODING(0xEEB08A49, a.vmov_f32(s16, s18));
@@ -201,6 +215,9 @@ TEST(AArch32Assembler, InstructionEncoding) {
   CHECK_ENCODING(0xEEF1FA10, a.vmrs(APSR_nzcv, FPSCR));
 
   CHECK_ENCODING(0xF34E2DD2, a.vmul_f32(q9, q15, q1));
+  CHECK_ENCODING(0xF3EE29C7, a.vmul_f32(q9, q15, d7[0]));
+  CHECK_ENCODING(0xF3EE29E7, a.vmul_f32(q9, q15, d7[1]));
+  EXPECT_ERROR(Error::kInvalidLaneIndex, a.vmul_f32(q9, q15, d7[2]));
 
   CHECK_ENCODING(0xF3F927EE, a.vneg_f32(q9, q15));
 
@@ -282,7 +299,6 @@ TEST(AArch32Assembler, InstructionEncoding) {
 }
 
 TEST(AArch32Assembler, Label) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(/*allocator=*/nullptr));
   xnn_code_buffer b;
   xnn_allocate_code_memory(&b, XNN_DEFAULT_CODE_BUFFER_SIZE);
   Assembler a(&b);
@@ -341,7 +357,6 @@ TEST(AArch32Assembler, Label) {
 }
 
 TEST(AArch32Assembler, Align) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(/*allocator=*/nullptr));
   xnn_code_buffer b;
   xnn_allocate_code_memory(&b, XNN_DEFAULT_CODE_BUFFER_SIZE);
   Assembler a(&b);
@@ -446,12 +461,11 @@ TEST(AArch32Assembler, QRegister) {
 }
 
 TEST(AArch32Assembler, CodeBufferOverflow) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(/*allocator=*/nullptr));
   xnn_code_buffer b;
   // Requested memory is rounded to page size.
   xnn_allocate_code_memory(&b, 4);
   Assembler a(&b);
-  for (int i = 0; i < b.capacity; i += 1 << kInstructionSizeInBytesLog2) {
+  for (size_t i = 0; i < b.capacity; i += 1 << kInstructionSizeInBytesLog2) {
     a.add(r0, r0, 2);
   }
   EXPECT_EQ(Error::kNoError, a.error());
@@ -463,13 +477,12 @@ TEST(AArch32Assembler, CodeBufferOverflow) {
 }
 
 TEST(AArch32Assembler, BoundOverflow) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(/*allocator=*/nullptr));
   xnn_code_buffer b;
   // Requested memory is rounded to page size.
   xnn_allocate_code_memory(&b, 4);
   Assembler a(&b);
   Label l1;
-  for (int i = 0; i < b.capacity; i += 1 << kInstructionSizeInBytesLog2) {
+  for (size_t i = 0; i < b.capacity; i += 1 << kInstructionSizeInBytesLog2) {
     a.add(r0, r0, 2);
   }
   EXPECT_EQ(Error::kNoError, a.error());
@@ -486,7 +499,6 @@ TEST(AArch32Assembler, BoundOverflow) {
 
 #if XNN_ARCH_ARM && XNN_PLATFORM_JIT
 TEST(AArch32Assembler, JitAllocCodeBuffer) {
-  ASSERT_EQ(xnn_status_success, xnn_initialize(/*allocator=*/nullptr));
   typedef uint32_t (*Func)(uint32_t);
 
   xnn_code_buffer b;
@@ -497,11 +509,118 @@ TEST(AArch32Assembler, JitAllocCodeBuffer) {
   a.bx(lr);
 
   Func fn = reinterpret_cast<Func>(a.finalize());
+  xnn_finalize_code_memory(&b);
 
   ASSERT_EQ(3, fn(1));
 
   ASSERT_EQ(xnn_status_success, xnn_release_code_memory(&b));
 }
 #endif  // XNN_ARCH_ARM && XNN_PLATFORM_JIT
+
+#if XNN_ARCH_ARM && XNN_PLATFORM_JIT
+JitF32HardswishFn GenerateF32Hardswish(MacroAssembler& a, std::vector<QRegister> accs, std::vector<QRegister> tmps) {
+  const QRegister sixth = q0;
+  const QRegister three = q1;
+  const QRegister six = q2;
+  const QRegister zero = q3;
+
+  // No callee-saved GPR registers used.
+  a.vpush({d8-d15});  // callee-saved NEON registers
+  // Load params.
+  a.vld3r_32({sixth.low(), three.low(), six.low()}, mem[r2]);
+  a.vmov(three.high(), three.low());
+  a.vmov(six.high(), six.low());
+  a.vmov(zero, 0);
+  // Load inputs.
+  for (size_t i = 0; i < accs.size(); i++) {
+    a.vld1_32({accs[i].low(), accs[i].high()}, mem[r0]++);
+  }
+  a.f32_hardswish(
+      sixth, three, six, zero,
+      accs.data(),
+      accs.size(),
+      tmps.data(),
+      tmps.size());
+  // Write results of hardswish.
+  for (size_t i = 0; i < accs.size(); i++) {
+    a.vst1_32({accs[i].low(), accs[i].high()}, mem[r1]++);
+  }
+  a.vpop({d8-d15});
+  a.bx(lr);
+
+  return reinterpret_cast<JitF32HardswishFn>(a.finalize());
+}
+
+class F32HardswishTest : public testing::TestWithParam<std::vector<QRegister>> {};
+
+TEST_P(F32HardswishTest, F32Hardswish) {
+  xnn_code_buffer buffer;
+  xnn_allocate_code_memory(&buffer, XNN_DEFAULT_CODE_BUFFER_SIZE);
+  MacroAssembler assembler(&buffer);
+
+  const std::vector<QRegister> accs = GetParam();
+  const std::vector<QRegister> tmps = {q8, q9, q10, q11};
+
+  xnnpack::ReplicableRandomDevice rng;
+  std::uniform_real_distribution<float> f32dist(-6.0f, 6.0f);
+
+  xnn_f32_hswish_params params;
+  xnn_init_f32_hswish_scalar_params(&params);
+
+  std::vector<float> input(4 * accs.size());
+  std::vector<float> output(4 * accs.size());
+  std::vector<float> expected_output(output);
+
+  std::generate(input.begin(), input.end(), [&]{ return f32dist(rng); });
+  std::fill(output.begin(), output.end(), std::nanf(""));
+  std::fill(expected_output.begin(), expected_output.end(), std::nanf(""));
+
+  // Call generated function.
+  JitF32HardswishFn jit_f32_hardswish_fn = GenerateF32Hardswish(assembler, accs, tmps);
+  EXPECT_EQ(Error::kNoError, assembler.error());
+  xnn_finalize_code_memory(&buffer);
+  jit_f32_hardswish_fn(input.data(), output.data(), &params);
+
+  // Compute reference results.
+  std::transform(input.begin(), input.end(), expected_output.begin(), hardswish);
+
+  // Verify results.
+  for (size_t i = 0; i < output.size(); i++) {
+    EXPECT_NEAR(output[i], expected_output[i], std::max(5.0e-6, std::abs(expected_output[i]) * 1.0e-5))
+        << "at " << i << " / " << output.size() << ", x[" << i << "] = " << input[i];
+  }
+  ASSERT_EQ(xnn_status_success, xnn_release_code_memory(&buffer));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+  AArch32Assembler,
+  F32HardswishTest,
+  testing::Values(
+    std::vector<QRegister>({q4, q5, q6, q7}), std::vector<QRegister>({q4, q5, q6, q7, q12, q13, q14, q15})));
+
+typedef void (*MovFn)(uint32_t*);
+
+TEST(MovTest, Mov) {
+  xnn_code_buffer buffer;
+  xnn_allocate_code_memory(&buffer, XNN_DEFAULT_CODE_BUFFER_SIZE);
+  MacroAssembler assm(&buffer);
+
+  const uint32_t expected = 0x01234567;
+  assm.Mov(r1, expected);
+  assm.str(r1, mem[r0]);
+  assm.bx(lr);
+
+  MovFn mov_fn = reinterpret_cast<MovFn>(assm.finalize());
+  xnn_finalize_code_memory(&buffer);
+
+  uint32_t out = 0;
+  mov_fn(&out);
+
+  ASSERT_EQ(xnn_status_success, xnn_release_code_memory(&buffer));
+
+  EXPECT_EQ(expected, out);
+}
+
+#endif
 }  // namespace aarch32
 }  // namespace xnnpack

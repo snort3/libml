@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 Google Inc. All rights reserved.
+ * Copyright 2023 Google Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,11 @@
  * limitations under the License.
  */
 
+#if !os(WASI)
 import Foundation
+#else
+import SwiftOverlayShims
+#endif
 
 /// Verifier that check if the buffer passed into it is a valid,
 /// safe, aligned Flatbuffers object since swift read from `unsafeMemory`
@@ -200,4 +204,14 @@ public struct Verifier {
   internal mutating func finish() {
     _depth -= 1
   }
+
+  mutating func verify(id: String) throws {
+    let size = MemoryLayout<Int32>.size
+    let str = _buffer.readString(at: size, count: size)
+    if id == str {
+      return
+    }
+    throw FlatbuffersErrors.bufferIdDidntMatchPassedId
+  }
+
 }

@@ -3,7 +3,7 @@
 // This source code is licensed under the BSD-style license found in the
 // LICENSE file in the root directory of this source tree.
 
-#include <xnnpack.h>
+#include <xnnpack/subgraph.h>
 
 #include "subgraph-tester.h"
 #include <gtest/gtest.h>
@@ -11,7 +11,7 @@
 namespace xnnpack {
 
 TEST(SUBGRAPH_NCHW, single_conv) {
-  auto tester = SubgraphTester(4);
+  SubgraphTester tester(4);
   tester
     .AddDynamicTensorF32({1, 256, 256, 3}, 0)
     .AddStaticTensorF32({32, 3, 3, 3}, TensorType::kDense, 1)
@@ -35,13 +35,13 @@ TEST(SUBGRAPH_NCHW, single_conv) {
 }
 
 TEST(SUBGRAPH_NCHW, single_conv_and_global_average_pooling) {
-  auto tester = SubgraphTester(5);
+  SubgraphTester tester(5);
   tester
     .AddDynamicTensorF32({1, 256, 256, 3}, 0)
     .AddStaticTensorF32({32, 3, 3, 3}, TensorType::kDense, 1)
     .AddStaticTensorF32({32}, TensorType::kDense, 2)
     .AddDynamicTensorF32({1, 128, 128, 32}, 3)
-    .AddDynamicTensorF32({32}, 4)
+    .AddOutputTensorF32({32}, 4)
     .AddConvolution2D(
         ConvolutionParams{
           Padding{1, 1, 1, 1},
@@ -62,7 +62,7 @@ TEST(SUBGRAPH_NCHW, single_conv_and_global_average_pooling) {
 }
 
 TEST(SUBGRAPH_NCHW, pixelwise_conv_sandwich) {
-  auto tester = SubgraphTester(8);
+  SubgraphTester tester(8);
   tester
     .AddDynamicTensorF32({1, 256, 256, 3}, 0)
     .AddStaticTensorF32({8, 3, 3, 3}, TensorType::kDense, 1)
@@ -71,7 +71,7 @@ TEST(SUBGRAPH_NCHW, pixelwise_conv_sandwich) {
     .AddStaticTensorF32({4, 1, 1, 8}, TensorType::kSparse, 4)
     .AddStaticTensorF32({4}, TensorType::kDense, 5)
     .AddDynamicTensorF32({1, 128, 128, 4}, 6)
-    .AddDynamicTensorF32({1, 4}, 7)
+    .AddOutputTensorF32({1, 4}, 7)
     .AddConvolution2D(
         ConvolutionParams{
           Padding{1, 1, 1, 1},
@@ -103,7 +103,7 @@ TEST(SUBGRAPH_NCHW, pixelwise_conv_sandwich) {
 }
 
 TEST(SUBGRAPH_NCHW, bottleneck) {
-  auto tester = SubgraphTester(15);
+  SubgraphTester tester(15);
   tester
     .AddDynamicTensorF32({1, 256, 256, 3}, 0)
     .AddStaticTensorF32({8, 3, 3, 3}, TensorType::kDense, 1)
@@ -115,12 +115,12 @@ TEST(SUBGRAPH_NCHW, bottleneck) {
     .AddStaticTensorF32({1, 3, 3, 4}, TensorType::kDense, 7)
     .AddStaticTensorF32({4}, TensorType::kDense, 8)
     .AddDynamicTensorF32({1, 128, 128, 4}, 9)
-    .AddStaticTensorF32({8, 1, 1, 4}, TensorType::kSparse, 10)
+    .AddStaticTensorF32({4, 1, 1, 4}, TensorType::kSparse, 10)
     .AddStaticTensorF32({8}, TensorType::kDense, 11)
     .AddDynamicTensorF32({1, 128, 128, 8}, 12)
     .AddDynamicTensorF32({1, 128, 128, 8}, 13)
     .AddDynamicTensorF32({1, 128, 128, 8}, 13)
-    .AddDynamicTensorF32({1, 8}, 14)
+    .AddOutputTensorF32({1, 8}, 14)
     .AddConvolution2D(
         ConvolutionParams{
           Padding{1, 1, 1, 1},

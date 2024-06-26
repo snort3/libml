@@ -5,52 +5,52 @@
 
 #pragma once
 
-#include <gtest/gtest.h>
+#include <xnnpack.h>
+#include <xnnpack/aligned-allocator.h>
+#include <xnnpack/microfnptr.h>
 
 #include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
 #include <random>
 #include <vector>
 
-#include <fp16.h>
-
-#include <xnnpack.h>
-#include <xnnpack/aligned-allocator.h>
-#include <xnnpack/microfnptr.h>
-
+#include "replicable_random_device.h"
+#include <gtest/gtest.h>
+#include <fp16/fp16.h>
 
 class PReLUMicrokernelTester {
  public:
-  inline PReLUMicrokernelTester& rows(size_t rows) {
+  PReLUMicrokernelTester& rows(size_t rows) {
     assert(rows != 0);
     this->rows_ = rows;
     return *this;
   }
 
-  inline size_t rows() const {
+  size_t rows() const {
     return this->rows_;
   }
 
-  inline PReLUMicrokernelTester& channels(size_t channels) {
+  PReLUMicrokernelTester& channels(size_t channels) {
     assert(channels != 0);
     this->channels_ = channels;
     return *this;
   }
 
-  inline size_t channels() const {
+  size_t channels() const {
     return this->channels_;
   }
 
-  inline PReLUMicrokernelTester& input_stride(size_t input_stride) {
+  PReLUMicrokernelTester& input_stride(size_t input_stride) {
     assert(input_stride != 0);
     this->input_stride_ = input_stride;
     return *this;
   }
 
-  inline size_t input_stride() const {
+  size_t input_stride() const {
     if (this->input_stride_ == 0) {
       return channels();
     } else {
@@ -59,13 +59,13 @@ class PReLUMicrokernelTester {
     }
   }
 
-  inline PReLUMicrokernelTester& output_stride(size_t output_stride) {
+  PReLUMicrokernelTester& output_stride(size_t output_stride) {
     assert(output_stride != 0);
     this->output_stride_ = output_stride;
     return *this;
   }
 
-  inline size_t output_stride() const {
+  size_t output_stride() const {
     if (this->output_stride_ == 0) {
       return channels();
     } else {
@@ -74,27 +74,26 @@ class PReLUMicrokernelTester {
     }
   }
 
-  inline PReLUMicrokernelTester& inplace(bool inplace) {
+  PReLUMicrokernelTester& inplace(bool inplace) {
     this->inplace_ = inplace;
     return *this;
   }
 
-  inline bool inplace() const {
+  bool inplace() const {
     return this->inplace_;
   }
 
-  inline PReLUMicrokernelTester& iterations(size_t iterations) {
+  PReLUMicrokernelTester& iterations(size_t iterations) {
     this->iterations_ = iterations;
     return *this;
   }
 
-  inline size_t iterations() const {
+  size_t iterations() const {
     return this->iterations_;
   }
 
-  void Test(xnn_f16_prelu_ukernel_function prelu) const {
-    std::random_device random_device;
-    auto rng = std::mt19937(random_device());
+  void Test(xnn_f16_prelu_ukernel_fn prelu) const {
+    xnnpack::ReplicableRandomDevice rng;
     std::uniform_real_distribution<float> f32dist(-1.0f, 1.0f);
     std::uniform_real_distribution<float> w32dist(0.25f, 0.75f);
 
@@ -130,7 +129,7 @@ class PReLUMicrokernelTester {
       // Verify results.
       for (size_t n = 0; n < rows(); n++) {
         for (size_t c = 0; c < channels(); c++) {
-          ASSERT_EQ(fp16_ieee_to_fp32_value(y[n * output_stride() + c]), y_ref[n * channels() + c])
+          EXPECT_EQ(fp16_ieee_to_fp32_value(y[n * output_stride() + c]), y_ref[n * channels() + c])
             << "at row " << n << " / " << rows()
             << ", channel " << c << " / " << channels();
         }
@@ -138,9 +137,8 @@ class PReLUMicrokernelTester {
     }
   }
 
-  void Test(xnn_f32_prelu_ukernel_function prelu) const {
-    std::random_device random_device;
-    auto rng = std::mt19937(random_device());
+  void Test(xnn_f32_prelu_ukernel_fn prelu) const {
+    xnnpack::ReplicableRandomDevice rng;
     std::uniform_real_distribution<float> f32dist(-1.0f, 1.0f);
     std::uniform_real_distribution<float> w32dist(0.25f, 0.75f);
 
@@ -175,7 +173,7 @@ class PReLUMicrokernelTester {
       // Verify results.
       for (size_t n = 0; n < rows(); n++) {
         for (size_t c = 0; c < channels(); c++) {
-          ASSERT_EQ(y[n * output_stride() + c], y_ref[n * channels() + c])
+          EXPECT_EQ(y[n * output_stride() + c], y_ref[n * channels() + c])
             << "at row " << n << " / " << rows()
             << ", channel " << c << " / " << channels();
         }

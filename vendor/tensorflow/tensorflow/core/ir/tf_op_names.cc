@@ -15,6 +15,7 @@ limitations under the License.
 
 #include "mlir/IR/Operation.h"  // from @llvm-project
 #include "mlir/IR/OperationSupport.h"  // from @llvm-project
+#include "mlir/Support/LLVM.h"  // from @llvm-project
 #include "tensorflow/core/ir/dialect.h"
 #include "tensorflow/core/ir/tf_op_wrapper.h"
 
@@ -26,7 +27,7 @@ bool TFGraphDialect::IsAdd(TFOp op) const {
 
   if (op_name == add_v2_) return true;
   if (op_name == add_)
-    return !op->getAttrOfType<TypeAttr>("T").getValue().isa<StringType>();
+    return !mlir::isa<StringType>(op->getAttrOfType<TypeAttr>("T").getValue());
   return false;
 }
 
@@ -809,6 +810,11 @@ bool TFGraphDialect::IsSnapshot(TFOp op) const {
 bool TFGraphDialect::IsSoftmax(TFOp op) const {
   StringAttr op_name = op->getName().getIdentifier();
   return op_name == softmax_;
+}
+
+bool TFGraphDialect::IsSoftplus(TFOp op) const {
+  StringAttr op_name = op->getName().getIdentifier();
+  return op_name == softplus_;
 }
 
 bool TFGraphDialect::IsSoftplusGrad(TFOp op) const {

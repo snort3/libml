@@ -18,7 +18,11 @@ limitations under the License.
 
 #include <string>
 
+#include "tensorflow/lite/delegates/gpu/common/data_type.h"
+#include "tensorflow/lite/delegates/gpu/common/gpu_info.h"
 #include "tensorflow/lite/delegates/gpu/common/operations.h"
+#include "tensorflow/lite/delegates/gpu/common/precision.h"
+#include "tensorflow/lite/delegates/gpu/common/shape.h"
 #include "tensorflow/lite/delegates/gpu/common/status.h"
 #include "tensorflow/lite/delegates/gpu/common/task/gpu_operation.h"
 
@@ -45,20 +49,21 @@ GPUOperation CreateElementwiseOneInputWithBroadcast(
 
 // Creates simple two input(first input is runtime tensor and second input is
 // constant or linear/hwc tensor) operation, for example sub, div and etc.
-GPUOperation CreateElementwise(const GpuInfo& gpu_info,
-                               const OperationDef& definition,
-                               const OperationType& op_type,
-                               const ElementwiseAttributes& attr);
+template <DataType DataTypeT, typename T>
+GPUOperation CreateElementwise(
+    const GpuInfo& gpu_info, const OperationDef& definition,
+    const OperationType& op_type,
+    const ElementwiseAttributesBase<DataTypeT, T>& attr);
 
 // Creates simple two input(first input is runtime tensor and second input is
 // constant or linear/hwc tensor) operation, for example sub, div and etc.
 // Can broadcast input.
-GPUOperation CreateElementwiseWithBroadcast(const GpuInfo& gpu_info,
-                                            const OperationDef& definition,
-                                            const OperationType& op_type,
-                                            const ElementwiseAttributes& attr,
-                                            const BHWC& input_shape,
-                                            const BHWC& output_shape);
+template <DataType DataTypeT, typename T>
+GPUOperation CreateElementwiseWithBroadcast(
+    const GpuInfo& gpu_info, const OperationDef& definition,
+    const OperationType& op_type,
+    const ElementwiseAttributesBase<DataTypeT, T>& attr,
+    const BHWC& input_shape, const BHWC& output_shape);
 
 // Creates simple two input(2 runtime tensors) operation, for example
 // sub, div and etc.

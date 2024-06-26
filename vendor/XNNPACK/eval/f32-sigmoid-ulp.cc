@@ -12,11 +12,12 @@
 #include <random>
 #include <vector>
 
-#include <cpuinfo.h>
+#if XNN_ENABLE_CPUINFO
+  #include <cpuinfo.h>
+#endif  // XNN_ENABLE_CPUINFO
 #include <pthreadpool.h>
 
 #include <benchmark/benchmark.h>
-#include <fp16/fp16.h>
 
 #include "bench/utils.h"
 #include <xnnpack/aligned-allocator.h>
@@ -56,14 +57,10 @@ static void ComputeError(
 }
 
 static void SigmoidError(benchmark::State& state,
-  xnn_f32_unary_math_function sigmoid,
+  xnn_f32_unary_math_fn sigmoid,
   benchmark::utils::IsaCheckFunction isa_check = nullptr)
 {
-  if (!cpuinfo_initialize()) {
-    state.SkipWithError("failed cpuinfo init");
-    return;
-  }
-  if (isa_check && !isa_check(state)) {
+  if (isa_check != nullptr && !isa_check(state)) {
     return;
   }
 
@@ -73,17 +70,23 @@ static void SigmoidError(benchmark::State& state,
   const uint32_t max_input = 0x418AA122;
   // Number of elements in one block of inputs/outputs.
   // Combining multiple elements in a block reduce function call overhead.
-  const size_t block_size = 16384;
+  const size_t block_size = 1048576;
   // Number of elements in one parallelization tile. Worker threads process this many elements in each task.
   const size_t tile_size = 64;
 
-  uint32_t num_threads = cpuinfo_get_cores_count();
-  #if XNN_ARCH_ARM || XNN_ARCH_ARM64
-    // Use all cores except for the least performant cluster
-    if (cpuinfo_get_clusters_count() > 1) {
-      num_threads -= cpuinfo_get_cluster(cpuinfo_get_clusters_count() - 1)->core_count;
+  // Default: as many as logical processors in the system
+  size_t num_threads = 0;
+  #if XNN_ENABLE_CPUINFO
+    if (cpuinfo_initialize()) {
+      num_threads = cpuinfo_get_processors_count();
+      #if XNN_ARCH_ARM || XNN_ARCH_ARM64
+        // Use all cores except for the least performant cluster
+        if (cpuinfo_get_clusters_count() > 1) {
+          num_threads -= cpuinfo_get_cluster(cpuinfo_get_clusters_count() - 1)->core_count;
+        }
+      #endif  // XNN_ARCH_ARM || XNN_ARCH_ARM64
     }
-  #endif  // XNN_ARCH_ARM || XNN_ARCH_ARM64
+  #endif  // XNN_ENABLE_CPUINFO
 
   std::unique_ptr<pthreadpool, decltype(&pthreadpool_destroy)> threadpool(
     pthreadpool_create(num_threads), pthreadpool_destroy);
@@ -247,28 +250,28 @@ static void SigmoidError(benchmark::State& state,
 #endif  // XNN_ARCH_ARM || XNN_ARCH_ARM64
 
 #if XNN_ARCH_ARM64
-  BENCHMARK_CAPTURE(SigmoidError, neonfma_rr1_lut2048_p1_div,
-                    xnn_math_f32_sigmoid__neonfma_rr1_lut2048_p1_div)
+  BENCHMARK_CAPTURE(SigmoidError, aarch64_neonfma_rr1_lut2048_p1_div,
+                    xnn_math_f32_sigmoid__aarch64_neonfma_rr1_lut2048_p1_div)
     ->Unit(benchmark::kMillisecond)
     ->Iterations(1);
-  BENCHMARK_CAPTURE(SigmoidError, neonfma_rr2_lut2048_p1_div,
-                    xnn_math_f32_sigmoid__neonfma_rr2_lut2048_p1_div)
+  BENCHMARK_CAPTURE(SigmoidError, aarch64_neonfma_rr2_lut2048_p1_div,
+                    xnn_math_f32_sigmoid__aarch64_neonfma_rr2_lut2048_p1_div)
     ->Unit(benchmark::kMillisecond)
     ->Iterations(1);
-  BENCHMARK_CAPTURE(SigmoidError, neonfma_rr1_lut64_p2_div,
-                    xnn_math_f32_sigmoid__neonfma_rr1_lut64_p2_div)
+  BENCHMARK_CAPTURE(SigmoidError, aarch64_neonfma_rr1_lut64_p2_div,
+                    xnn_math_f32_sigmoid__aarch64_neonfma_rr1_lut64_p2_div)
     ->Unit(benchmark::kMillisecond)
     ->Iterations(1);
-  BENCHMARK_CAPTURE(SigmoidError, neonfma_rr2_lut64_p2_div,
-                    xnn_math_f32_sigmoid__neonfma_rr2_lut64_p2_div)
+  BENCHMARK_CAPTURE(SigmoidError, aarch64_neonfma_rr2_lut64_p2_div,
+                    xnn_math_f32_sigmoid__aarch64_neonfma_rr2_lut64_p2_div)
     ->Unit(benchmark::kMillisecond)
     ->Iterations(1);
-  BENCHMARK_CAPTURE(SigmoidError, neonfma_rr1_p5_div,
-                    xnn_math_f32_sigmoid__neonfma_rr1_p5_div)
+  BENCHMARK_CAPTURE(SigmoidError, aarch64_neonfma_rr1_p5_div,
+                    xnn_math_f32_sigmoid__aarch64_neonfma_rr1_p5_div)
     ->Unit(benchmark::kMillisecond)
     ->Iterations(1);
-  BENCHMARK_CAPTURE(SigmoidError, neonfma_rr2_p5_div,
-                    xnn_math_f32_sigmoid__neonfma_rr2_p5_div)
+  BENCHMARK_CAPTURE(SigmoidError, aarch64_neonfma_rr2_p5_div,
+                    xnn_math_f32_sigmoid__aarch64_neonfma_rr2_p5_div)
     ->Unit(benchmark::kMillisecond)
     ->Iterations(1);
 #endif  // XNN_ARCH_ARM64

@@ -1,4 +1,4 @@
-/* Copyright 2022 The TensorFlow Authors. All Rights Reserved.
+/* Copyright 2023 The TensorFlow Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,58 +15,9 @@ limitations under the License.
 #ifndef TENSORFLOW_LITE_EXPERIMENTAL_ACCELERATION_MINI_BENCHMARK_C_C_API_H_
 #define TENSORFLOW_LITE_EXPERIMENTAL_ACCELERATION_MINI_BENCHMARK_C_C_API_H_
 
-#include <stddef.h>
-#include <stdint.h>
+/// For documentation, see
+/// third_party/tensorflow/lite/core/experimental/acceleration/mini_benchmark/c/c_api.h
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "tensorflow/lite/core/experimental/acceleration/mini_benchmark/c/c_api.h"  // IWYU pragma: export
 
-// The result of triggering MiniBenchmark.
-typedef struct TfLiteMiniBenchmarkResult {
-  // MinibenchmarkStatus of whether test is initialized successfully. The value
-  // maps to status_codes.h.
-  int init_status;
-  // The pointer to a stream of BenchmarkEvent(s). Size of each event is
-  // prefixed.
-  uint8_t* flatbuffer_data;
-  // The byte size of the flatbuffer_data.
-  size_t flatbuffer_data_size;
-} TfLiteMiniBenchmarkResult;
-
-// Custom validation related info.
-typedef struct TfLiteMiniBenchmarkCustomValidationInfo {
-  // The batch number of custom input.
-  int batch_size;
-  // Length of buffer_dim.
-  int buffer_dim_size;
-  // The size of each custom input within buffer.
-  size_t* buffer_dim;
-  // Pointer to concatenated custom input data. At embedding time, the
-  // i-th input tensor buffer starts from sum(buffer_dim[0...i-1]) to
-  // sum(buffer_dim[0...i]).
-  uint8_t* buffer;
-} TfLiteMiniBenchmarkCustomValidationInfo;
-
-typedef struct TfLiteMiniBenchmarkSettings {
-  // The pointer to a flatbuffer data of MinibenchmarkSettings.
-  uint8_t* flatbuffer_data;
-  // The byte size of the flatbuffer_data.
-  size_t flatbuffer_data_size;
-  // Custom validation related info.
-  TfLiteMiniBenchmarkCustomValidationInfo custom_validation_info;
-} TfLiteMinibenchmarkSettings;
-
-// Trigger validation for `settings` and return the validation result.
-// This returns a pointer, that you must free using
-// TfLiteMiniBenchmarkResultFree().
-TfLiteMiniBenchmarkResult* TfLiteBlockingValidatorRunnerTriggerValidation(
-    TfLiteMinibenchmarkSettings* settings);
-
-// Free memory allocated with `result`.
-void TfLiteMiniBenchmarkResultFree(TfLiteMiniBenchmarkResult* result);
-
-#ifdef __cplusplus
-}  // extern "C".
-#endif
 #endif  // TENSORFLOW_LITE_EXPERIMENTAL_ACCELERATION_MINI_BENCHMARK_C_C_API_H_

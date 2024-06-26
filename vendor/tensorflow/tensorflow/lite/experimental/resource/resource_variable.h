@@ -15,7 +15,7 @@ limitations under the License.
 #ifndef TENSORFLOW_LITE_EXPERIMENTAL_RESOURCE_RESOURCE_VARIABLE_H_
 #define TENSORFLOW_LITE_EXPERIMENTAL_RESOURCE_RESOURCE_VARIABLE_H_
 
-#include "tensorflow/lite/c/common.h"
+#include "tensorflow/lite/core/c/common.h"
 #include "tensorflow/lite/experimental/resource/resource_base.h"
 
 namespace tflite {
@@ -50,7 +50,7 @@ class ResourceVariable : public ResourceBase {
     return is_initialized_ ? tensor_.bytes : 0;
   }
 
- private:
+ protected:
   // The tensor (and its buffer stored in `tensor_.data` is fully owned by
   // the `ResourceVariable` object.
   TfLiteTensor tensor_;

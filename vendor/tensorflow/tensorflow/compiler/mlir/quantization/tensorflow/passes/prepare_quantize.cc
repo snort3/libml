@@ -18,6 +18,7 @@ limitations under the License.
 #include <initializer_list>
 #include <iterator>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -32,15 +33,13 @@ limitations under the License.
 #include "mlir/IR/PatternMatch.h"  // from @llvm-project
 #include "mlir/IR/Value.h"  // from @llvm-project
 #include "mlir/Pass/Pass.h"  // from @llvm-project
+#include "mlir/Support/LLVM.h"  // from @llvm-project
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"  // from @llvm-project
-#include "tensorflow/compiler/mlir/lite/quantization/ir/FakeQuantSupport.h"
 #include "tensorflow/compiler/mlir/lite/quantization/ir/QuantOps.h"
-#include "tensorflow/compiler/mlir/lite/quantization/quantization_config.h"
-#include "tensorflow/compiler/mlir/lite/quantization/quantization_traits.h"
-#include "tensorflow/compiler/mlir/lite/quantization/quantization_utils.h"
 #include "tensorflow/compiler/mlir/lite/transforms/passes.h"
+#include "tensorflow/compiler/mlir/quantization/common/quantization_lib/quantization_config.h"
+#include "tensorflow/compiler/mlir/quantization/common/quantization_lib/quantization_driver.h"
 #include "tensorflow/compiler/mlir/quantization/tensorflow/ops/tf_op_quant_spec.h"
-#include "tensorflow/compiler/mlir/quantization/tensorflow/passes/utils.h"
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_dialect.h"
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_ops.h"
 
@@ -51,6 +50,8 @@ namespace mlir {
 namespace quant {
 
 namespace {
+
+using QuantMethod = tensorflow::quantization::QuantizationMethod::PresetMethod;
 
 // Applies prepare quantization on the model in TF dialect. This pass runs
 // before the quantization pass and propagate the quantization parameters
@@ -73,19 +74,23 @@ class PrepareQuantizePass
     quant_specs_.inference_type = tensorflow::DT_QINT8;
   }
 
-  explicit PrepareQuantizePass(QuantizationMethod quantization_method) {
+  // Constructor used by manually creating the pass.
+  explicit PrepareQuantizePass(const QuantizationSpecs& quant_specs,
+                               QuantMethod quantization_method)
+      : quant_specs_(quant_specs) {
     quant_specs_.inference_type = tensorflow::DT_QINT8;
+    enable_per_channel_quantization_ = !quant_specs_.disable_per_channel;
     enable_post_training_quantize_ =
-        (quantization_method == QuantizationMethod::kPostTrainingQuantization);
+        (quantization_method == tensorflow::quantization::QuantizationMethod::
+                                    METHOD_STATIC_RANGE_INT8);
   }
 
   PrepareQuantizePass(const PrepareQuantizePass& other) {
     quant_specs_ = other.quant_specs_;
     enable_post_training_quantize_ = other.enable_post_training_quantize_;
-    disable_per_channel_ = other.disable_per_channel_;
+    enable_per_channel_quantization_ = !quant_specs_.disable_per_channel;
   }
 
-  // Constructor used by manually creating the pass.
   explicit PrepareQuantizePass(const QuantizationSpecs& quant_specs)
       : quant_specs_(quant_specs) {
     enable_post_training_quantize_ = quant_specs.post_training_quantization;
@@ -128,7 +133,7 @@ class PrepareQuantizePass
   // Get the min and max values from the quantization specification for the
   // current function and argument index. Uses default values if the function
   // is specified in the `quantize_allowlist`.
-  std::pair<llvm::Optional<double>, llvm::Optional<double>>
+  std::pair<std::optional<double>, std::optional<double>>
   GetMinMaxValuesForArgument(llvm::StringRef func_name, int index) {
     if (func_name == quant_specs_.target_func) {
       return quant_specs_.input_ranges[index];
@@ -151,9 +156,11 @@ class PrepareQuantizePass
       *this, "post-training-quantize", llvm::cl::init(false),
       llvm::cl::desc("Enable post training quantization. Only used in tests.")};
 
-  Option<bool> disable_per_channel_{
-      *this, "disable-per-channel", llvm::cl::init(false),
-      llvm::cl::desc("Whether disable per-channel quantized weights.")};
+  // A local flag is needed for testing conditions in
+  // prepare_quantize_ptq_per_channel.mlir.
+  Option<bool> enable_per_channel_quantization_{
+      *this, "enable-per-channel-quantization", llvm::cl::init(false),
+      llvm::cl::desc("Whether enable per-channel quantized weights.")};
 };
 
 bool PrepareQuantizePass::SetInputNodesQuantizationParams(func::FuncOp func) {
@@ -165,8 +172,8 @@ bool PrepareQuantizePass::SetInputNodesQuantizationParams(func::FuncOp func) {
 
   bool need_to_set_input_nodes_quantization_params = false;
   for (const BlockArgument arg : func.getArguments()) {
-    auto shaped = arg.getType().dyn_cast<ShapedType>();
-    if (shaped && shaped.getElementType().isa<FloatType>() &&
+    auto shaped = mlir::dyn_cast<ShapedType>(arg.getType());
+    if (shaped && mlir::isa<FloatType>(shaped.getElementType()) &&
         !has_quantize_op(arg)) {
       need_to_set_input_nodes_quantization_params = true;
       break;
@@ -191,8 +198,8 @@ bool PrepareQuantizePass::SetInputNodesQuantizationParams(func::FuncOp func) {
   auto add_quantize_op = [&](Location loc, Type input_type, Block* block,
                              Block::iterator insertion_point, Value arg,
                              int i) {
-    if (auto shaped = input_type.dyn_cast<ShapedType>()) {
-      if (shaped.getElementType().isa<FloatType>()) {
+    if (auto shaped = mlir::dyn_cast<ShapedType>(input_type)) {
+      if (mlir::isa<FloatType>(shaped.getElementType())) {
         // If there are existing quantize ops, they are from training and we
         // should respect them.
         if (has_quantize_op(arg)) {
@@ -204,9 +211,8 @@ bool PrepareQuantizePass::SetInputNodesQuantizationParams(func::FuncOp func) {
         if (!min_max.first.has_value() || !min_max.second.has_value()) return;
 
         TypeAttr params = quant::GetQuantizedTypeAttr(
-            builder, input_type,
-            builder.getF64FloatAttr(min_max.first.getValue()),
-            builder.getF64FloatAttr(min_max.second.getValue()),
+            builder, input_type, builder.getF64FloatAttr(min_max.first.value()),
+            builder.getF64FloatAttr(min_max.second.value()),
             /*quant_dim=*/-1, num_bits, narrow_range, is_signed);
         builder.setInsertionPoint(block, insertion_point);
         auto q_op = builder.create<quantfork::QuantizeCastOp>(
@@ -389,35 +395,40 @@ void PrepareQuantizePass::runOnOperation() {
 
   // During the legalization, unsigned quantized type is used, so we have to
   // convert all of them to signed.
-  RewritePatternSet patterns(&getContext());
+  RewritePatternSet patterns(ctx);
   populateWithGenerated(patterns);
   patterns.add<quant::ConvertUnsignedToSigned<quantfork::QuantizeCastOp>>(ctx);
   // Convert quant stats to int8 quantization parameters.
   // Currently, only activation stats are imported, so narrow_range = false.
   patterns.add<PrepareQuantStats>(bit_width, false, true,
                                   /*legacy_float_scale=*/false, ctx);
-  (void)applyPatternsAndFoldGreedily(func, std::move(patterns));
+  if (failed(applyPatternsAndFoldGreedily(func, std::move(patterns)))) {
+    signalPassFailure();
+  }
 
   SanityCheckAndAdjustment(func);
 
   // Finally, the quantization parameters can be propagated to the rest of the
   // values (tensors).
   ApplyQuantizationParamsPropagation(
-      func, is_signed, disable_per_channel_ || quant_specs_.disable_per_channel,
+      func, is_signed, /*bit_width=*/8, !enable_per_channel_quantization_,
       GetTFOpQuantSpec, GetTfQuantScaleSpec, infer_tensor_range,
-      quant_specs_.legacy_float_scale);
+      quant_specs_.legacy_float_scale, /*is_qdq_conversion=*/false);
 
   RewritePatternSet patterns2(ctx);
   patterns2.add<MergeConsecutiveQuantizeCast>(ctx);
-  (void)applyPatternsAndFoldGreedily(func, std::move(patterns2));
+  if (failed(applyPatternsAndFoldGreedily(func, std::move(patterns2)))) {
+    signalPassFailure();
+  }
 }
 
 }  // namespace
 
 // Creates an instance of the TensorFlow dialect PrepareQuantize pass.
 std::unique_ptr<OperationPass<func::FuncOp>> CreatePrepareQuantizePass(
-    QuantizationMethod quantization_method) {
-  return std::make_unique<PrepareQuantizePass>(quantization_method);
+    const QuantizationSpecs& quant_specs, QuantMethod quantization_method) {
+  return std::make_unique<PrepareQuantizePass>(quant_specs,
+                                               quantization_method);
 }
 
 static PassRegistration<PrepareQuantizePass> pass;

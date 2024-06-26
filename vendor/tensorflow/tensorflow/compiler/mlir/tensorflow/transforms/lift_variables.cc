@@ -79,10 +79,10 @@ LogicalResult LiftVariablesFromSession(
   std::vector<Tensor> resource_tensors;
   Status status = session->Run(
       /*inputs=*/{}, variable_names,
-      /*target_node_names=*/{}, &resource_tensors);
+      /*target_tensor_names=*/{}, &resource_tensors);
   if (!status.ok()) {
     return module.emitOpError()
-           << "failed to run the provided session: " << status.error_message();
+           << "failed to run the provided session: " << status.message();
   }
 
   const DeviceMgr* device_manager;
@@ -189,10 +189,10 @@ LogicalResult LiftVariables(ModuleOp module, Session* session) {
           func, arg_number, symbol_table);
       if (!global_tensor) continue;
 
-      auto arg_type = arg.getType().cast<RankedTensorType>();
+      auto arg_type = mlir::cast<RankedTensorType>(arg.getType());
       assert(arg_type.getRank() == 0);
       llvm::ArrayRef<TensorType> underlying_type =
-          arg_type.getElementType().cast<TF::ResourceType>().getSubtypes();
+          mlir::cast<TF::ResourceType>(arg_type.getElementType()).getSubtypes();
 
       // If the arg type already matches the global_tensor type, we don't need
       // to do anything.
@@ -206,7 +206,7 @@ LogicalResult LiftVariables(ModuleOp module, Session* session) {
       auto new_arg_type = mlir::RankedTensorType::get(
           /*shape=*/{},
           mlir::TF::ResourceType::get(
-              /*subtypes=*/{global_tensor.getType().cast<TensorType>()},
+              /*subtypes=*/{mlir::cast<TensorType>(global_tensor.getType())},
               module.getContext()));
 
       arg.setType(new_arg_type);

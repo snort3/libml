@@ -38,6 +38,7 @@ limitations under the License.
 #include "mlir/Pass/Pass.h"  // from @llvm-project
 #include "mlir/Pass/PassRegistry.h"  // from @llvm-project
 #include "mlir/Support/DebugStringHelper.h"  // from @llvm-project
+#include "mlir/Support/LLVM.h"  // from @llvm-project
 #include "mlir/Support/LogicalResult.h"  // from @llvm-project
 #include "mlir/Transforms/RegionUtils.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/tensorflow/analysis/side_effect_analysis.h"
@@ -76,7 +77,7 @@ AnonymousIteratorV3Op CreateIterator(OpBuilder builder,
   llvm::SmallVector<Attribute, 2> type_attrs;
   for (Type type : dataset_types) {
     shape_attrs.push_back(
-        TF::ShapeAttr::get(builder.getContext(), type.cast<ShapedType>()));
+        TF::ShapeAttr::get(builder.getContext(), mlir::cast<ShapedType>(type)));
     type_attrs.push_back(TypeAttr::get(getElementTypeOrSelf(type)));
   }
 
@@ -86,7 +87,7 @@ AnonymousIteratorV3Op CreateIterator(OpBuilder builder,
       /*output_types=*/builder.getArrayAttr(type_attrs),
       /*shape_types=*/builder.getArrayAttr(shape_attrs));
   builder.create<MakeIteratorOp>(reduce_dataset.getLoc(),
-                                 reduce_dataset.input_dataset(),
+                                 reduce_dataset.getInputDataset(),
                                  anonymous_iterator.getResult());
   return anonymous_iterator;
 }
@@ -127,7 +128,7 @@ WhileRegionOp CreateDatasetWhile(OpBuilder builder,
 // condition of whether to continue to next iteration.
 void PopulateDatasetWhileCond(OpBuilder builder, WhileRegionOp dataset_while,
                               Location loc) {
-  auto& cond_region = dataset_while.cond();
+  auto& cond_region = dataset_while.getCond();
   Block* cond_block = builder.createBlock(&cond_region);
   auto while_input_types = dataset_while.getOperandTypes();
   cond_block->addArguments(
@@ -160,7 +161,7 @@ IfRegionOp CreateOptionalDatasetIf(
   // parallelization.
   dataset_if->setAttr("_lower_using_switch_merge", builder.getBoolAttr(true));
   // Empty else branch, if there is no more data, do nothing.
-  auto& else_branch = dataset_if.else_branch();
+  auto& else_branch = dataset_if.getElseBranch();
   else_branch.push_back(new Block);
   builder.setInsertionPointToEnd(&else_branch.front());
   // Return only the state variables from the body arguments.
@@ -172,7 +173,7 @@ IfRegionOp CreateOptionalDatasetIf(
                               /*operands=*/else_returns);
 
   // Then branch gets the data and calls the reduce_function.
-  auto& then_branch = dataset_if.then_branch();
+  auto& then_branch = dataset_if.getThenBranch();
   then_branch.push_back(new Block);
   builder.setInsertionPointToEnd(&then_branch.front());
   // Add iterator operational data access inside if.
@@ -220,14 +221,14 @@ void PopulateDatasetWhileBody(OpBuilder builder, ReduceDatasetOp reduce_dataset,
                               ArrayRef<Type> dataset_types) {
   const Location loc = reduce_dataset.getLoc();
   auto while_input_types = dataset_while.getOperandTypes();
-  auto& body_region = dataset_while.body();
+  auto& body_region = dataset_while.getBody();
   Block* body_block = builder.createBlock(&body_region);
   auto body_arguments = body_block->addArguments(
       while_input_types, SmallVector<Location>(while_input_types.size(), loc));
   auto get_next = builder.create<IteratorGetNextAsOptionalOp>(
       loc, RankedTensorType::get({}, builder.getType<VariantType>()),
-      anonymous_iterator.getResult(), anonymous_iterator.output_types(),
-      anonymous_iterator.output_shapes());
+      anonymous_iterator.getResult(), anonymous_iterator.getOutputTypes(),
+      anonymous_iterator.getOutputShapes());
   auto optional_has_value = builder.create<OptionalHasValueOp>(
       loc, RankedTensorType::get({}, builder.getI1Type()),
       get_next.getResult());
@@ -279,7 +280,7 @@ LogicalResult DecomposeReduceDatasetInFunction(FuncOp function) {
     // complexity = # ReduceDataset ops x # of functions in module.
     func::FuncOp reduce_func =
         function->getParentOfType<ModuleOp>().lookupSymbol<FuncOp>(
-            reduce_dataset.f());
+            reduce_dataset.getF());
 
     // The reduce function arguments consist of three part in this order:
     // 1. Reduction state inputs.

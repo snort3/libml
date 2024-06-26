@@ -12,7 +12,9 @@
 #include <random>
 #include <vector>
 
-#include <cpuinfo.h>
+#if XNN_ENABLE_CPUINFO
+  #include <cpuinfo.h>
+#endif  // XNN_ENABLE_CPUINFO
 #include <pthreadpool.h>
 
 #include <benchmark/benchmark.h>
@@ -49,14 +51,10 @@ static void ComputeError(
 
 static void ExpError(
   benchmark::State& state,
-  xnn_f16_unary_math_function exp,
+  xnn_f16_unary_math_fn exp,
   benchmark::utils::IsaCheckFunction isa_check = nullptr)
 {
-  if (!cpuinfo_initialize()) {
-    state.SkipWithError("failed cpuinfo init");
-    return;
-  }
-  if (isa_check && !isa_check(state)) {
+  if (isa_check != nullptr && !isa_check(state)) {
     return;
   }
 
@@ -71,13 +69,19 @@ static void ExpError(
   // Number of elements in one parallelization tile. Worker threads process this many elements in each task.
   const size_t tile_size = 64;
 
-  uint32_t num_threads = cpuinfo_get_cores_count();
-  #if XNN_ARCH_ARM || XNN_ARCH_ARM64
-    // Use all cores except for the least performant cluster
-    if (cpuinfo_get_clusters_count() > 1) {
-      num_threads -= cpuinfo_get_cluster(cpuinfo_get_clusters_count() - 1)->core_count;
+  // Default: as many as logical processors in the system
+  size_t num_threads = 0;
+  #if XNN_ENABLE_CPUINFO
+    if (cpuinfo_initialize()) {
+      num_threads = cpuinfo_get_processors_count();
+      #if XNN_ARCH_ARM || XNN_ARCH_ARM64
+        // Use all cores except for the least performant cluster
+        if (cpuinfo_get_clusters_count() > 1) {
+          num_threads -= cpuinfo_get_cluster(cpuinfo_get_clusters_count() - 1)->core_count;
+        }
+      #endif  // XNN_ARCH_ARM || XNN_ARCH_ARM64
     }
-  #endif  // XNN_ARCH_ARM || XNN_ARCH_ARM64
+  #endif  // XNN_ENABLE_CPUINFO
 
   std::unique_ptr<pthreadpool, decltype(&pthreadpool_destroy)> threadpool(
     pthreadpool_create(num_threads), pthreadpool_destroy);
@@ -131,13 +135,13 @@ static void ExpError(
   state.counters["ULPERROR"] = benchmark::Counter(max_ulp_error);
 }
 
-#if XNN_ENABLE_ARM_FP16 && (XNN_ARCH_ARM || XNN_ARCH_ARM64)
+#if XNN_ENABLE_ARM_FP16_VECTOR && (XNN_ARCH_ARM || XNN_ARCH_ARM64)
   BENCHMARK_CAPTURE(ExpError, neonfp16arith_rr2_p3,
                     xnn_math_f16_exp__neonfp16arith_rr2_p3,
                     benchmark::utils::CheckNEONFP16ARITH)
     ->Unit(benchmark::kMillisecond)
     ->Iterations(1);
-#endif  // XNN_ENABLE_ARM_FP16 && (XNN_ARCH_ARM || XNN_ARCH_ARM64)
+#endif  // XNN_ENABLE_ARM_FP16_VECTOR && (XNN_ARCH_ARM || XNN_ARCH_ARM64)
 
 #ifndef XNNPACK_BENCHMARK_NO_MAIN
 BENCHMARK_MAIN();

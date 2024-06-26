@@ -5,24 +5,22 @@
 
 #pragma once
 
-#include <gtest/gtest.h>
+#include <xnnpack.h>
 
 #include <algorithm>
 #include <cassert>
-#include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
-#include <functional>
+#include <memory>
 #include <numeric>
-#include <random>
 #include <vector>
 
-#include <xnnpack.h>
-
+#include <gtest/gtest.h>
 
 class SpaceToDepthOperatorTester {
  public:
-  inline SpaceToDepthOperatorTester& input_size(size_t input_height, size_t input_width) {
+  SpaceToDepthOperatorTester& input_size(size_t input_height, size_t input_width) {
     assert(input_height >= 1);
     assert(input_width >= 1);
     this->input_height_ = input_height;
@@ -30,77 +28,71 @@ class SpaceToDepthOperatorTester {
     return *this;
   }
 
-  inline SpaceToDepthOperatorTester& input_height(size_t input_height) {
+  SpaceToDepthOperatorTester& input_height(size_t input_height) {
     assert(input_height >= 1);
     this->input_height_ = input_height;
     return *this;
   }
 
-  inline size_t input_height() const {
+  size_t input_height() const {
     return this->input_height_;
   }
 
-  inline SpaceToDepthOperatorTester& input_width(size_t input_width) {
+  SpaceToDepthOperatorTester& input_width(size_t input_width) {
     assert(input_width >= 1);
     this->input_width_ = input_width;
     return *this;
   }
 
-  inline size_t input_width() const {
+  size_t input_width() const {
     return this->input_width_;
   }
 
-  inline size_t output_height() const {
+  size_t output_height() const {
     assert(input_height() % block_size() == 0);
     return input_height() / block_size();
   }
 
-  inline size_t output_width() const {
+  size_t output_width() const {
     assert(input_width() % block_size() == 0);
     return input_width() / block_size();
   }
 
-  inline SpaceToDepthOperatorTester& block_size(size_t block_size) {
+  SpaceToDepthOperatorTester& block_size(size_t block_size) {
     assert(block_size >= 2);
     this->block_size_ = block_size;
     return *this;
   }
 
-  inline size_t block_size() const {
+  size_t block_size() const {
     return this->block_size_;
   }
 
-  inline SpaceToDepthOperatorTester& input_channels(size_t input_channels) {
+  SpaceToDepthOperatorTester& input_channels(size_t input_channels) {
     assert(input_channels != 0);
     this->input_channels_ = input_channels;
     return *this;
   }
 
-  inline size_t input_channels() const {
+  size_t input_channels() const {
     return this->input_channels_;
   }
 
-  inline size_t output_channels() const {
+  size_t output_channels() const {
     return input_channels() * block_size() * block_size();
   }
 
-  inline SpaceToDepthOperatorTester& batch_size(size_t batch_size) {
+  SpaceToDepthOperatorTester& batch_size(size_t batch_size) {
     assert(batch_size != 0);
     this->batch_size_ = batch_size;
     return *this;
   }
 
-  inline size_t batch_size() const {
+  size_t batch_size() const {
     return this->batch_size_;
   }
 
-  inline SpaceToDepthOperatorTester& input_channels_stride(size_t input_channels_stride) {
-    assert(input_channels_stride >= 1);
-    this->input_channels_stride_ = input_channels_stride;
-    return *this;
-  }
-
-  inline size_t input_channels_stride() const {
+  size_t input_channels_stride() const {
     if (this->input_channels_stride_ == 0) {
       return input_channels();
     } else {
@@ -109,13 +101,7 @@ class SpaceToDepthOperatorTester {
     }
   }
 
-  inline SpaceToDepthOperatorTester& output_channels_stride(size_t output_channels_stride) {
-    assert(output_channels_stride >= 1);
-    this->output_channels_stride_ = output_channels_stride;
-    return *this;
-  }
-
-  inline size_t output_channels_stride() const {
+  size_t output_channels_stride() const {
     if (this->output_channels_stride_ == 0) {
       return output_channels();
     } else {
@@ -124,18 +110,19 @@ class SpaceToDepthOperatorTester {
     }
   }
 
-  inline SpaceToDepthOperatorTester& iterations(size_t iterations) {
+  SpaceToDepthOperatorTester& iterations(size_t iterations) {
     this->iterations_ = iterations;
     return *this;
   }
 
-  inline size_t iterations() const {
+  size_t iterations() const {
     return this->iterations_;
   }
 
   void TestNHWCxX8() const {
     std::vector<int8_t> input(
-      (batch_size() * input_height() * input_width() - 1) * input_channels_stride() + input_channels());
+      (batch_size() * input_height() * input_width() - 1) * input_channels_stride()
+      + input_channels() + XNN_EXTRA_BYTES / (sizeof(int8_t)));
     std::vector<int8_t> output(
       (batch_size() * output_height() * output_width() - 1) * output_channels_stride() + output_channels());
     for (size_t iteration = 0; iteration < iterations(); iteration++) {
@@ -148,7 +135,6 @@ class SpaceToDepthOperatorTester {
 
       ASSERT_EQ(xnn_status_success,
                 xnn_create_space_to_depth_nhwc_x8(
-                    input_channels(), input_channels_stride(), output_channels_stride(),
                     block_size(), 0, &space_to_depth_op));
       ASSERT_NE(nullptr, space_to_depth_op);
 
@@ -156,13 +142,19 @@ class SpaceToDepthOperatorTester {
       std::unique_ptr<xnn_operator, decltype(&xnn_delete_operator)> auto_space_to_depth_op(space_to_depth_op, xnn_delete_operator);
 
       ASSERT_EQ(xnn_status_success,
-                xnn_setup_space_to_depth_nhwc_x8(
+                xnn_reshape_space_to_depth_nhwc_x8(
                     space_to_depth_op,
-                    batch_size(), input_height(), input_width(),
-                    input.data(), output.data(), nullptr /* thread pool */));
+                    batch_size(), input_height(), input_width(), input_channels(),
+                    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr, /*output_channels_out=*/nullptr,
+                    /*threadpool=*/nullptr));
 
       ASSERT_EQ(xnn_status_success,
-        xnn_run_operator(space_to_depth_op, nullptr /* thread pool */));
+                xnn_setup_space_to_depth_nhwc_x8(
+                    space_to_depth_op,
+                    input.data(), output.data()));
+
+      ASSERT_EQ(xnn_status_success,
+        xnn_run_operator(space_to_depth_op, /*threadpool=*/nullptr));
 
       // Verify results.
       for (size_t i = 0; i < batch_size(); i++) {
@@ -204,7 +196,8 @@ class SpaceToDepthOperatorTester {
 
   void TestNHWCxX16() const {
     std::vector<int16_t> input(
-      (batch_size() * input_height() * input_width() - 1) * input_channels_stride() + input_channels());
+      (batch_size() * input_height() * input_width() - 1) * input_channels_stride()
+      + input_channels() + XNN_EXTRA_BYTES / (sizeof(int16_t)));
     std::vector<int16_t> output(
       (batch_size() * output_height() * output_width() - 1) * output_channels_stride() + output_channels());
     for (size_t iteration = 0; iteration < iterations(); iteration++) {
@@ -217,7 +210,6 @@ class SpaceToDepthOperatorTester {
 
       ASSERT_EQ(xnn_status_success,
                 xnn_create_space_to_depth_nhwc_x16(
-                    input_channels(), input_channels_stride(), output_channels_stride(),
                     block_size(), 0, &space_to_depth_op));
       ASSERT_NE(nullptr, space_to_depth_op);
 
@@ -225,13 +217,19 @@ class SpaceToDepthOperatorTester {
       std::unique_ptr<xnn_operator, decltype(&xnn_delete_operator)> auto_space_to_depth_op(space_to_depth_op, xnn_delete_operator);
 
       ASSERT_EQ(xnn_status_success,
-                xnn_setup_space_to_depth_nhwc_x16(
+                xnn_reshape_space_to_depth_nhwc_x16(
                     space_to_depth_op,
-                    batch_size(), input_height(), input_width(),
-                    input.data(), output.data(), nullptr /* thread pool */));
+                    batch_size(), input_height(), input_width(), input_channels(),
+                    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr, /*output_channels_out=*/nullptr,
+                    /*threadpool=*/nullptr));
 
       ASSERT_EQ(xnn_status_success,
-        xnn_run_operator(space_to_depth_op, nullptr /* thread pool */));
+                xnn_setup_space_to_depth_nhwc_x16(
+                    space_to_depth_op,
+                    input.data(), output.data()));
+
+      ASSERT_EQ(xnn_status_success,
+        xnn_run_operator(space_to_depth_op, /*threadpool=*/nullptr));
 
       // Verify results.
       for (size_t i = 0; i < batch_size(); i++) {
@@ -273,7 +271,8 @@ class SpaceToDepthOperatorTester {
 
   void TestNHWCxX32() const {
     std::vector<int32_t> input(
-      (batch_size() * input_height() * input_width() - 1) * input_channels_stride() + input_channels());
+      (batch_size() * input_height() * input_width() - 1) * input_channels_stride()
+      + input_channels() + XNN_EXTRA_BYTES / (sizeof(int32_t)));
     std::vector<int32_t> output(
       (batch_size() * output_height() * output_width() - 1) * output_channels_stride() + output_channels());
     for (size_t iteration = 0; iteration < iterations(); iteration++) {
@@ -286,7 +285,6 @@ class SpaceToDepthOperatorTester {
 
       ASSERT_EQ(xnn_status_success,
                 xnn_create_space_to_depth_nhwc_x32(
-                    input_channels(), input_channels_stride(), output_channels_stride(),
                     block_size(), 0, &space_to_depth_op));
       ASSERT_NE(nullptr, space_to_depth_op);
 
@@ -294,13 +292,19 @@ class SpaceToDepthOperatorTester {
       std::unique_ptr<xnn_operator, decltype(&xnn_delete_operator)> auto_space_to_depth_op(space_to_depth_op, xnn_delete_operator);
 
       ASSERT_EQ(xnn_status_success,
-                xnn_setup_space_to_depth_nhwc_x32(
+                xnn_reshape_space_to_depth_nhwc_x32(
                     space_to_depth_op,
-                    batch_size(), input_height(), input_width(),
-                    input.data(), output.data(), nullptr /* thread pool */));
+                    batch_size(), input_height(), input_width(), input_channels(),
+                    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr, /*output_channels_out=*/nullptr,
+                    /*threadpool=*/nullptr));
 
       ASSERT_EQ(xnn_status_success,
-        xnn_run_operator(space_to_depth_op, nullptr /* thread pool */));
+                xnn_setup_space_to_depth_nhwc_x32(
+                    space_to_depth_op,
+                    input.data(), output.data()));
+
+      ASSERT_EQ(xnn_status_success,
+        xnn_run_operator(space_to_depth_op, /*threadpool=*/nullptr));
 
       // Verify results.
       for (size_t i = 0; i < batch_size(); i++) {

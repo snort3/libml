@@ -8,10 +8,11 @@
 #include <cmath>
 #include <functional>
 #include <limits>
+#include <memory>
 #include <random>
 #include <vector>
 
-#include <fp16.h>
+#include <fp16/fp16.h>
 
 #include <xnnpack.h>
 
@@ -47,24 +48,27 @@ static void xnnpack_hardswish_f32(benchmark::State& state) {
 
   xnn_operator_t hardswish_op = nullptr;
   status = xnn_create_hardswish_nc_f32(
-    1 /* channels */, 1 /* input stride */, 1 /* output stride */,
     0 /* flags */, &hardswish_op);
   if (status != xnn_status_success || hardswish_op == nullptr) {
     state.SkipWithError("failed to create HardSwish operator");
     return;
   }
 
-  status = xnn_setup_hardswish_nc_f32(
-    hardswish_op, batch_size,
-    input.data(), output.data(),
-    nullptr /* thread pool */);
+  status = xnn_reshape_hardswish_nc_f32(hardswish_op, batch_size,
+    /*channels=*/1, /*input_stride=*/1, /*output_stride=*/1, /*threadpool=*/nullptr);
+  if (status != xnn_status_success) {
+    state.SkipWithError("failed to reshape HardSwish operator");
+    return;
+  }
+
+  status = xnn_setup_hardswish_nc_f32(hardswish_op, input.data(), output.data());
   if (status != xnn_status_success) {
     state.SkipWithError("failed to setup HardSwish operator");
     return;
   }
 
   for (auto _ : state) {
-    status = xnn_run_operator(hardswish_op, nullptr /* thread pool */);
+    status = xnn_run_operator(hardswish_op, /*threadpool=*/nullptr);
     if (status != xnn_status_success) {
       state.SkipWithError("failed to run HardSwish operator");
       return;
@@ -90,7 +94,6 @@ static void xnnpack_hardswish_f32(benchmark::State& state) {
     benchmark::Counter(uint64_t(state.iterations()) * bytes_per_iteration, benchmark::Counter::kIsRate);
 }
 
-#ifndef XNN_NO_F16_OPERATORS
 static void xnnpack_hardswish_f16(benchmark::State& state) {
   const size_t batch_size = state.range(0);
 
@@ -102,7 +105,7 @@ static void xnnpack_hardswish_f16(benchmark::State& state) {
   std::vector<uint16_t> input(batch_size + XNN_EXTRA_BYTES / sizeof(uint16_t));
   std::vector<uint16_t> output(batch_size);
   std::generate(input.begin(), input.end(), std::ref(f16rng));
-  std::fill(output.begin(), output.end(), std::nanf(""));
+  std::fill(output.begin(), output.end(), UINT16_C(0x7E00) /* NaN */);
 
   xnn_status status = xnn_initialize(nullptr /* allocator */);
   if (status != xnn_status_success) {
@@ -112,24 +115,27 @@ static void xnnpack_hardswish_f16(benchmark::State& state) {
 
   xnn_operator_t hardswish_op = nullptr;
   status = xnn_create_hardswish_nc_f16(
-    1 /* channels */, 1 /* input stride */, 1 /* output stride */,
     0 /* flags */, &hardswish_op);
   if (status != xnn_status_success || hardswish_op == nullptr) {
     state.SkipWithError("failed to create HardSwish operator");
     return;
   }
 
-  status = xnn_setup_hardswish_nc_f16(
-    hardswish_op, batch_size,
-    input.data(), output.data(),
-    nullptr /* thread pool */);
+  status = xnn_reshape_hardswish_nc_f16(hardswish_op, batch_size,
+    /*channels=*/1, /*input_stride=*/1, /*output_stride=*/1, /*threadpool=*/nullptr);
+  if (status != xnn_status_success) {
+    state.SkipWithError("failed to reshape HardSwish operator");
+    return;
+  }
+
+  status = xnn_setup_hardswish_nc_f16(hardswish_op, input.data(), output.data());
   if (status != xnn_status_success) {
     state.SkipWithError("failed to setup HardSwish operator");
     return;
   }
 
   for (auto _ : state) {
-    status = xnn_run_operator(hardswish_op, nullptr /* thread pool */);
+    status = xnn_run_operator(hardswish_op, /*threadpool=*/nullptr);
     if (status != xnn_status_success) {
       state.SkipWithError("failed to run HardSwish operator");
       return;
@@ -154,7 +160,6 @@ static void xnnpack_hardswish_f16(benchmark::State& state) {
   state.counters["bytes"] =
     benchmark::Counter(uint64_t(state.iterations()) * bytes_per_iteration, benchmark::Counter::kIsRate);
 }
-#endif  // XNN_NO_F16_OPERATORS
 
 #ifdef BENCHMARK_TENSORFLOW_LITE
 static void tflite_hardswish_f32(benchmark::State& state) {
@@ -257,11 +262,9 @@ static void tflite_hardswish_f32(benchmark::State& state) {
 BENCHMARK(xnnpack_hardswish_f32)
   ->Apply(benchmark::utils::UnaryElementwiseParameters<float, float>)
   ->UseRealTime();
-#ifndef XNN_NO_F16_OPERATORS
-  BENCHMARK(xnnpack_hardswish_f16)
-    ->Apply(benchmark::utils::UnaryElementwiseParameters<uint16_t, uint16_t>)
-    ->UseRealTime();
-#endif  // XNN_NO_F16_OPERATORS
+BENCHMARK(xnnpack_hardswish_f16)
+  ->Apply(benchmark::utils::UnaryElementwiseParameters<uint16_t, uint16_t>)
+  ->UseRealTime();
 
 #ifdef BENCHMARK_TENSORFLOW_LITE
   BENCHMARK(tflite_hardswish_f32)

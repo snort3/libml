@@ -31,7 +31,7 @@ public class AnyUniqueAliasesUnion {
   public MyGame.Example2.MonsterT AsM2() { return this.As<MyGame.Example2.MonsterT>(); }
   public static AnyUniqueAliasesUnion FromM2(MyGame.Example2.MonsterT _m2) { return new AnyUniqueAliasesUnion{ Type = AnyUniqueAliases.M2, Value = _m2 }; }
 
-  public static int Pack(FlatBuffers.FlatBufferBuilder builder, AnyUniqueAliasesUnion _o) {
+  public static int Pack(Google.FlatBuffers.FlatBufferBuilder builder, AnyUniqueAliasesUnion _o) {
     switch (_o.Type) {
       default: return 0;
       case AnyUniqueAliases.M: return MyGame.Example.Monster.Pack(builder, _o.AsM()).Value;
@@ -81,6 +81,31 @@ public class AnyUniqueAliasesUnion_JsonConverter : Newtonsoft.Json.JsonConverter
       case AnyUniqueAliases.M2: _o.Value = serializer.Deserialize<MyGame.Example2.MonsterT>(reader); break;
     }
     return _o;
+  }
+}
+
+
+
+static public class AnyUniqueAliasesVerify
+{
+  static public bool Verify(Google.FlatBuffers.Verifier verifier, byte typeId, uint tablePos)
+  {
+    bool result = true;
+    switch((AnyUniqueAliases)typeId)
+    {
+      case AnyUniqueAliases.M:
+        result = MyGame.Example.MonsterVerify.Verify(verifier, tablePos);
+        break;
+      case AnyUniqueAliases.TS:
+        result = MyGame.Example.TestSimpleTableWithEnumVerify.Verify(verifier, tablePos);
+        break;
+      case AnyUniqueAliases.M2:
+        result = MyGame.Example2.MonsterVerify.Verify(verifier, tablePos);
+        break;
+      default: result = true;
+        break;
+    }
+    return result;
   }
 }
 

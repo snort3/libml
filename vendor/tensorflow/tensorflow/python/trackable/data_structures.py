@@ -15,7 +15,6 @@
 # ==============================================================================
 import collections
 import copy
-import operator
 import sys
 
 try:
@@ -27,16 +26,10 @@ except ImportError:
 from tensorflow.python.eager import def_function
 from tensorflow.python.eager import function as defun
 from tensorflow.python.ops import variables
-from tensorflow.python.saved_model import revived_types
 from tensorflow.python.trackable import base
 from tensorflow.python.trackable import layer_utils
-from tensorflow.python.util import lazy_loader
 from tensorflow.python.util.compat import collections_abc
 from tensorflow.python.util.tf_export import tf_export
-
-
-module = lazy_loader.LazyLoader(
-    "module", globals(), "tensorflow.python.module.module")
 
 
 class NoDependency:
@@ -245,7 +238,8 @@ class TrackableDataStructure(base.Trackable):
       return []
     trainable_variables = []
     for obj in self._values:
-      if isinstance(obj, (TrackableDataStructure, module.Module)):
+      if isinstance(obj, base.Trackable) and hasattr(
+          obj, "trainable_variables"):
         trainable_variables += obj.trainable_variables
     trainable_extra_variables = [
         v for v in self._self_extra_variables if v.trainable
@@ -262,14 +256,16 @@ class TrackableDataStructure(base.Trackable):
     ]
     non_trainable_variables = []
     for obj in self._values:
-      if isinstance(obj, (TrackableDataStructure, module.Module)):
+      if isinstance(obj, base.Trackable) and hasattr(
+          obj, "non_trainable_variables"):
         non_trainable_variables += obj.non_trainable_variables
 
     if not self._self_trainable:
       # Return order is all trainable vars, then all non-trainable vars.
       trainable_variables = []
       for obj in self._values:
-        if isinstance(obj, (TrackableDataStructure, module.Module)):
+        if isinstance(obj, base.Trackable) and hasattr(
+            obj, "trainable_variables"):
           trainable_variables += obj.trainable_variables
 
       non_trainable_variables = (
@@ -822,7 +818,13 @@ class _DictWrapper(TrackableDataStructure, wrapt.ObjectProxy):
       # of the wrapper without this logic.
       return object.__getattribute__(self, name)
     else:
-      return super().__getattribute__(name)
+      # Raise TypeError as AttributeError to fix breakage in wrapt 1.15 for
+      # `__getattribute__` as suggested in discussion with library author in
+      # GitHub https://github.com/GrahamDumpleton/wrapt/issues/231
+      try:
+        return super().__getattribute__(name)
+      except TypeError as e:
+        raise AttributeError from e
 
   def copy(self):
     return copy.copy(self)
@@ -1053,6 +1055,17 @@ class _TupleWrapper(TrackableDataStructure, wrapt.ObjectProxy):
   def __deepcopy__(self, memo):
     return _TupleWrapper(copy.deepcopy(self.__wrapped__, memo))
 
+  @property
+  def __dict__(self):
+    # Python 3.12 inspect._check_instance() method only expects and handles
+    # AttributeError but TypeError was raised when the method looks for
+    # `__dict__` on the data structure proxy wrapper. Thus we overrides the
+    # `__dict__` property and forwarding the `__dict__` lookup to the underlying
+    # wrapped TrackalbeDataStructure. AttributeError will be raised when
+    # TrackableDataStructure does not support `__dict__` and thus will be
+    # handled properly.
+    return self.__wrapped__.__dict__
+
   def __reduce_ex__(self, protocol):
     return (self.__class__,
             (self.__wrapped__,))
@@ -1098,38 +1111,14 @@ def _is_function(x):
   return isinstance(x, (def_function.Function, defun.ConcreteFunction))
 
 
-revived_types.register_revived_type(
-    "trackable_dict_wrapper",
-    lambda obj: isinstance(obj, _DictWrapper),
-    versions=[revived_types.VersionedTypeRegistration(
-        # Standard dependencies are enough to reconstruct the trackable
-        # items in dictionaries, so we don't need to save any extra information.
-        object_factory=lambda proto: _DictWrapper({}),
-        version=1,
-        min_producer_version=1,
-        min_consumer_version=1,
-        setter=operator.setitem)])
-
-
-def _set_list_item(list_object, index_string, value):
+def set_list_item(list_object, index_string, value):
   item_index = int(index_string)
   if len(list_object) <= item_index:
     list_object.extend([None] * (1 + item_index - len(list_object)))
   list_object[item_index] = value
 
 
-revived_types.register_revived_type(
-    "trackable_list_wrapper",
-    lambda obj: isinstance(obj, ListWrapper),
-    versions=[revived_types.VersionedTypeRegistration(
-        object_factory=lambda proto: ListWrapper([]),
-        version=1,
-        min_producer_version=1,
-        min_consumer_version=1,
-        setter=_set_list_item)])
-
-
-def _set_tuple_item(list_object, index_string, value):
+def set_tuple_item(list_object, index_string, value):
   try:
     item_index = int(index_string)
   except ValueError:
@@ -1138,15 +1127,3 @@ def _set_tuple_item(list_object, index_string, value):
   if len(list_object) <= item_index:
     list_object.extend([None] * (1 + item_index - len(list_object)))
   list_object[item_index] = value
-
-
-# Revive tuples as lists so we can append any dependencies during loading.
-revived_types.register_revived_type(
-    "trackable_tuple_wrapper",
-    lambda obj: isinstance(obj, _TupleWrapper),
-    versions=[revived_types.VersionedTypeRegistration(
-        object_factory=lambda proto: ListWrapper([]),
-        version=1,
-        min_producer_version=1,
-        min_consumer_version=1,
-        setter=_set_tuple_item)])

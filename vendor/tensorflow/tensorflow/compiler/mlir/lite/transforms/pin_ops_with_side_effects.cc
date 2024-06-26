@@ -37,9 +37,9 @@ namespace {
 #include "tensorflow/compiler/mlir/lite/transforms/passes.h.inc"
 
 bool IsResourceTensor(Value value) {
-  const auto tensor_type = value.getType().dyn_cast<TensorType>();
+  const auto tensor_type = mlir::dyn_cast<TensorType>(value.getType());
   return tensor_type &&
-         tensor_type.getElementType().isa<mlir::TF::ResourceType>();
+         mlir::isa<mlir::TF::ResourceType>(tensor_type.getElementType());
 }
 
 // The default criterion for operations being considered as causing or being
@@ -149,10 +149,10 @@ void PinOpsWithSideEffectsPass::runOnOperation() {
     builder.setInsertionPointToEnd(&region.front());
     Operation *inner_op = builder.clone(*op);
     builder.create<YieldOp>(loc, inner_op->getResults());
-    outer_op.body().takeBody(region);
+    outer_op.getBody().takeBody(region);
     // Careful: We can't use outer_op.getResults(), because that also includes
     // the control token.
-    op->replaceAllUsesWith(outer_op.outputs());
+    op->replaceAllUsesWith(outer_op.getOutputs());
     op->erase();
     // Control token is last result of outer_op.
     control_tokens.assign(1, outer_op.getResults().back());

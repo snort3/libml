@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 Google Inc. All rights reserved.
+ * Copyright 2023 Google Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,15 +14,21 @@
  * limitations under the License.
  */
 
+#if !os(WASI)
 #if os(Linux)
 import CoreFoundation
 #else
 import Foundation
 #endif
+#else
+import SwiftOverlayShims
+#endif
 
 /// A boolean to see if the system is littleEndian
-let isLitteEndian = CFByteOrderGetCurrent() ==
-  Int(CFByteOrderLittleEndian.rawValue)
+let isLitteEndian: Bool = {
+  let number: UInt32 = 0x12345678
+  return number == number.littleEndian
+}()
 /// Constant for the file id length
 let FileIdLength = 4
 /// Type aliases
@@ -113,4 +119,4 @@ extension UInt64: Scalar, Verifiable {
   public typealias NumericValue = UInt64
 }
 
-public func FlatBuffersVersion_2_0_0() {}
+public func FlatBuffersVersion_24_3_25() {}

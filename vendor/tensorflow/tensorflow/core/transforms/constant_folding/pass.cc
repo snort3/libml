@@ -17,7 +17,9 @@ limitations under the License.
 
 #include <algorithm>
 #include <iterator>
+#include <memory>
 #include <numeric>
+#include <optional>
 #include <string>
 #include <tuple>
 #include <type_traits>
@@ -32,6 +34,7 @@ limitations under the License.
 #include "llvm/ADT/Twine.h"
 #include "mlir/Dialect/Traits.h"  // from @llvm-project
 #include "mlir/IR/BuiltinAttributeInterfaces.h"  // from @llvm-project
+#include "mlir/IR/BuiltinAttributes.h"  // from @llvm-project
 #include "mlir/IR/PatternMatch.h"  // from @llvm-project
 #include "mlir/Support/LLVM.h"  // from @llvm-project
 #include "mlir/Support/LogicalResult.h"  // from @llvm-project
@@ -103,8 +106,8 @@ static Type GetDataTypeFromOp(OpBuilder &builder, Operation *op) {
 static FailureOr<TFOp> CreateConstantTensorOp(
     OpBuilder &builder, Location loc, StringRef name_prefix, Type type,
     ValueRange control_operands, TypedAttr tensor_value,
-    ArrayRef<NamedAttribute> other_attrs = llvm::None) {
-  if (type.isa<VariantType>()) return failure();
+    ArrayRef<NamedAttribute> other_attrs = std::nullopt) {
+  if (mlir::isa<VariantType>(type)) return failure();
   // TODO(chiahungduan): Reuse ConstOp Like
   // OperationFolder::tryGetOrCreateConstant.
   OperationState state(loc, "tfg.Const");
@@ -113,8 +116,9 @@ static FailureOr<TFOp> CreateConstantTensorOp(
   state.attributes = other_attrs;
   util::EraseRegularNodeAttributes(state.attributes);
   state.attributes.set(
-      "dtype", TypeAttr::get(
-                   tensor_value.getType().cast<ShapedType>().getElementType()));
+      "dtype",
+      TypeAttr::get(
+          mlir::cast<ShapedType>(tensor_value.getType()).getElementType()));
   state.attributes.set("value", tensor_value);
   if (!name_prefix.empty()) {
     state.attributes.set(
@@ -167,7 +171,7 @@ static TFOp GetControlAnchorForSwitchResult(
   if (StringAttr device_attr = switch_op.deviceAttr())
     identity_op.setRequestedDevice(device_attr);
   identity_op.setName(Twine(switch_op.name(), "/ControlDependencyCtrl_") +
-                      Twine(value.cast<OpResult>().getResultNumber()));
+                      Twine(mlir::cast<OpResult>(value).getResultNumber()));
   return identity_op;
 }
 
@@ -176,12 +180,12 @@ static TFOp GetControlAnchorForSwitchResult(
 // the output does not necessarily activate when the switch op activates. We
 // add a "control anchor" in the form of an identity op instead.
 static Value GetControlDependency(OpBuilder &builder, Value value) {
-  if (value.getType().isa<ControlType>()) return value;
+  if (mlir::isa<ControlType>(value.getType())) return value;
 
   TFGraphDialect *dialect =
       builder.getContext()->getLoadedDialect<TFGraphDialect>();
   assert(dialect);
-  if (OpResult result = value.dyn_cast<OpResult>();
+  if (OpResult result = mlir::dyn_cast<OpResult>(value);
       result && dialect->IsSwitch(result.getOwner())) {
     return GetControlAnchorForSwitchResult(builder, result, dialect)
         .controlRet();
@@ -193,16 +197,16 @@ static Value GetControlDependency(OpBuilder &builder, Value value) {
 // Add control operand to `op` if it doesn't exist.
 static void AddControlOperand(Operation *op, Value control,
                               PatternRewriter &rewriter) {
-  assert(control.getType().isa<ControlType>());
+  assert(mlir::isa<ControlType>(control.getType()));
   if (llvm::is_contained(op->getOperands(), control)) return;
-  rewriter.startRootUpdate(op);
+  rewriter.startOpModification(op);
   op->insertOperands(op->getNumOperands(), control);
-  rewriter.finalizeRootUpdate(op);
+  rewriter.finalizeOpModification(op);
 }
 
 static FailureOr<TFOp> ReplaceOpWithConstantTensor(
     OpBuilder &builder, TFOp op, ElementsAttr value,
-    ArrayRef<StringRef> exclude_attrs = llvm::None) {
+    ArrayRef<StringRef> exclude_attrs = std::nullopt) {
   // New const op has the control dependency with op's non-control operands.
   SmallVector<Value> operands_controls;
   llvm::append_range(operands_controls,
@@ -268,7 +272,7 @@ static FailureOr<TFOp> ReplaceOpWithNoOp(OpBuilder &builder, TFOp op) {
 
 static FailureOr<TFOp> ReplaceOpWithConstant(OpBuilder &builder, Operation *op,
                                              double constant_value) {
-  auto res = (*op->result_type_begin()).cast<ShapedType>();
+  auto res = mlir::cast<ShapedType>((*op->result_type_begin()));
   Type dtype = GetDataTypeFromOp(builder, op);
   Attribute value_attr;
   if (dtype.isIntOrIndex())
@@ -312,14 +316,14 @@ static FailureOr<TFOp> ReplaceOpWithSnapshot(OpBuilder &builder, TFOp op,
 
 static FailureOr<TFOp> ReplaceOpWithBroadcastTo(OpBuilder &builder, TFOp op,
                                                 int idx_to_replace) {
-  ShapedType tensor_type = (*op->result_type_begin()).cast<ShapedType>();
+  ShapedType tensor_type = mlir::cast<ShapedType>((*op->result_type_begin()));
   if (!tensor_type.hasStaticShape()) return failure();
   ElementsAttr const_attr = ConvertShapeToAttr(tensor_type);
 
   // Create a vector of control operands. We should not fail beyond this point
   // since GetControlDependency may create a control anchor (a new op).
   SmallVector<Value> control_operands;
-  for (auto &it : llvm::enumerate(op.getNonControlOperands())) {
+  for (const auto &it : llvm::enumerate(op.getNonControlOperands())) {
     int idx = it.index();
     Value v = it.value();
     if (idx == idx_to_replace) continue;
@@ -548,7 +552,8 @@ bool OpPropertyHelper::IsFoldableUncached(TFOp op) {
     TFOp operand_op = operand.getDefiningOp();
     if (operand_op && dialect_->IsConstant(operand_op)) {
       auto dtype = operand_op->getAttrOfType<TypeAttr>("dtype");
-      if (!dtype || dtype.getValue().isa<tf_type::StringType>()) return false;
+      if (!dtype || mlir::isa<tf_type::StringType>(dtype.getValue()))
+        return false;
 
       // Special case: If a Merge node has at least one constant input that
       // does not depend on a control input, we can fold it.
@@ -569,7 +574,7 @@ bool OpPropertyHelper::IsFoldableUncached(TFOp op) {
   // to materialize.
   int64_t input_size_bytes = 0;
   for (Value operand : operands) {
-    auto shape = operand.getType().dyn_cast<ShapedType>();
+    auto shape = mlir::dyn_cast<ShapedType>(operand.getType());
     if (!shape || !shape.hasStaticShape()) continue;
     auto element_type = shape.getElementType();
 
@@ -578,7 +583,7 @@ bool OpPropertyHelper::IsFoldableUncached(TFOp op) {
     input_size_bytes += shape.getNumElements() * DataTypeSize(dtype);
   }
   for (Value res : op->getResults().drop_back()) {
-    auto shape = res.getType().dyn_cast<ShapedType>();
+    auto shape = mlir::dyn_cast<ShapedType>(res.getType());
     if (!shape || !shape.hasStaticShape()) continue;
     auto element_type = shape.getElementType();
 
@@ -628,7 +633,7 @@ static bool IsValidConstShapeForMulConvPushDown(StringAttr data_format,
     }
 
     // TODO(chiahungduan): Symbolic shape equivalence is acceptable.
-    if (filter_shape.getShape() != llvm::makeArrayRef(broadcast_shape))
+    if (filter_shape.getShape() != llvm::ArrayRef(broadcast_shape))
       return false;
 
     // Only the last dimension could be larger than one, since broadcasting over
@@ -739,7 +744,7 @@ class EvaluateConstant : public FolderPatternBase<EvaluateConstant> {
     // TODO(tlongeri): Is CreateConstantTensorNode check correct? Shouldn't it
     // always be a ShapedType?
     for (TypedAttr r : result)
-      if (r && r.getType().isa<VariantType>()) return failure();
+      if (r && mlir::isa<VariantType>(r.getType())) return failure();
 
     StringAttr name_attr = static_cast<TFGraphDialect *>(op->getDialect())
                                ->getNameAttrIdentifier();
@@ -747,7 +752,7 @@ class EvaluateConstant : public FolderPatternBase<EvaluateConstant> {
         OperandControlRetRange(op->getOperands()));
 
     SmallVector<TFOp> const_ops(result.size());
-    for (auto &it : llvm::enumerate(result)) {
+    for (const auto &it : llvm::enumerate(result)) {
       TypedAttr attr = it.value();
       // Null values represent dead outputs. They can result from evaluating a
       // switch op.
@@ -775,13 +780,13 @@ class EvaluateConstant : public FolderPatternBase<EvaluateConstant> {
       const_op.setName(TFOp(op).nameAttr());
       rewriter.replaceOp(op, const_op->getResults());
     } else {
-      for (auto &it : llvm::enumerate(const_ops)) {
+      for (const auto &it : llvm::enumerate(const_ops)) {
         if (!it.value()) continue;
         for (OpOperand &use :
              llvm::make_early_inc_range(op->getResult(it.index()).getUses())) {
-          rewriter.startRootUpdate(use.getOwner());
+          rewriter.startOpModification(use.getOwner());
           use.set(it.value()->getResult(0));
-          rewriter.finalizeRootUpdate(use.getOwner());
+          rewriter.finalizeOpModification(use.getOwner());
         }
       }
       // All the non-control outputs are replaced with constant ops, except for
@@ -821,7 +826,7 @@ class MaterializeShapeOp : public FolderPatternBase<MaterializeShapeOp> {
                                 PatternRewriter &rewriter) const override {
     Value input = op->getOperand(0);
 
-    auto input_shape = input.getType().cast<ShapedType>();
+    auto input_shape = mlir::cast<ShapedType>(input.getType());
     if (!input_shape.hasStaticShape()) return failure();
 
     // TODO(rmlarsen): Remove this workaround for b/150861569
@@ -831,7 +836,7 @@ class MaterializeShapeOp : public FolderPatternBase<MaterializeShapeOp> {
       return failure();
 
     Type output_dtype =
-        op->getResult(0).getType().cast<ShapedType>().getElementType();
+        mlir::cast<ShapedType>(op->getResult(0).getType()).getElementType();
     ElementsAttr const_attr = CreateElementsAttrOfTypeValues(
         output_dtype, {input_shape.getRank()}, input_shape.getShape());
 
@@ -860,10 +865,10 @@ class MaterializeSizeOp : public FolderPatternBase<MaterializeSizeOp> {
                                 PatternRewriter &rewriter) const override {
     Value input = op->getOperand(0);
 
-    auto input_shape = input.getType().cast<ShapedType>();
+    auto input_shape = mlir::cast<ShapedType>(input.getType());
     if (!input_shape.hasStaticShape()) return failure();
 
-    ShapedType result_type = (*op->result_type_begin()).cast<ShapedType>();
+    ShapedType result_type = mlir::cast<ShapedType>((*op->result_type_begin()));
     if (!result_type.getElementType().isIntOrIndexOrFloat()) return failure();
 
     ElementsAttr const_attr = CreateElementsAttrOfTypeValues(
@@ -895,10 +900,10 @@ class MaterializeRankOp : public FolderPatternBase<MaterializeRankOp> {
                                 PatternRewriter &rewriter) const override {
     Value input = op->getOperand(0);
 
-    auto input_shape = input.getType().cast<ShapedType>();
+    auto input_shape = mlir::cast<ShapedType>(input.getType());
     if (!input_shape.hasRank()) return failure();
 
-    ShapedType result_type = (*op->result_type_begin()).cast<ShapedType>();
+    ShapedType result_type = mlir::cast<ShapedType>((*op->result_type_begin()));
     if (!result_type.getElementType().isIntOrIndexOrFloat()) return failure();
 
     ElementsAttr const_attr = CreateElementsAttrOfTypeValues(
@@ -973,7 +978,7 @@ class MaterializeShapeNOp : public FolderPatternBase<MaterializeShapeNOp> {
     for (const auto &it : llvm::enumerate(TFOp(op).getNonControlOperands())) {
       Value operand = op->getOperand(it.index());
 
-      auto operand_shape = operand.getType().cast<ShapedType>();
+      auto operand_shape = mlir::cast<ShapedType>(operand.getType());
       if (!operand_shape.hasStaticShape()) continue;
 
       if (op->getResults()[it.index()].use_empty()) continue;
@@ -995,9 +1000,9 @@ class MaterializeShapeNOp : public FolderPatternBase<MaterializeShapeNOp> {
 
       for (OpOperand &user :
            llvm::make_early_inc_range(op->getResult(it.index()).getUses())) {
-        rewriter.startRootUpdate(user.getOwner());
+        rewriter.startOpModification(user.getOwner());
         user.set((*const_op)->getResult(0));
-        rewriter.finalizeRootUpdate(user.getOwner());
+        rewriter.finalizeOpModification(user.getOwner());
       }
     }
 
@@ -1030,7 +1035,7 @@ class MaterializeBroadcastGradientArgsOp
     auto get_shape = [this](Operation *op,
                             SmallVector<int64_t> &shape) -> bool {
       if (dialect_->IsShape(op)) {
-        auto type = op->getOperand(0).getType().cast<ShapedType>();
+        auto type = mlir::cast<ShapedType>(op->getOperand(0).getType());
         if (!type.hasRank()) return false;
 
         llvm::append_range(shape, type.getShape());
@@ -1089,8 +1094,7 @@ class MaterializeBroadcastGradientArgsOp
       int reduction_indices = reduce_dims[j].size();
       ElementsAttr const_attr = CreateElementsAttrOfTypeValues(
           type_attr.getValue(), {reduction_indices},
-          llvm::makeArrayRef<int64_t>(reduce_dims[j].data(),
-                                      reduction_indices));
+          llvm::ArrayRef<int64_t>(reduce_dims[j].data(), reduction_indices));
       FailureOr<TFOp> const_op = CreateConstantTensorOp(
           rewriter, op->getLoc(), TFOp(op).name(), op->getResultTypes()[j],
           TFOp(op).controlRet(), const_attr);
@@ -1105,15 +1109,15 @@ class MaterializeBroadcastGradientArgsOp
 
     for (OpOperand &user :
          llvm::make_early_inc_range(op->getResult(0).getUses())) {
-      rewriter.startRootUpdate(user.getOwner());
+      rewriter.startOpModification(user.getOwner());
       user.set(const_values[0]);
-      rewriter.finalizeRootUpdate(user.getOwner());
+      rewriter.finalizeOpModification(user.getOwner());
     }
     for (OpOperand &user :
          llvm::make_early_inc_range(op->getResult(1).getUses())) {
-      rewriter.startRootUpdate(user.getOwner());
+      rewriter.startOpModification(user.getOwner());
       user.set(const_values[1]);
-      rewriter.finalizeRootUpdate(user.getOwner());
+      rewriter.finalizeOpModification(user.getOwner());
     }
 
     return success();
@@ -1137,18 +1141,19 @@ class MaterializeReductionIndices
     // The reduction indices are already constant, there's nothing to do.
     if (!indices || dialect_->IsConstant(indices)) return failure();
 
-    auto indices_shape = indices->getResult(0).getType().cast<ShapedType>();
+    auto indices_shape =
+        mlir::cast<ShapedType>(indices->getResult(0).getType());
     if (!indices_shape.hasRank()) return failure();
     if (!indices_shape.getElementType().isInteger(32) &&
         !indices_shape.getElementType().isInteger(64)) {
       return failure();
     }
 
-    auto input_shape = op->getOperand(0).getType().cast<ShapedType>();
+    auto input_shape = mlir::cast<ShapedType>(op->getOperand(0).getType());
     // Unexpected graph, don't try to change it.
     if (!input_shape.hasRank() || input_shape.getRank() < 1) return failure();
 
-    auto output_shape = op->getResult(0).getType().cast<ShapedType>();
+    auto output_shape = mlir::cast<ShapedType>(op->getResult(0).getType());
     const int output_rank =
         output_shape.hasRank() ? output_shape.getRank() : -1;
 
@@ -1165,7 +1170,7 @@ class MaterializeReductionIndices
         full_reduction = false;
         if (!dialect_->IsReshape(user)) return failure();
 
-        auto shape = user->getResult(0).getType().cast<ShapedType>();
+        auto shape = mlir::cast<ShapedType>(user->getResult(0).getType());
         if (!shape.hasStaticShape() || shape.getNumElements() != 1)
           return failure();
         else
@@ -1181,7 +1186,7 @@ class MaterializeReductionIndices
 
     ElementsAttr const_attr = CreateElementsAttrOfTypeValues(
         indices_shape.getElementType(), {input_shape.getRank()},
-        llvm::makeArrayRef(elements));
+        llvm::ArrayRef(elements));
 
     FailureOr<TFOp> const_op = CreateConstantTensorOp(
         rewriter, indices->getLoc(), Twine(TFOp(op).name(), "/indices").str(),
@@ -1191,9 +1196,9 @@ class MaterializeReductionIndices
     if (TFOp(op).deviceAttr())
       (*const_op).setRequestedDevice(TFOp(op).deviceAttr());
 
-    rewriter.startRootUpdate(op);
+    rewriter.startOpModification(op);
     op->setOperand(1, (*const_op)->getResults()[0]);
-    rewriter.finalizeRootUpdate(op);
+    rewriter.finalizeOpModification(op);
 
     return success();
   }
@@ -1212,7 +1217,7 @@ class MaterializeFillNode : public FolderPatternBase<MaterializeFillNode> {
     // Only handles single result op. Note that another result is control ret.
     if (op->getNumResults() != 2) return failure();
 
-    auto output_type = op->getResult(0).getType().cast<ShapedType>();
+    auto output_type = mlir::cast<ShapedType>(op->getResult(0).getType());
     if (!output_type.hasStaticShape()) return failure();
     if (!output_type.isIntOrIndexOrFloat()) return failure();
 
@@ -1260,7 +1265,7 @@ class MaterializeConstantValuedNode
 
     // TODO(chiahungduan): If op->getOperand(0) has static shape, can we use
     // that to materialize?
-    auto output_type = op->getResult(0).getType().cast<ShapedType>();
+    auto output_type = mlir::cast<ShapedType>(op->getResult(0).getType());
     if (!output_type.hasStaticShape()) return failure();
 
     int value = is_zeros_like ? 0 : 1;
@@ -1275,8 +1280,9 @@ class MaterializeConstantValuedNode
     } else {
       const_attr = SplatElementsAttr::get(
           output_type,
-          APFloat(output_element_type.cast<FloatType>().getFloatSemantics(),
-                  value));
+          APFloat(
+              mlir::cast<FloatType>(output_element_type).getFloatSemantics(),
+              value));
     }
 
     FailureOr<TFOp> const_op =
@@ -1316,7 +1322,7 @@ class MergeNodeFoldingBase : public PropagationPatternBase<ConcreteType> {
   MergeNodeFoldingBase(StringRef op_name, OpPropertyHelper &helper)
       : PropagationPatternBase<ConcreteType>(op_name, helper),
         zero_dim_i32_tensor_type_(RankedTensorType::get(
-            llvm::None,
+            std::nullopt,
             IntegerType::get(helper.getDialect()->getContext(), 32))) {}
 
   LogicalResult matchAndRewrite(Operation *op,
@@ -1369,15 +1375,15 @@ class MergeNodeFoldingBase : public PropagationPatternBase<ConcreteType> {
 
       for (OpOperand &user :
            llvm::make_early_inc_range(op->getResults()[0].getUses())) {
-        rewriter.startRootUpdate(user.getOwner());
+        rewriter.startOpModification(user.getOwner());
         user.set((*const_out)->getResult(0));
-        rewriter.finalizeRootUpdate(user.getOwner());
+        rewriter.finalizeOpModification(user.getOwner());
       }
       for (OpOperand &user :
            llvm::make_early_inc_range(op->getResults()[1].getUses())) {
-        rewriter.startRootUpdate(user.getOwner());
+        rewriter.startOpModification(user.getOwner());
         user.set((*const_index)->getResult(0));
-        rewriter.finalizeRootUpdate(user.getOwner());
+        rewriter.finalizeOpModification(user.getOwner());
       }
 
       // Already found an avaiable input.
@@ -1455,7 +1461,7 @@ class RemoveShuffleOp : public FolderPatternBase<RemoveShuffleOp> {
     ElementsAttr perm_tensor = perm_op->getAttrOfType<ElementsAttr>("value");
     if (!perm_tensor) return failure();
 
-    ShapedType x_shape = op->getOperand(0).getType().cast<ShapedType>();
+    ShapedType x_shape = mlir::cast<ShapedType>(op->getOperand(0).getType());
     if (!x_shape.hasRank()) return failure();
     if (perm_tensor.getNumElements() != x_shape.getRank()) return failure();
 
@@ -1487,7 +1493,7 @@ class RemoveTransposeOp : public FolderPatternBase<RemoveTransposeOp> {
     ElementsAttr perm_tensor = perm_op->getAttrOfType<ElementsAttr>("value");
     if (!perm_tensor) return failure();
 
-    ShapedType x_shape = op->getOperand(0).getType().cast<ShapedType>();
+    ShapedType x_shape = mlir::cast<ShapedType>(op->getOperand(0).getType());
     if (!x_shape.hasRank()) return failure();
     if (perm_tensor.getNumElements() != x_shape.getRank()) return failure();
 
@@ -1514,7 +1520,7 @@ class RemoveRandomShuffleOp : public FolderPatternBase<RemoveRandomShuffleOp> {
       : FolderPatternBase<RemoveRandomShuffleOp>("tfg.RandomShuffle", helper) {}
   LogicalResult matchAndRewrite(Operation *op,
                                 PatternRewriter &rewriter) const override {
-    auto shape = op->getOperand(0).getType().cast<ShapedType>();
+    auto shape = mlir::cast<ShapedType>(op->getOperand(0).getType());
     if (!shape.hasRank()) return failure();
     if (shape.getRank() != 0 && shape.getShape()[0] != 1) return failure();
 
@@ -1534,7 +1540,8 @@ class RemoveReverse : public FolderPatternBase<RemoveReverse> {
       : FolderPatternBase<RemoveReverse>("tfg.ReverseV2", helper) {}
   LogicalResult matchAndRewrite(Operation *op,
                                 PatternRewriter &rewriter) const override {
-    ShapedType tensor_type = op->getOperand(0).getType().cast<ShapedType>();
+    ShapedType tensor_type =
+        mlir::cast<ShapedType>(op->getOperand(0).getType());
     if (!tensor_type.hasRank()) return failure();
 
     Operation *dim_op = op->getOperand(1).getDefiningOp();
@@ -1586,7 +1593,7 @@ class SimplifySliceOp : public FolderPatternBase<SimplifySliceOp> {
     auto begin_attr = begin_op->getAttrOfType<ElementsAttr>("value");
     auto size_attr = size_op->getAttrOfType<ElementsAttr>("value");
 
-    ShapedType input_type = op->getOperand(0).getType().cast<ShapedType>();
+    ShapedType input_type = mlir::cast<ShapedType>(op->getOperand(0).getType());
     if (!input_type.hasRank()) return failure();
 
     for (unsigned i = 0; i < input_type.getRank(); ++i) {
@@ -1641,7 +1648,7 @@ class SimplifyStridedSlice : public FolderPatternBase<SimplifyStridedSlice> {
     if (!begin_mask_attr || !end_mask_attr || !ellipsis_mask_attr)
       return failure();
 
-    ShapedType input_type = op->getOperand(0).getType().cast<ShapedType>();
+    ShapedType input_type = mlir::cast<ShapedType>(op->getOperand(0).getType());
     if (!input_type.hasStaticShape()) return failure();
 
     Operation *begin_op = op->getOperand(1).getDefiningOp();
@@ -1803,7 +1810,7 @@ class SimplifySqueezeOp : public FolderPatternBase<SimplifySqueezeOp> {
       : FolderPatternBase<SimplifySqueezeOp>("tfg.Squeeze", helper) {}
   LogicalResult matchAndRewrite(Operation *op,
                                 PatternRewriter &rewriter) const override {
-    auto shape_type = op->getOperand(0).getType().cast<ShapedType>();
+    auto shape_type = mlir::cast<ShapedType>(op->getOperand(0).getType());
     if (!shape_type.hasRank()) return failure();
     if (llvm::any_of(shape_type.getShape(), [](int64_t s) { return s <= 1; }))
       return failure();
@@ -1834,13 +1841,13 @@ class SimplifyPackOp : public FolderPatternBase<SimplifyPackOp> {
     // protos, e.g. there is DT_RESOURCE).
     // TODO(tlongeri): is there a reason ExpandDims does not support DT_VARIANT?
     if (ShapedType values_type =
-            non_control_operands[0].getType().dyn_cast<ShapedType>();
-        !values_type || values_type.getElementType().isa<VariantType>())
+            mlir::dyn_cast<ShapedType>(non_control_operands[0].getType());
+        !values_type || mlir::isa<VariantType>(values_type.getElementType()))
       return failure();
 
     // It's unsafe to add a control dependency on the feed node, because it
     // might have been never executed otherwiwise.
-    if (non_control_operands[0].isa<BlockArgument>()) return failure();
+    if (mlir::isa<BlockArgument>(non_control_operands[0])) return failure();
 
     IntegerAttr axis = op->getAttrOfType<IntegerAttr>("axis");
     ElementsAttr const_attr = CreateElementsAttrOfTypeValues(
@@ -1892,16 +1899,17 @@ class MoveConstantsPastEnterOpBase
 
     FailureOr<TFOp> cloned_const_op = CreateConstantTensorOp(
         rewriter, op->getLoc(), TFOp(op).name(), *(input->result_type_begin()),
-        TFOp(op).controlRet(), input->getAttr("value"), input->getAttrs());
+        TFOp(op).controlRet(), cast<TypedAttr>(input->getAttr("value")),
+        input->getAttrs());
     if (failed(cloned_const_op)) return failure();
 
     (*cloned_const_op).setName(Twine(TFOp(op).name(), "/_enter"));
     if (!TFOp(op).device().empty())
       (*cloned_const_op).setRequestedDevice(TFOp(op).deviceAttr());
 
-    rewriter.startRootUpdate(op);
+    rewriter.startOpModification(op);
     op->getResults()[0].replaceAllUsesWith((*cloned_const_op)->getResults()[0]);
-    rewriter.finalizeRootUpdate(op);
+    rewriter.finalizeOpModification(op);
     return success();
   }
 };
@@ -1967,7 +1975,8 @@ class SimplifySwitchOp : public PropagationPatternBase<SimplifySwitchOp> {
         return;
 
       FailureOr<TFOp> failure_or_const_op = CreateConstantTensorOp(
-          rewriter, op->getLoc(), TFOp(op).name(), result.getType(), llvm::None,
+          rewriter, op->getLoc(), TFOp(op).name(), result.getType(),
+          std::nullopt,
           DenseElementsAttr::get(zero_dim_i1_tensor_type_, const_value));
       if (failed(failure_or_const_op)) return;
       TFOp const_op = *failure_or_const_op;
@@ -1984,9 +1993,9 @@ class SimplifySwitchOp : public PropagationPatternBase<SimplifySwitchOp> {
       for (OpOperand &user : llvm::make_early_inc_range(result.getUses())) {
         if (user.getOwner() == &(*anchor)) continue;
 
-        rewriter.startRootUpdate(user.getOwner());
+        rewriter.startOpModification(user.getOwner());
         user.set(const_op->getResult(0));
-        rewriter.finalizeRootUpdate(user.getOwner());
+        rewriter.finalizeOpModification(user.getOwner());
       }
       modified = true;
     };
@@ -2018,7 +2027,8 @@ class SimplifyReductionOp : public FolderPatternBase<SimplifyReductionOp> {
     Operation *reduction_indices = op->getOperand(1).getDefiningOp();
     if (!reduction_indices) return failure();
 
-    ShapedType indices_type = *(reduction_indices->result_type_begin());
+    ShapedType indices_type =
+        cast<ShapedType>(*(reduction_indices->result_type_begin()));
     if (indices_type.hasStaticShape() && indices_type.getNumElements() == 0) {
       Operation *identity_op = ReplaceReductionWithIdentity(rewriter, op);
       if (!identity_op) return failure();
@@ -2028,8 +2038,8 @@ class SimplifyReductionOp : public FolderPatternBase<SimplifyReductionOp> {
     }
 
     // Check `IsReductionCandidateForSimplification`
-    auto input_type = op->getOperand(0).getType().cast<ShapedType>();
-    auto op_type = (*op->result_type_begin()).cast<ShapedType>();
+    auto input_type = mlir::cast<ShapedType>(op->getOperand(0).getType());
+    auto op_type = mlir::cast<ShapedType>((*op->result_type_begin()));
     if (!input_type.hasStaticShape() || !op_type.hasStaticShape())
       return failure();
 
@@ -2091,12 +2101,12 @@ class SimplifyReductionOp : public FolderPatternBase<SimplifyReductionOp> {
   Operation *ReplaceReductionWithReshape(OpBuilder &builder, Operation *op,
                                          Operation *reduction_indices) const {
     const int new_num_dimensions =
-        (*op->result_type_begin()).cast<ShapedType>().getRank();
+        mlir::cast<ShapedType>((*op->result_type_begin())).getRank();
     SmallVector<int64_t> elements(new_num_dimensions);
     std::iota(elements.begin(), elements.end(), 1);
     ElementsAttr const_attr = CreateElementsAttrOfTypeValues(
         builder.getIntegerType(32), {new_num_dimensions},
-        llvm::makeArrayRef(elements));
+        llvm::ArrayRef(elements));
     FailureOr<TFOp> const_op = CreateConstantTensorOp(
         builder, op->getLoc(), TFOp(op).name(),
         *(reduction_indices->result_type_begin()),
@@ -2159,7 +2169,7 @@ class SimplifyReshapeOp : public FolderPatternBase<SimplifyReshapeOp> {
                                 PatternRewriter &rewriter) const override {
     if (!dialect_->IsReshape(op) || !op->hasAttr("T")) return failure();
 
-    auto input_shape = op->getOperand(0).getType().cast<ShapedType>();
+    auto input_shape = mlir::cast<ShapedType>(op->getOperand(0).getType());
     if (!input_shape.hasStaticShape()) return failure();
 
     Operation *shape_op = op->getOperand(1).getDefiningOp();
@@ -2222,9 +2232,9 @@ class SimplifyArithmeticOp
     Operation *y = op->getOperand(1).getDefiningOp();
     if (!x || !y) return failure();
 
-    ShapedType op_type = (*op->result_type_begin()).cast<ShapedType>();
-    ShapedType x_type = (*x->result_type_begin()).cast<ShapedType>();
-    ShapedType y_type = (*y->result_type_begin()).cast<ShapedType>();
+    ShapedType op_type = mlir::cast<ShapedType>((*op->result_type_begin()));
+    ShapedType x_type = mlir::cast<ShapedType>((*x->result_type_begin()));
+    ShapedType y_type = mlir::cast<ShapedType>((*y->result_type_begin()));
 
     const bool y_matches_output_shape = op_type.hasStaticShape() &&
                                         y_type.hasStaticShape() &&
@@ -2272,8 +2282,8 @@ class SimplifyArithmeticOp
       TypeAttr type_attr = op->getAttrOfType<TypeAttr>("T");
       if (!type_attr) return failure();
 
-      if (type_attr.getValue().isa<FloatType>() ||
-          type_attr.getValue().isa<ComplexType>()) {
+      if (mlir::isa<FloatType>(type_attr.getValue()) ||
+          mlir::isa<ComplexType>(type_attr.getValue())) {
         OperationState state(op->getLoc(), "tfg.Reciprocal");
         state.addOperands({op->getOperand(1),
                            GetControlDependency(rewriter, op->getOperand(0))});
@@ -2396,8 +2406,9 @@ class ReduceDivToReciprocalMul
     if (!type_attr) return failure();
 
     // Skip integer division.
-    if (dialect_->IsDiv(op) && !(type_attr.getValue().isa<FloatType>() ||
-                                 type_attr.getValue().isa<ComplexType>())) {
+    if (dialect_->IsDiv(op) &&
+        !(mlir::isa<FloatType>(type_attr.getValue()) ||
+          mlir::isa<ComplexType>(type_attr.getValue()))) {
       return failure();
     }
 
@@ -2567,8 +2578,8 @@ class ConstantPushDown : public ConstantPushDownBase<ConstantPushDown> {
       // Dimensions of X must be smaller than or equal than those of C.
       // This also avoids having to increase the size of the child op's result
       // to match the broadcast with a bigger operand.
-      auto c_shape = const_op->getResult(0).getType().cast<ShapedType>();
-      auto x_shape = x_value.getType().cast<ShapedType>();
+      auto c_shape = mlir::cast<ShapedType>(const_op->getResult(0).getType());
+      auto x_shape = mlir::cast<ShapedType>(x_value.getType());
 
       if (c_shape.hasStaticShape() && x_shape.hasStaticShape() &&
           c_shape.getNumElements() > x_shape.getNumElements()) {
@@ -2590,14 +2601,14 @@ class ConstantPushDown : public ConstantPushDownBase<ConstantPushDown> {
       // X   +
       //    / \
       //   C   Y
-      rewriter.startRootUpdate(op);
+      rewriter.startOpModification(op);
       op->setOperand(0, x_value);
       op->setOperand(1, child_op->getResult(0));
-      rewriter.finalizeRootUpdate(op);
-      rewriter.startRootUpdate(child_op);
+      rewriter.finalizeOpModification(op);
+      rewriter.startOpModification(child_op);
       child_op->setOperand(0, const_op->getResult(0));
       child_op->setOperand(1, y_value);
-      rewriter.finalizeRootUpdate(child_op);
+      rewriter.finalizeOpModification(child_op);
     } else {
       // More complicated case: When there are non-commutative operations like
       // subtractions or divisions involved, we may have to rotate the tree
@@ -2672,7 +2683,7 @@ class PartialConstPropThroughIdentityN
     SmallVector<Value> control_operands;
     for (OpOperand &operand : op->getOpOperands()) {
       Value v = operand.get();
-      if (v.getType().isa<ControlType>()) break;
+      if (mlir::isa<ControlType>(v.getType())) break;
 
       Operation *v_op = v.getDefiningOp();
       if (!v_op || !dialect_->IsIdentityN(v_op) ||
@@ -2680,16 +2691,16 @@ class PartialConstPropThroughIdentityN
         continue;
       }
 
-      int res_index = v.cast<OpResult>().getResultNumber();
+      int res_index = mlir::cast<OpResult>(v).getResultNumber();
       Value value_to_forward = v_op->getOperand(res_index);
       if (!value_to_forward.getDefiningOp() ||
           !dialect_->IsConstant(value_to_forward.getDefiningOp())) {
         continue;
       }
 
-      rewriter.startRootUpdate(op);
+      rewriter.startOpModification(op);
       operand.set(value_to_forward);
-      rewriter.finalizeRootUpdate(op);
+      rewriter.finalizeOpModification(op);
 
       // Add the control dependency to the Identity/IdentityN. Note that it's
       // possible to have multiple operands defined by the same
@@ -2960,21 +2971,22 @@ class MulConvPushDown : public ConstantPatternBase<MulConvPushDown, FolderTrait,
       return failure();
     }
 
-    ShapedType mul_shape = (*op->result_type_begin()).cast<ShapedType>();
+    ShapedType mul_shape = mlir::cast<ShapedType>((*op->result_type_begin()));
     ShapedType conv_shape =
-        (*conv_node->result_type_begin()).cast<ShapedType>();
+        mlir::cast<ShapedType>((*conv_node->result_type_begin()));
     // TODO(chiahungduan): Symbolic shape equivalence is acceptable.
     if (!mul_shape.hasStaticShape() || !conv_shape.hasStaticShape() ||
         mul_shape != conv_shape) {
       return failure();
     }
 
-    auto filter_shape = conv_node->getOperand(1).getType().cast<ShapedType>();
+    auto filter_shape =
+        mlir::cast<ShapedType>(conv_node->getOperand(1).getType());
 
     Operation *const_node =
         left_child_is_constant ? mul_left_child : mul_right_child;
     auto const_node_shape =
-        (*const_node->result_type_begin()).cast<ShapedType>();
+        mlir::cast<ShapedType>((*const_node->result_type_begin()));
     if (!IsValidConstShapeForMulConvPushDown(
             conv_node->getAttrOfType<StringAttr>("data_format"), filter_shape,
             const_node_shape)) {
@@ -2997,21 +3009,21 @@ class MulConvPushDown : public ConstantPatternBase<MulConvPushDown, FolderTrait,
 
     StringRef conv_node_name = TFOp(conv_node).name();
 
-    rewriter.startRootUpdate(conv_node);
+    rewriter.startOpModification(conv_node);
     TFOp(conv_node).setName(TFOp(op).nameAttr());
     if (conv_left_is_constant)
       conv_node->setOperand(0, op->getResult(0));
     else
       conv_node->setOperand(1, op->getResult(0));
-    rewriter.finalizeRootUpdate(conv_node);
+    rewriter.finalizeOpModification(conv_node);
 
-    rewriter.startRootUpdate(op);
+    rewriter.startOpModification(op);
     TFOp(op).setName(Twine(conv_node_name, "/merged_input"));
     if (left_child_is_constant)
       op->setOperand(1, conv_const_node->getResult(0));
     else
       op->setOperand(0, conv_const_node->getResult(0));
-    rewriter.finalizeRootUpdate(op);
+    rewriter.finalizeOpModification(op);
 
     return success();
   }
@@ -3145,14 +3157,14 @@ class PartialConcatConstFolding
 
       // Overwrite the first constant input with the result of the added
       // child node.
-      rewriter.startRootUpdate(op);
+      rewriter.startOpModification(op);
       op->setOperand(interval.first, new_op->getResult(0));
-      rewriter.finalizeRootUpdate(op);
+      rewriter.finalizeOpModification(op);
     }
 
     if (!inputs_to_delete.empty()) {
       OperationState state(op->getLoc(), op->getName());
-      for (auto &it : llvm::enumerate(non_control_operands)) {
+      for (const auto &it : llvm::enumerate(non_control_operands)) {
         if (inputs_to_delete.contains(it.index())) continue;
         state.addOperands(it.value());
       }
@@ -3230,7 +3242,7 @@ class ConstantPushDownBiasAdd
     if (!IsOperandsSafeToMove(add_child, const_child)) return failure();
 
     auto hasRank = [&](Value value) {
-      return value.getType().cast<ShapedType>().hasRank();
+      return mlir::cast<ShapedType>(value.getType()).hasRank();
     };
 
     if (!hasRank(op->getOperand(0)) || !hasRank(op->getOperand(1)) ||
@@ -3241,19 +3253,19 @@ class ConstantPushDownBiasAdd
 
     // Now get the ranks and types of the 3 leaf nodes.
     const int left_leaf_rank =
-        add_child->getOperand(0).getType().cast<ShapedType>().getRank();
+        mlir::cast<ShapedType>(add_child->getOperand(0).getType()).getRank();
     const int right_leaf_rank =
-        add_child->getOperand(1).getType().cast<ShapedType>().getRank();
+        mlir::cast<ShapedType>(add_child->getOperand(1).getType()).getRank();
 
     // At least one leaf must be a vector.
     if (left_leaf_rank != 1 && right_leaf_rank != 1) return failure();
 
     const int vector_idx = left_leaf_rank == 1 ? 0 : 1;
     auto vector_type =
-        add_child->getOperand(vector_idx).getType().cast<ShapedType>();
+        mlir::cast<ShapedType>(add_child->getOperand(vector_idx).getType());
     Type vector_d_type = vector_type.getElementType();
 
-    auto const_type = const_child->getResultTypes()[0].cast<ShapedType>();
+    auto const_type = mlir::cast<ShapedType>(const_child->getResultTypes()[0]);
     const int const_rank = const_type.getRank();
     Type const_d_type = const_type.getElementType();
 
@@ -3268,12 +3280,12 @@ class ConstantPushDownBiasAdd
       return failure();
     }
 
-    rewriter.startRootUpdate(op);
+    rewriter.startOpModification(op);
     op->setOperand(1, leaf_to_swap);
-    rewriter.finalizeRootUpdate(op);
-    rewriter.startRootUpdate(add_child);
+    rewriter.finalizeOpModification(op);
+    rewriter.startOpModification(add_child);
     add_child->setOperand(input_to_swap, const_child->getResult(0));
-    rewriter.finalizeRootUpdate(add_child);
+    rewriter.finalizeOpModification(add_child);
 
     return success();
   }
@@ -3331,7 +3343,7 @@ class ConstantPushDownAdd : public ConstantPushDownBase<ConstantPushDownAdd> {
     if (!child_is_bias_add && !dialect_->IsAdd(add_child)) return failure();
 
     auto hasRank = [&](Value value) {
-      return value.getType().cast<ShapedType>().hasRank();
+      return mlir::cast<ShapedType>(value.getType()).hasRank();
     };
 
     if (!hasRank(op->getOperand(0)) || !hasRank(op->getOperand(1)) ||
@@ -3342,9 +3354,9 @@ class ConstantPushDownAdd : public ConstantPushDownBase<ConstantPushDownAdd> {
 
     // Now get the ranks and types of the 3 leaf nodes.
     const int left_leaf_rank =
-        add_child->getOperand(0).getType().cast<ShapedType>().getRank();
+        mlir::cast<ShapedType>(add_child->getOperand(0).getType()).getRank();
     const int right_leaf_rank =
-        add_child->getOperand(1).getType().cast<ShapedType>().getRank();
+        mlir::cast<ShapedType>(add_child->getOperand(1).getType()).getRank();
     // At least one leaf must be a vector.
     if (left_leaf_rank != 1 && right_leaf_rank != 1) return failure();
 
@@ -3352,18 +3364,18 @@ class ConstantPushDownAdd : public ConstantPushDownBase<ConstantPushDownAdd> {
     const int matrix_idx = 1 - vector_idx;
 
     ShapedType vector_type =
-        add_child->getOperand(vector_idx).getType().cast<ShapedType>();
+        mlir::cast<ShapedType>(add_child->getOperand(vector_idx).getType());
     Type vector_d_type = vector_type.getElementType();
 
     ShapedType matrix_type =
-        add_child->getOperand(matrix_idx).getType().cast<ShapedType>();
+        mlir::cast<ShapedType>(add_child->getOperand(matrix_idx).getType());
     const int matrix_rank = matrix_type.getRank();
     Type matrix_d_type = matrix_type.getElementType();
 
     const int const_index =
         op->getOperand(0).getDefiningOp() == const_child ? 0 : 1;
     ShapedType const_type =
-        const_child->getResult(0).getType().cast<ShapedType>();
+        mlir::cast<ShapedType>(const_child->getResult(0).getType());
     const int const_rank = const_type.getRank();
     Type const_d_type = const_type.getElementType();
 
@@ -3386,12 +3398,12 @@ class ConstantPushDownAdd : public ConstantPushDownBase<ConstantPushDownAdd> {
       return failure();
     }
 
-    rewriter.startRootUpdate(op);
+    rewriter.startOpModification(op);
     op->setOperand(const_index, leaf_to_swap);
-    rewriter.finalizeRootUpdate(op);
-    rewriter.startRootUpdate(add_child);
+    rewriter.finalizeOpModification(op);
+    rewriter.startOpModification(add_child);
     add_child->setOperand(input_to_swap, const_child->getResult(0));
-    rewriter.finalizeRootUpdate(add_child);
+    rewriter.finalizeOpModification(add_child);
 
     return success();
   }
@@ -3513,9 +3525,9 @@ class SimplifySelectOpBase : public FolderPatternBase<ConcreteType> {
     bool is_all_false = this->helper_.IsZeros(condition_op);
     if (!is_all_true && !is_all_false) return failure();
 
-    auto condition_type = op->getOperand(0).getType().cast<ShapedType>();
-    auto t_type = op->getOperand(1).getType().cast<ShapedType>();
-    auto e_type = op->getOperand(2).getType().cast<ShapedType>();
+    auto condition_type = mlir::cast<ShapedType>(op->getOperand(0).getType());
+    auto t_type = mlir::cast<ShapedType>(op->getOperand(1).getType());
+    auto e_type = mlir::cast<ShapedType>(op->getOperand(2).getType());
     if (!condition_type.hasStaticShape() || !t_type.hasStaticShape() ||
         !e_type.hasStaticShape()) {
       return failure();
@@ -3685,7 +3697,11 @@ void ConstantFolding::runOnOperation() {
     for (Operation &op : func.SingleBlock::getBody()->without_terminator()) {
       ops.push_back(&op);
     }
-    if (!applyOpPatternsAndFold(ops, final_patterns_, /*strict=*/true)) break;
+    bool changed = false;
+    GreedyRewriteConfig config;
+    config.strictMode = GreedyRewriteStrictness::ExistingAndNewOps;
+    (void)applyOpPatternsAndFold(ops, final_patterns_, config, &changed);
+    if (!changed) break;
   } while (iteration++ < max_iterations);
 
   // TODO(chiahungduan): This is used to avoid evaluating a node multiple times.

@@ -32,6 +32,7 @@ limitations under the License.
 #include "tensorflow/core/platform/logging.h"
 #include "tensorflow/core/platform/mutex.h"
 #include "tensorflow/core/platform/thread_annotations.h"
+#include "tensorflow/core/profiler/lib/traceme.h"
 
 #if GOOGLE_CUDA && GOOGLE_TENSORRT
 #include "third_party/tensorrt/NvInfer.h"
@@ -47,6 +48,9 @@ class CreateTRTResourceHandle : public OpKernel {
   }
 
   void Compute(OpKernelContext* ctx) override {
+    tensorflow::profiler::TraceMe activity(
+        "CreateTRTResourceHandle::Compute",
+        tensorflow::profiler::TraceMeLevel::kInfo);
     {
       mutex_lock l(mutex_);
       if (!initialized_) {
@@ -72,7 +76,8 @@ class CreateTRTResourceHandle : public OpKernel {
   mutex mutex_;
   bool initialized_ TF_GUARDED_BY(mutex_) = false;
 
-  TF_DISALLOW_COPY_AND_ASSIGN(CreateTRTResourceHandle);
+  CreateTRTResourceHandle(const CreateTRTResourceHandle&) = delete;
+  void operator=(const CreateTRTResourceHandle&) = delete;
 };
 
 REGISTER_KERNEL_BUILDER(Name("CreateTRTResourceHandle")
@@ -88,6 +93,9 @@ class InitializeTRTResource : public OpKernel {
   }
 
   void Compute(OpKernelContext* ctx) override {
+    tensorflow::profiler::TraceMe activity(
+        "InitializeTRTResource::Compute",
+        tensorflow::profiler::TraceMeLevel::kInfo);
     ResourceHandle handle = HandleFromInput(ctx, 0);
     core::RefCountPtr<TRTEngineCacheResource> resource;
     OP_REQUIRES_OK(
@@ -169,7 +177,8 @@ class InitializeTRTResource : public OpKernel {
   // Maximum number of cached engines
   int max_cached_engines_;
 
-  TF_DISALLOW_COPY_AND_ASSIGN(InitializeTRTResource);
+  InitializeTRTResource(const InitializeTRTResource&) = delete;
+  void operator=(const InitializeTRTResource&) = delete;
 };
 
 REGISTER_KERNEL_BUILDER(Name("InitializeTRTResource")
@@ -186,6 +195,9 @@ class SerializeTRTResource : public OpKernel {
   }
 
   void Compute(OpKernelContext* ctx) override {
+    tensorflow::profiler::TraceMe activity(
+        "SerializeTRTResource::Compute",
+        tensorflow::profiler::TraceMeLevel::kInfo);
     const string& resource_name = ctx->input(0).scalar<tstring>()();
     const string& filename = ctx->input(1).scalar<tstring>()();
     OP_REQUIRES(ctx, !filename.empty(),
@@ -285,7 +297,8 @@ class SerializeTRTResource : public OpKernel {
   bool delete_resource_ = false;
   bool save_gpu_specific_engines_ = true;
 
-  TF_DISALLOW_COPY_AND_ASSIGN(SerializeTRTResource);
+  SerializeTRTResource(const SerializeTRTResource&) = delete;
+  void operator=(const SerializeTRTResource&) = delete;
 };
 
 REGISTER_KERNEL_BUILDER(Name("SerializeTRTResource").Device(DEVICE_GPU),

@@ -10,11 +10,10 @@
 #include <cstdlib>
 #include <iomanip>
 #include <ios>
+#include <limits>
 #include <vector>
 
 #include <gtest/gtest.h>
-
-#include <fp16.h>
 
 #include <xnnpack/aligned-allocator.h>
 #include <xnnpack/common.h>
@@ -28,7 +27,7 @@ constexpr int kBlockSize = 1024;
   TEST(ROUNDU__SSE_ADDSUB, positive_zero) {
     std::vector<float, AlignedAllocator<float, 64>> inputs(kBlockSize);
     std::vector<float, AlignedAllocator<float, 64>> outputs(kBlockSize);
-    std::fill(inputs.begin(), inputs.end(), UINT32_C(0x00000000));
+    std::fill(inputs.begin(), inputs.end(), 0.0f);
     xnn_math_f32_roundu__sse_addsub(kBlockSize * sizeof(float), inputs.data(), outputs.data());
     const uint32_t reference_output = float_as_uint32(std::ceil(inputs[0]));
     ASSERT_EQ(reference_output, float_as_uint32(outputs[0]))
@@ -40,7 +39,7 @@ constexpr int kBlockSize = 1024;
   TEST(ROUNDU__SSE_ADDSUB, negative_zero) {
     std::vector<float, AlignedAllocator<float, 64>> inputs(kBlockSize);
     std::vector<float, AlignedAllocator<float, 64>> outputs(kBlockSize);
-    std::fill(inputs.begin(), inputs.end(), UINT32_C(0x80000000));
+    std::fill(inputs.begin(), inputs.end(), -0.0f);
     xnn_math_f32_roundu__sse_addsub(kBlockSize * sizeof(float), inputs.data(), outputs.data());
     const uint32_t reference_output = float_as_uint32(std::ceil(inputs[0]));
     ASSERT_EQ(reference_output, float_as_uint32(outputs[0]))
@@ -294,7 +293,7 @@ constexpr int kBlockSize = 1024;
   TEST(ROUNDU__SSE2_CVT, positive_zero) {
     std::vector<float, AlignedAllocator<float, 64>> inputs(kBlockSize);
     std::vector<float, AlignedAllocator<float, 64>> outputs(kBlockSize);
-    std::fill(inputs.begin(), inputs.end(), UINT32_C(0x00000000));
+    std::fill(inputs.begin(), inputs.end(), 0.0f);
     xnn_math_f32_roundu__sse2_cvt(kBlockSize * sizeof(float), inputs.data(), outputs.data());
     const uint32_t reference_output = float_as_uint32(std::ceil(inputs[0]));
     ASSERT_EQ(reference_output, float_as_uint32(outputs[0]))
@@ -306,7 +305,7 @@ constexpr int kBlockSize = 1024;
   TEST(ROUNDU__SSE2_CVT, negative_zero) {
     std::vector<float, AlignedAllocator<float, 64>> inputs(kBlockSize);
     std::vector<float, AlignedAllocator<float, 64>> outputs(kBlockSize);
-    std::fill(inputs.begin(), inputs.end(), UINT32_C(0x80000000));
+    std::fill(inputs.begin(), inputs.end(), -0.0f);
     xnn_math_f32_roundu__sse2_cvt(kBlockSize * sizeof(float), inputs.data(), outputs.data());
     const uint32_t reference_output = float_as_uint32(std::ceil(inputs[0]));
     ASSERT_EQ(reference_output, float_as_uint32(outputs[0]))
@@ -560,7 +559,7 @@ constexpr int kBlockSize = 1024;
   TEST(ROUNDU__SSE41, positive_zero) {
     std::vector<float, AlignedAllocator<float, 64>> inputs(kBlockSize);
     std::vector<float, AlignedAllocator<float, 64>> outputs(kBlockSize);
-    std::fill(inputs.begin(), inputs.end(), UINT32_C(0x00000000));
+    std::fill(inputs.begin(), inputs.end(), 0.0f);
     xnn_math_f32_roundu__sse41(kBlockSize * sizeof(float), inputs.data(), outputs.data());
     const uint32_t reference_output = float_as_uint32(std::ceil(inputs[0]));
     ASSERT_EQ(reference_output, float_as_uint32(outputs[0]))
@@ -572,7 +571,7 @@ constexpr int kBlockSize = 1024;
   TEST(ROUNDU__SSE41, negative_zero) {
     std::vector<float, AlignedAllocator<float, 64>> inputs(kBlockSize);
     std::vector<float, AlignedAllocator<float, 64>> outputs(kBlockSize);
-    std::fill(inputs.begin(), inputs.end(), UINT32_C(0x80000000));
+    std::fill(inputs.begin(), inputs.end(), -0.0f);
     xnn_math_f32_roundu__sse41(kBlockSize * sizeof(float), inputs.data(), outputs.data());
     const uint32_t reference_output = float_as_uint32(std::ceil(inputs[0]));
     ASSERT_EQ(reference_output, float_as_uint32(outputs[0]))
@@ -826,7 +825,7 @@ constexpr int kBlockSize = 1024;
   TEST(ROUNDU__NEON_ADDSUB, positive_zero) {
     std::vector<float, AlignedAllocator<float, 64>> inputs(kBlockSize);
     std::vector<float, AlignedAllocator<float, 64>> outputs(kBlockSize);
-    std::fill(inputs.begin(), inputs.end(), UINT32_C(0x00000000));
+    std::fill(inputs.begin(), inputs.end(), 0.0f);
     xnn_math_f32_roundu__neon_addsub(kBlockSize * sizeof(float), inputs.data(), outputs.data());
     const uint32_t reference_output = float_as_uint32(std::ceil(inputs[0]));
     ASSERT_EQ(reference_output, float_as_uint32(outputs[0]))
@@ -838,7 +837,7 @@ constexpr int kBlockSize = 1024;
   TEST(ROUNDU__NEON_ADDSUB, negative_zero) {
     std::vector<float, AlignedAllocator<float, 64>> inputs(kBlockSize);
     std::vector<float, AlignedAllocator<float, 64>> outputs(kBlockSize);
-    std::fill(inputs.begin(), inputs.end(), UINT32_C(0x80000000));
+    std::fill(inputs.begin(), inputs.end(), -0.0f);
     xnn_math_f32_roundu__neon_addsub(kBlockSize * sizeof(float), inputs.data(), outputs.data());
     const uint32_t reference_output = float_as_uint32(std::ceil(inputs[0]));
     ASSERT_EQ(reference_output, float_as_uint32(outputs[0]))
@@ -1092,7 +1091,7 @@ constexpr int kBlockSize = 1024;
   TEST(ROUNDU__NEON_CVT, positive_zero) {
     std::vector<float, AlignedAllocator<float, 64>> inputs(kBlockSize);
     std::vector<float, AlignedAllocator<float, 64>> outputs(kBlockSize);
-    std::fill(inputs.begin(), inputs.end(), UINT32_C(0x00000000));
+    std::fill(inputs.begin(), inputs.end(), 0.0f);
     xnn_math_f32_roundu__neon_cvt(kBlockSize * sizeof(float), inputs.data(), outputs.data());
     const uint32_t reference_output = float_as_uint32(std::ceil(inputs[0]));
     ASSERT_EQ(reference_output, float_as_uint32(outputs[0]))
@@ -1104,7 +1103,7 @@ constexpr int kBlockSize = 1024;
   TEST(ROUNDU__NEON_CVT, negative_zero) {
     std::vector<float, AlignedAllocator<float, 64>> inputs(kBlockSize);
     std::vector<float, AlignedAllocator<float, 64>> outputs(kBlockSize);
-    std::fill(inputs.begin(), inputs.end(), UINT32_C(0x80000000));
+    std::fill(inputs.begin(), inputs.end(), -0.0f);
     xnn_math_f32_roundu__neon_cvt(kBlockSize * sizeof(float), inputs.data(), outputs.data());
     const uint32_t reference_output = float_as_uint32(std::ceil(inputs[0]));
     ASSERT_EQ(reference_output, float_as_uint32(outputs[0]))
@@ -1358,7 +1357,7 @@ constexpr int kBlockSize = 1024;
   TEST(ROUNDU__NEONV8, positive_zero) {
     std::vector<float, AlignedAllocator<float, 64>> inputs(kBlockSize);
     std::vector<float, AlignedAllocator<float, 64>> outputs(kBlockSize);
-    std::fill(inputs.begin(), inputs.end(), UINT32_C(0x00000000));
+    std::fill(inputs.begin(), inputs.end(), 0.0f);
     xnn_math_f32_roundu__neonv8(kBlockSize * sizeof(float), inputs.data(), outputs.data());
     const uint32_t reference_output = float_as_uint32(std::ceil(inputs[0]));
     ASSERT_EQ(reference_output, float_as_uint32(outputs[0]))
@@ -1370,7 +1369,7 @@ constexpr int kBlockSize = 1024;
   TEST(ROUNDU__NEONV8, negative_zero) {
     std::vector<float, AlignedAllocator<float, 64>> inputs(kBlockSize);
     std::vector<float, AlignedAllocator<float, 64>> outputs(kBlockSize);
-    std::fill(inputs.begin(), inputs.end(), UINT32_C(0x80000000));
+    std::fill(inputs.begin(), inputs.end(), -0.0f);
     xnn_math_f32_roundu__neonv8(kBlockSize * sizeof(float), inputs.data(), outputs.data());
     const uint32_t reference_output = float_as_uint32(std::ceil(inputs[0]));
     ASSERT_EQ(reference_output, float_as_uint32(outputs[0]))
@@ -1624,7 +1623,7 @@ constexpr int kBlockSize = 1024;
   TEST(ROUNDU__WASMSIMD_ADDSUB, positive_zero) {
     std::vector<float, AlignedAllocator<float, 64>> inputs(kBlockSize);
     std::vector<float, AlignedAllocator<float, 64>> outputs(kBlockSize);
-    std::fill(inputs.begin(), inputs.end(), UINT32_C(0x00000000));
+    std::fill(inputs.begin(), inputs.end(), 0.0f);
     xnn_math_f32_roundu__wasmsimd_addsub(kBlockSize * sizeof(float), inputs.data(), outputs.data());
     const uint32_t reference_output = float_as_uint32(std::ceil(inputs[0]));
     ASSERT_EQ(reference_output, float_as_uint32(outputs[0]))
@@ -1636,7 +1635,7 @@ constexpr int kBlockSize = 1024;
   TEST(ROUNDU__WASMSIMD_ADDSUB, negative_zero) {
     std::vector<float, AlignedAllocator<float, 64>> inputs(kBlockSize);
     std::vector<float, AlignedAllocator<float, 64>> outputs(kBlockSize);
-    std::fill(inputs.begin(), inputs.end(), UINT32_C(0x80000000));
+    std::fill(inputs.begin(), inputs.end(), -0.0f);
     xnn_math_f32_roundu__wasmsimd_addsub(kBlockSize * sizeof(float), inputs.data(), outputs.data());
     const uint32_t reference_output = float_as_uint32(std::ceil(inputs[0]));
     ASSERT_EQ(reference_output, float_as_uint32(outputs[0]))
@@ -1890,7 +1889,7 @@ constexpr int kBlockSize = 1024;
   TEST(ROUNDU__WASMSIMD_CVT, positive_zero) {
     std::vector<float, AlignedAllocator<float, 64>> inputs(kBlockSize);
     std::vector<float, AlignedAllocator<float, 64>> outputs(kBlockSize);
-    std::fill(inputs.begin(), inputs.end(), UINT32_C(0x00000000));
+    std::fill(inputs.begin(), inputs.end(), 0.0f);
     xnn_math_f32_roundu__wasmsimd_cvt(kBlockSize * sizeof(float), inputs.data(), outputs.data());
     const uint32_t reference_output = float_as_uint32(std::ceil(inputs[0]));
     ASSERT_EQ(reference_output, float_as_uint32(outputs[0]))
@@ -1902,7 +1901,7 @@ constexpr int kBlockSize = 1024;
   TEST(ROUNDU__WASMSIMD_CVT, negative_zero) {
     std::vector<float, AlignedAllocator<float, 64>> inputs(kBlockSize);
     std::vector<float, AlignedAllocator<float, 64>> outputs(kBlockSize);
-    std::fill(inputs.begin(), inputs.end(), UINT32_C(0x80000000));
+    std::fill(inputs.begin(), inputs.end(), -0.0f);
     xnn_math_f32_roundu__wasmsimd_cvt(kBlockSize * sizeof(float), inputs.data(), outputs.data());
     const uint32_t reference_output = float_as_uint32(std::ceil(inputs[0]));
     ASSERT_EQ(reference_output, float_as_uint32(outputs[0]))
@@ -2156,7 +2155,7 @@ constexpr int kBlockSize = 1024;
   TEST(ROUNDU__WASMSIMD_NATIVE, positive_zero) {
     std::vector<float, AlignedAllocator<float, 64>> inputs(kBlockSize);
     std::vector<float, AlignedAllocator<float, 64>> outputs(kBlockSize);
-    std::fill(inputs.begin(), inputs.end(), UINT32_C(0x00000000));
+    std::fill(inputs.begin(), inputs.end(), 0.0f);
     xnn_math_f32_roundu__wasmsimd_native(kBlockSize * sizeof(float), inputs.data(), outputs.data());
     const uint32_t reference_output = float_as_uint32(std::ceil(inputs[0]));
     ASSERT_EQ(reference_output, float_as_uint32(outputs[0]))
@@ -2168,7 +2167,7 @@ constexpr int kBlockSize = 1024;
   TEST(ROUNDU__WASMSIMD_NATIVE, negative_zero) {
     std::vector<float, AlignedAllocator<float, 64>> inputs(kBlockSize);
     std::vector<float, AlignedAllocator<float, 64>> outputs(kBlockSize);
-    std::fill(inputs.begin(), inputs.end(), UINT32_C(0x80000000));
+    std::fill(inputs.begin(), inputs.end(), -0.0f);
     xnn_math_f32_roundu__wasmsimd_native(kBlockSize * sizeof(float), inputs.data(), outputs.data());
     const uint32_t reference_output = float_as_uint32(std::ceil(inputs[0]));
     ASSERT_EQ(reference_output, float_as_uint32(outputs[0]))
@@ -2421,7 +2420,7 @@ constexpr int kBlockSize = 1024;
 TEST(ROUNDU__SCALAR_ADDSUB, positive_zero) {
   std::vector<float, AlignedAllocator<float, 64>> inputs(kBlockSize);
   std::vector<float, AlignedAllocator<float, 64>> outputs(kBlockSize);
-  std::fill(inputs.begin(), inputs.end(), UINT32_C(0x00000000));
+  std::fill(inputs.begin(), inputs.end(), 0.0f);
   xnn_math_f32_roundu__scalar_addsub(kBlockSize * sizeof(float), inputs.data(), outputs.data());
   const uint32_t reference_output = float_as_uint32(std::ceil(inputs[0]));
   ASSERT_EQ(reference_output, float_as_uint32(outputs[0]))
@@ -2433,7 +2432,7 @@ TEST(ROUNDU__SCALAR_ADDSUB, positive_zero) {
 TEST(ROUNDU__SCALAR_ADDSUB, negative_zero) {
   std::vector<float, AlignedAllocator<float, 64>> inputs(kBlockSize);
   std::vector<float, AlignedAllocator<float, 64>> outputs(kBlockSize);
-  std::fill(inputs.begin(), inputs.end(), UINT32_C(0x80000000));
+  std::fill(inputs.begin(), inputs.end(), -0.0f);
   xnn_math_f32_roundu__scalar_addsub(kBlockSize * sizeof(float), inputs.data(), outputs.data());
   const uint32_t reference_output = float_as_uint32(std::ceil(inputs[0]));
   ASSERT_EQ(reference_output, float_as_uint32(outputs[0]))
@@ -2685,7 +2684,7 @@ TEST(ROUNDU__SCALAR_ADDSUB, negative_snan_to_qnan) {
 TEST(ROUNDU__SCALAR_CVT, positive_zero) {
   std::vector<float, AlignedAllocator<float, 64>> inputs(kBlockSize);
   std::vector<float, AlignedAllocator<float, 64>> outputs(kBlockSize);
-  std::fill(inputs.begin(), inputs.end(), UINT32_C(0x00000000));
+  std::fill(inputs.begin(), inputs.end(), 0.0f);
   xnn_math_f32_roundu__scalar_cvt(kBlockSize * sizeof(float), inputs.data(), outputs.data());
   const uint32_t reference_output = float_as_uint32(std::ceil(inputs[0]));
   ASSERT_EQ(reference_output, float_as_uint32(outputs[0]))
@@ -2697,7 +2696,7 @@ TEST(ROUNDU__SCALAR_CVT, positive_zero) {
 TEST(ROUNDU__SCALAR_CVT, negative_zero) {
   std::vector<float, AlignedAllocator<float, 64>> inputs(kBlockSize);
   std::vector<float, AlignedAllocator<float, 64>> outputs(kBlockSize);
-  std::fill(inputs.begin(), inputs.end(), UINT32_C(0x80000000));
+  std::fill(inputs.begin(), inputs.end(), -0.0f);
   xnn_math_f32_roundu__scalar_cvt(kBlockSize * sizeof(float), inputs.data(), outputs.data());
   const uint32_t reference_output = float_as_uint32(std::ceil(inputs[0]));
   ASSERT_EQ(reference_output, float_as_uint32(outputs[0]))

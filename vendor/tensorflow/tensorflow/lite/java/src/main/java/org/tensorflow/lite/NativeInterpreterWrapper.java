@@ -77,6 +77,10 @@ class NativeInterpreterWrapper implements AutoCloseable {
     if (options == null) {
       options = new InterpreterImpl.Options();
     }
+    if (options.getAccelerationConfig() != null) {
+      // Apply the validated acceleration config
+      options.getAccelerationConfig().apply(options);
+    }
     this.errorHandle = errorHandle;
     this.modelHandle = modelHandle;
     // First create the interpreter without delegates.  We need an interpreter in order to figure
@@ -85,13 +89,13 @@ class NativeInterpreterWrapper implements AutoCloseable {
     // (Alternatively, we could determine this without needing to recreate the interpreter
     // by passing the tflite::Model in to here, and then traversing that?)
     ArrayList<Long> delegateHandles = new ArrayList<>();
-    boolean useXnnpack = true;
-    if (options.useXNNPACK != null) {
-      useXnnpack = options.useXNNPACK;
-    }
     this.interpreterHandle =
         createInterpreter(
-            modelHandle, errorHandle, options.getNumThreads(), useXnnpack, delegateHandles);
+            modelHandle,
+            errorHandle,
+            options.getNumThreads(),
+            options.getUseXNNPACK(),
+            delegateHandles);
     this.originalGraphHasUnresolvedFlexOp = hasUnresolvedFlexOp(interpreterHandle);
     addDelegates(options);
     initDelegatesWithInterpreterFactory();
@@ -104,7 +108,11 @@ class NativeInterpreterWrapper implements AutoCloseable {
       delete(/* errorHandle= */ 0, /* modelHandle= */ 0, this.interpreterHandle);
       this.interpreterHandle =
           createInterpreter(
-              modelHandle, errorHandle, options.getNumThreads(), useXnnpack, delegateHandles);
+              modelHandle,
+              errorHandle,
+              options.getNumThreads(),
+              options.getUseXNNPACK(),
+              delegateHandles);
     }
     if (options.allowFp16PrecisionForFp32 != null) {
       allowFp16PrecisionForFp32(interpreterHandle, options.allowFp16PrecisionForFp32);
@@ -186,12 +194,21 @@ class NativeInterpreterWrapper implements AutoCloseable {
       run(inputsList, outputsWithOutputIndex);
       return;
     }
-
     for (Map.Entry<String, Object> input : inputs.entrySet()) {
       TensorImpl tensor = getInputTensor(input.getKey(), signatureKey);
       int[] newShape = tensor.getInputShapeIfDifferent(input.getValue());
       if (newShape != null) {
-        signatureRunnerWrapper.resizeInput(input.getKey(), newShape);
+        try {
+          signatureRunnerWrapper.resizeInput(input.getKey(), newShape);
+        } catch (IllegalArgumentException e) {
+          throw (IllegalArgumentException)
+              new IllegalArgumentException(
+                      String.format(
+                          "Tensor passed for input '%s' of signature '%s' has different "
+                              + "shape than expected",
+                          input.getKey(), signatureKey))
+                  .initCause(e);
+        }
       }
     }
 
@@ -393,12 +410,11 @@ class NativeInterpreterWrapper implements AutoCloseable {
     }
     NativeSignatureRunnerWrapper signatureRunnerWrapper = getSignatureRunnerWrapper(signatureKey);
     int subgraphIndex = signatureRunnerWrapper.getSubgraphIndex();
-    if (subgraphIndex > 0) {
-      return signatureRunnerWrapper.getInputTensor(inputName);
+    if (subgraphIndex == 0) {
+      int inputIndex = signatureRunnerWrapper.getInputIndex(inputName);
+      return getInputTensor(inputIndex);
     }
-
-    int inputIndex = signatureRunnerWrapper.getInputIndex(inputName);
-    return getInputTensor(inputIndex);
+    return signatureRunnerWrapper.getInputTensor(inputName);
   }
 
   /** Gets the keys of SignatureDefs available in the model, if any. */
@@ -451,12 +467,11 @@ class NativeInterpreterWrapper implements AutoCloseable {
     }
     NativeSignatureRunnerWrapper signatureRunnerWrapper = getSignatureRunnerWrapper(signatureKey);
     int subgraphIndex = signatureRunnerWrapper.getSubgraphIndex();
-    if (subgraphIndex > 0) {
-      return signatureRunnerWrapper.getOutputTensor(outputName);
+    if (subgraphIndex == 0) {
+      int outputIndex = signatureRunnerWrapper.getOutputIndex(outputName);
+      return getOutputTensor(outputIndex);
     }
-
-    int outputIndex = signatureRunnerWrapper.getOutputIndex(outputName);
-    return getOutputTensor(outputIndex);
+    return signatureRunnerWrapper.getOutputTensor(outputName);
   }
 
   /** Gets the number of ops in the execution plan. */

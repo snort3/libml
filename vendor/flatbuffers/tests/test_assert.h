@@ -13,11 +13,13 @@
   #define FLATBUFFERS_NO_FILE_TESTS
 #else
   #define TEST_OUTPUT_LINE(...) \
-      do { printf(__VA_ARGS__); printf("\n"); } while(!IsConstTrue(true))
+      do { printf(__VA_ARGS__); printf("\n"); } while(!flatbuffers::IsConstTrue(true))
 #endif
 
 #define TEST_EQ(exp, val) TestEq(exp, val, "'" #exp "' != '" #val "'", __FILE__, __LINE__, "")
+#define TEST_NE(exp, val) TestNe(exp, val, "'" #exp "' == '" #val "'", __FILE__, __LINE__, "")
 #define TEST_ASSERT(val)  TestEq(true, !!(val), "'" "true" "' != '" #val "'", __FILE__, __LINE__, "")
+#define TEST_NULL(val) TestEq(true, (val) == nullptr, "'" "nullptr" "' != '" #val "'", __FILE__, __LINE__, "")
 #define TEST_NOTNULL(val) TestEq(true, (val) != nullptr, "'" "nullptr" "' == '" #val "'", __FILE__, __LINE__, "")
 #define TEST_EQ_STR(exp, val) TestEqStr(exp, val, "'" #exp "' != '" #val "'", __FILE__, __LINE__, "")
 
@@ -51,10 +53,10 @@ int CloseTestEngine(bool force_report = false);
 
 // Write captured state to a log and terminate test run.
 void TestFail(const char *expval, const char *val, const char *exp,
-              const char *file, int line, const char *func = 0);
+              const char *file, int line, const char *func = nullptr);
 
 void TestEqStr(const char *expval, const char *val, const char *exp,
-               const char *file, int line, const char *func = 0);
+               const char *file, int line, const char *func = nullptr);
 
 // Workaround for `enum class` printing.
 // There is an issue with the printing of enums with a fixed underlying type.
@@ -102,6 +104,26 @@ inline void TestEq<std::string, std::string>(std::string expval,
                                              const char *file, int line,
                                              const char *func) {
   if (expval != val) {
+    TestFail(expval.c_str(), val.c_str(), exp, file, line, func);
+  }
+}
+
+template<typename T, typename U>
+void TestNe(T expval, U val, const char *exp, const char *file, int line,
+            const char *func) {
+  if (static_cast<U>(expval) == val) {
+    TestFail(flatbuffers::NumToString(scalar_as_underlying(expval)).c_str(),
+             flatbuffers::NumToString(scalar_as_underlying(val)).c_str(), exp,
+             file, line, func);
+  }
+}
+
+template<>
+inline void TestNe<std::string, std::string>(std::string expval,
+                                             std::string val, const char *exp,
+                                             const char *file, int line,
+                                             const char *func) {
+  if (expval == val) {
     TestFail(expval.c_str(), val.c_str(), exp, file, line, func);
   }
 }

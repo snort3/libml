@@ -3,11 +3,11 @@
 // This source code is licensed under the BSD-style license found in the
 // LICENSE file in the root directory of this source tree.
 
-#include <xnnpack/assembler.h>
-
 #include <assert.h>
+#include <cstdint>
 
-#include <xnnpack/allocator.h>
+#include <xnnpack/assembler.h>
+#include <xnnpack/memory.h>
 
 namespace xnnpack {
 
@@ -19,20 +19,25 @@ AssemblerBase::AssemblerBase(xnn_code_buffer* buf) {
   xnn_buffer = buf;
 }
 
-void AssemblerBase::emit32(uint32_t value) {
-  if (error_ != Error::kNoError) {
-    return;
-  }
-
-  if (cursor_ + sizeof(value) > top_) {
-    error_ = Error::kOutOfMemory;
-    return;
-  }
-
-  memcpy(cursor_, &value, sizeof(value));
-  cursor_ += sizeof(value);
+uint32_t AssemblerBase::get32(size_t offset) const {
+  return get<uint32_t>(offset);
 }
 
+void AssemblerBase::emit32(uint32_t value) {
+  emit<uint32_t>(value, cursor_);
+}
+
+void AssemblerBase::emit32(uint32_t value, size_t* offset) {
+  emit<uint32_t>(value, offset);
+}
+
+void AssemblerBase::emit8(byte value) {
+  emit<byte>(value, cursor_);
+}
+
+void AssemblerBase::emit8(byte value, size_t* offset) {
+  emit<byte>(value, offset);
+}
 
 void* AssemblerBase::finalize() {
   if (error_ != Error::kNoError) {
@@ -47,5 +52,4 @@ void AssemblerBase::reset() {
   cursor_ = buffer_;
   error_ = Error::kNoError;
 }
-
 }  // namespace xnnpack

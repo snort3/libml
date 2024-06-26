@@ -22,6 +22,7 @@ limitations under the License.
 #include <utility>
 #include <vector>
 
+#include "absl/strings/str_cat.h"
 #include "tensorflow/lite/delegates/gpu/cl/cl_arguments.h"
 #include "tensorflow/lite/delegates/gpu/cl/cl_command_queue.h"
 #include "tensorflow/lite/delegates/gpu/cl/cl_context.h"
@@ -121,6 +122,10 @@ class ClOperation {
                                    CLContext* context);
 
   int3 GetWorkGroupSize() const { return operation_->work_group_size_; }
+
+  bool HasEqualScalarArguments(const ClOperation& op) const {
+    return cl_args_.HasEqualScalarArguments(op.cl_args_);
+  }
 
  private:
   std::unique_ptr<GPUOperation> operation_;

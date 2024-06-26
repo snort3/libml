@@ -61,3 +61,5 @@ install(
     FILES "${CMAKE_BINARY_DIR}/${BUNDLE_NAME}"
     DESTINATION lib
 )
+
+add_subdirectory(test)

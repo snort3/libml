@@ -8,6 +8,7 @@
 
 #include <xnnpack.h>
 #include <xnnpack/log.h>
+#include <xnnpack/node-type.h>
 #include <xnnpack/params.h>
 #include <xnnpack/subgraph.h>
 #include <xnnpack/subgraph-validation.h>
@@ -166,11 +167,73 @@ enum xnn_status xnn_subgraph_check_output_min_max(enum xnn_node_type node_type, 
     return xnn_status_invalid_parameter;
   }
 
-  if (output_min >= output_max) {
+  if (output_min > output_max) {
     xnn_log_error(
-      "failed to define %s operator with [%.7g, %.7g] output range: lower bound must be below upper bound",
+      "failed to define %s operator with [%.7g, %.7g] output range: lower bound must be less than or equal to upper bound",
       xnn_node_type_to_string(node_type), output_min, output_max);
     return xnn_status_invalid_parameter;
   }
+  return xnn_status_success;
+}
+
+enum xnn_status xnn_subgraph_check_quantization_parameter_matches(
+    enum xnn_node_type node_type,
+    uint32_t input_id,
+    const struct xnn_value* input_value,
+    uint32_t output_id,
+    const struct xnn_value* output_value)
+{
+  if (output_value->datatype == xnn_datatype_qint8 || output_value->datatype == xnn_datatype_quint8) {
+    if (input_value->quantization.zero_point != output_value->quantization.zero_point) {
+      xnn_log_error(
+          "failed to define %s operator with input ID #%" PRIu32 " and output ID #%" PRIu32
+          ": mismatching zero point quantization parameter across input (%"PRId32") and output (%"PRId32")",
+          xnn_node_type_to_string(node_type), input_id, output_id,
+          input_value->quantization.zero_point, output_value->quantization.zero_point);
+      return xnn_status_invalid_parameter;
+    }
+    if (input_value->quantization.scale != output_value->quantization.scale) {
+      xnn_log_error(
+          "failed to define %s operator with input ID #%" PRIu32 " and output ID #%" PRIu32
+          ": mismatching scale quantization parameter across input (%.7g) and output (%.7g)",
+          xnn_node_type_to_string(node_type), input_id, output_id,
+          input_value->quantization.scale, output_value->quantization.scale);
+      return xnn_status_invalid_parameter;
+    }
+  }
+  return xnn_status_success;
+}
+
+enum xnn_status xnn_subgraph_check_batch_dims_match(
+  enum xnn_node_type node_type,
+  uint32_t tensor1_id,
+  const struct xnn_value* tensor1_value,
+  uint32_t tensor2_id,
+  const struct xnn_value* tensor2_value,
+  size_t num_batch_dims)
+{
+  if (tensor1_value->shape.num_dims < num_batch_dims) {
+    xnn_log_error(
+      "failed to define %s operator with value ID #%" PRIu32 ": number of dimensions of value (%zu) must "
+      "be at least %zu", xnn_node_type_to_string(node_type), tensor1_id, tensor1_value->shape.num_dims, num_batch_dims);
+  }
+
+  if (tensor2_value->shape.num_dims < num_batch_dims) {
+    xnn_log_error(
+      "failed to define %s operator with value ID #%" PRIu32 ": number of dimensions of value (%zu) must "
+      "be at least %zu", xnn_node_type_to_string(node_type), tensor2_id, tensor2_value->shape.num_dims, num_batch_dims);
+  }
+
+  for (size_t i = 0; i < num_batch_dims; i++) {
+    if (tensor1_value->shape.dim[i] != tensor2_value->shape.dim[i]) {
+      xnn_log_error(
+          "failed to define %s operator with value IDs #%" PRIu32 " and #%" PRIu32
+          ": mismatch batch size at dimension %zu across first (%zu) and second (%zu) values",
+          xnn_node_type_to_string(node_type), tensor1_id, tensor2_id, i, tensor1_value->shape.dim[i],
+          tensor2_value->shape.dim[i]);
+      return xnn_status_invalid_parameter;
+    }
+  }
+
   return xnn_status_success;
 }

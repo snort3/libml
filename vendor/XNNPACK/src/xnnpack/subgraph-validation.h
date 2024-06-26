@@ -49,6 +49,22 @@ enum xnn_status xnn_subgraph_check_datatype_matches_two_inputs(
   const struct xnn_value* output_value);
 enum xnn_status xnn_subgraph_check_output_min_max(enum xnn_node_type node_type, float output_min, float output_max);
 
+enum xnn_status xnn_subgraph_check_quantization_parameter_matches(
+  enum xnn_node_type node_type,
+  uint32_t input_id,
+  const struct xnn_value* input_value,
+  uint32_t output_id,
+  const struct xnn_value* output_value);
+
+// Check that two tensors have the same batch dimensions.
+enum xnn_status xnn_subgraph_check_batch_dims_match(
+  enum xnn_node_type node_type,
+  uint32_t tensor1_id,
+  const struct xnn_value* tensor1_value,
+  uint32_t tensor2_id,
+  const struct xnn_value* tensor2_value,
+  size_t num_batch_dims);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif

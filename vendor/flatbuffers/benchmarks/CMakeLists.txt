@@ -1,8 +1,9 @@
 # Setup for running Google Benchmarks (https://github.com/google/benchmark) on
-# flatbuffers. This requires both that benchmark library and its depenency gtest
+# flatbuffers. This requires both that benchmark library and its dependency gtest
 # to build. Instead of including them here or doing a submodule, this uses
 # FetchContent (https://cmake.org/cmake/help/latest/module/FetchContent.html) to
 # grab the dependencies at config time. This requires CMake 3.14 or higher.
+
 cmake_minimum_required(VERSION 3.14)
 include(FetchContent)
 
@@ -16,7 +17,7 @@ FetchContent_Declare(
 FetchContent_Declare(
     googlebenchmark
     GIT_REPOSITORY https://github.com/google/benchmark.git
-    GIT_TAG        f91b6b42b1b9854772a90ae9501464a161707d1e # v1.6.0
+    GIT_TAG        0d98dba29d66e93259db7daa53a9327df767a415 # v1.6.1
 )
 
 # For Windows: Prevent overriding the parent project's compiler/linker 
@@ -27,7 +28,7 @@ FetchContent_MakeAvailable(
     googlebenchmark
 )
 
-set(CPP_BENCH_DIR cpp)
+set(CPP_BENCH_DIR ${CMAKE_CURRENT_SOURCE_DIR}/cpp)
 set(CPP_FB_BENCH_DIR ${CPP_BENCH_DIR}/flatbuffers)
 set(CPP_RAW_BENCH_DIR ${CPP_BENCH_DIR}/raw)
 set(CPP_BENCH_FBS ${CPP_FB_BENCH_DIR}/bench.fbs)
@@ -62,8 +63,14 @@ add_custom_command(
 add_executable(flatbenchmark ${FlatBenchmark_SRCS})
 
 # Benchmark requires C++11 
-target_compile_features(flatbenchmark PUBLIC
-    cxx_std_11
+target_compile_features(flatbenchmark PRIVATE
+    cxx_std_11 # requires cmake 3.8
+)
+
+target_compile_options(flatbenchmark
+    PRIVATE
+        -fno-aligned-new
+        -Wno-deprecated-declarations
 )
 
 # Set the output directory to the root binary directory
@@ -75,7 +82,7 @@ set_target_properties(flatbenchmark
 # The includes of the benchmark files are fully qualified from flatbuffers root.
 target_include_directories(flatbenchmark PUBLIC ${CMAKE_SOURCE_DIR})
 
-target_link_libraries(flatbenchmark 
+target_link_libraries(flatbenchmark PRIVATE
     benchmark::benchmark_main # _main to use their entry point 
     gtest # Link to gtest so we can also assert in the benchmarks
 )

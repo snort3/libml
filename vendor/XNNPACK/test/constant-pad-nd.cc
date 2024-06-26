@@ -3,9 +3,10 @@
 // This source code is licensed under the BSD-style license found in the
 // LICENSE file in the root directory of this source tree.
 
-#include <gtest/gtest.h>
+#include <cstddef>
 
 #include "constant-pad-operator-tester.h"
+#include <gtest/gtest.h>
 
 constexpr size_t kDim1 = 2;
 constexpr size_t kDim2 = 3;
@@ -27,12 +28,12 @@ constexpr size_t kDim6PrePad = kDim6 / 2;
 constexpr size_t kDim6PostPad = kDim6 / 2 + 1;
 
 
-TEST(CONSTANT_PAD_ND_X8, 0d) {
+TEST(CONSTANT_PAD_ND_X8, constant_pad_0d) {
   ConstantPadOperatorTester()
     .TestX8();
 }
 
-TEST(CONSTANT_PAD_ND_X8, 1d) {
+TEST(CONSTANT_PAD_ND_X8, constant_pad_1d) {
   for (size_t dim1_pre_pad = 0; dim1_pre_pad <= kDim1PrePad; dim1_pre_pad += kDim1PrePad) {
     for (size_t dim1_post_pad = 0; dim1_post_pad <= kDim1PostPad; dim1_post_pad += kDim1PostPad) {
       ConstantPadOperatorTester()
@@ -44,7 +45,7 @@ TEST(CONSTANT_PAD_ND_X8, 1d) {
   }
 }
 
-TEST(CONSTANT_PAD_ND_X8, 2d) {
+TEST(CONSTANT_PAD_ND_X8, constant_pad_2d) {
   for (size_t dim1_pre_pad = 0; dim1_pre_pad <= kDim1PrePad; dim1_pre_pad += kDim1PrePad) {
     for (size_t dim1_post_pad = 0; dim1_post_pad <= kDim1PostPad; dim1_post_pad += kDim1PostPad) {
       for (size_t dim2_pre_pad = 0; dim2_pre_pad <= kDim2PrePad; dim2_pre_pad += kDim2PrePad) {
@@ -60,7 +61,7 @@ TEST(CONSTANT_PAD_ND_X8, 2d) {
   }
 }
 
-TEST(CONSTANT_PAD_ND_X8, 3d) {
+TEST(CONSTANT_PAD_ND_X8, constant_pad_3d) {
   for (size_t dim1_pre_pad = 0; dim1_pre_pad <= kDim1PrePad; dim1_pre_pad += kDim1PrePad) {
     for (size_t dim1_post_pad = 0; dim1_post_pad <= kDim1PostPad; dim1_post_pad += kDim1PostPad) {
       for (size_t dim2_pre_pad = 0; dim2_pre_pad <= kDim2PrePad; dim2_pre_pad += kDim2PrePad) {
@@ -80,7 +81,7 @@ TEST(CONSTANT_PAD_ND_X8, 3d) {
   }
 }
 
-TEST(CONSTANT_PAD_ND_X8, 4d) {
+TEST(CONSTANT_PAD_ND_X8, constant_pad_4d) {
   for (size_t dim1_pre_pad = 0; dim1_pre_pad <= kDim1PrePad; dim1_pre_pad += kDim1PrePad) {
     for (size_t dim1_post_pad = 0; dim1_post_pad <= kDim1PostPad; dim1_post_pad += kDim1PostPad) {
       for (size_t dim2_pre_pad = 0; dim2_pre_pad <= kDim2PrePad; dim2_pre_pad += kDim2PrePad) {
@@ -104,7 +105,7 @@ TEST(CONSTANT_PAD_ND_X8, 4d) {
   }
 }
 
-TEST(CONSTANT_PAD_ND_X8, 5d) {
+TEST(CONSTANT_PAD_ND_X8, constant_pad_5d) {
   for (size_t dim1_pre_pad = 0; dim1_pre_pad <= kDim1PrePad; dim1_pre_pad += kDim1PrePad) {
     for (size_t dim1_post_pad = 0; dim1_post_pad <= kDim1PostPad; dim1_post_pad += kDim1PostPad) {
       for (size_t dim2_pre_pad = 0; dim2_pre_pad <= kDim2PrePad; dim2_pre_pad += kDim2PrePad) {
@@ -132,7 +133,7 @@ TEST(CONSTANT_PAD_ND_X8, 5d) {
   }
 }
 
-TEST(CONSTANT_PAD_ND_X8, 6d) {
+TEST(CONSTANT_PAD_ND_X8, constant_pad_6d) {
   for (size_t dim1_pre_pad = 0; dim1_pre_pad <= kDim1PrePad; dim1_pre_pad += kDim1PrePad) {
     for (size_t dim1_post_pad = 0; dim1_post_pad <= kDim1PostPad; dim1_post_pad += kDim1PostPad) {
       for (size_t dim2_pre_pad = 0; dim2_pre_pad <= kDim2PrePad; dim2_pre_pad += kDim2PrePad) {
@@ -165,12 +166,12 @@ TEST(CONSTANT_PAD_ND_X8, 6d) {
 }
 
 
-TEST(CONSTANT_PAD_ND_X16, 0d) {
+TEST(CONSTANT_PAD_ND_X16, constant_pad_0d) {
   ConstantPadOperatorTester()
     .TestX16();
 }
 
-TEST(CONSTANT_PAD_ND_X16, 1d) {
+TEST(CONSTANT_PAD_ND_X16, constant_pad_1d) {
   for (size_t dim1_pre_pad = 0; dim1_pre_pad <= kDim1PrePad; dim1_pre_pad += kDim1PrePad) {
     for (size_t dim1_post_pad = 0; dim1_post_pad <= kDim1PostPad; dim1_post_pad += kDim1PostPad) {
       ConstantPadOperatorTester()
@@ -182,7 +183,7 @@ TEST(CONSTANT_PAD_ND_X16, 1d) {
   }
 }
 
-TEST(CONSTANT_PAD_ND_X16, 2d) {
+TEST(CONSTANT_PAD_ND_X16, constant_pad_2d) {
   for (size_t dim1_pre_pad = 0; dim1_pre_pad <= kDim1PrePad; dim1_pre_pad += kDim1PrePad) {
     for (size_t dim1_post_pad = 0; dim1_post_pad <= kDim1PostPad; dim1_post_pad += kDim1PostPad) {
       for (size_t dim2_pre_pad = 0; dim2_pre_pad <= kDim2PrePad; dim2_pre_pad += kDim2PrePad) {
@@ -198,7 +199,7 @@ TEST(CONSTANT_PAD_ND_X16, 2d) {
   }
 }
 
-TEST(CONSTANT_PAD_ND_X16, 3d) {
+TEST(CONSTANT_PAD_ND_X16, constant_pad_3d) {
   for (size_t dim1_pre_pad = 0; dim1_pre_pad <= kDim1PrePad; dim1_pre_pad += kDim1PrePad) {
     for (size_t dim1_post_pad = 0; dim1_post_pad <= kDim1PostPad; dim1_post_pad += kDim1PostPad) {
       for (size_t dim2_pre_pad = 0; dim2_pre_pad <= kDim2PrePad; dim2_pre_pad += kDim2PrePad) {
@@ -218,7 +219,7 @@ TEST(CONSTANT_PAD_ND_X16, 3d) {
   }
 }
 
-TEST(CONSTANT_PAD_ND_X16, 4d) {
+TEST(CONSTANT_PAD_ND_X16, constant_pad_4d) {
   for (size_t dim1_pre_pad = 0; dim1_pre_pad <= kDim1PrePad; dim1_pre_pad += kDim1PrePad) {
     for (size_t dim1_post_pad = 0; dim1_post_pad <= kDim1PostPad; dim1_post_pad += kDim1PostPad) {
       for (size_t dim2_pre_pad = 0; dim2_pre_pad <= kDim2PrePad; dim2_pre_pad += kDim2PrePad) {
@@ -242,7 +243,7 @@ TEST(CONSTANT_PAD_ND_X16, 4d) {
   }
 }
 
-TEST(CONSTANT_PAD_ND_X16, 5d) {
+TEST(CONSTANT_PAD_ND_X16, constant_pad_5d) {
   for (size_t dim1_pre_pad = 0; dim1_pre_pad <= kDim1PrePad; dim1_pre_pad += kDim1PrePad) {
     for (size_t dim1_post_pad = 0; dim1_post_pad <= kDim1PostPad; dim1_post_pad += kDim1PostPad) {
       for (size_t dim2_pre_pad = 0; dim2_pre_pad <= kDim2PrePad; dim2_pre_pad += kDim2PrePad) {
@@ -270,7 +271,7 @@ TEST(CONSTANT_PAD_ND_X16, 5d) {
   }
 }
 
-TEST(CONSTANT_PAD_ND_X16, 6d) {
+TEST(CONSTANT_PAD_ND_X16, constant_pad_6d) {
   for (size_t dim1_pre_pad = 0; dim1_pre_pad <= kDim1PrePad; dim1_pre_pad += kDim1PrePad) {
     for (size_t dim1_post_pad = 0; dim1_post_pad <= kDim1PostPad; dim1_post_pad += kDim1PostPad) {
       for (size_t dim2_pre_pad = 0; dim2_pre_pad <= kDim2PrePad; dim2_pre_pad += kDim2PrePad) {
@@ -303,12 +304,12 @@ TEST(CONSTANT_PAD_ND_X16, 6d) {
 }
 
 
-TEST(CONSTANT_PAD_ND_X32, 0d) {
+TEST(CONSTANT_PAD_ND_X32, constant_pad_0d) {
   ConstantPadOperatorTester()
     .TestX32();
 }
 
-TEST(CONSTANT_PAD_ND_X32, 1d) {
+TEST(CONSTANT_PAD_ND_X32, constant_pad_1d) {
   for (size_t dim1_pre_pad = 0; dim1_pre_pad <= kDim1PrePad; dim1_pre_pad += kDim1PrePad) {
     for (size_t dim1_post_pad = 0; dim1_post_pad <= kDim1PostPad; dim1_post_pad += kDim1PostPad) {
       ConstantPadOperatorTester()
@@ -320,7 +321,7 @@ TEST(CONSTANT_PAD_ND_X32, 1d) {
   }
 }
 
-TEST(CONSTANT_PAD_ND_X32, 2d) {
+TEST(CONSTANT_PAD_ND_X32, constant_pad_2d) {
   for (size_t dim1_pre_pad = 0; dim1_pre_pad <= kDim1PrePad; dim1_pre_pad += kDim1PrePad) {
     for (size_t dim1_post_pad = 0; dim1_post_pad <= kDim1PostPad; dim1_post_pad += kDim1PostPad) {
       for (size_t dim2_pre_pad = 0; dim2_pre_pad <= kDim2PrePad; dim2_pre_pad += kDim2PrePad) {
@@ -336,7 +337,7 @@ TEST(CONSTANT_PAD_ND_X32, 2d) {
   }
 }
 
-TEST(CONSTANT_PAD_ND_X32, 3d) {
+TEST(CONSTANT_PAD_ND_X32, constant_pad_3d) {
   for (size_t dim1_pre_pad = 0; dim1_pre_pad <= kDim1PrePad; dim1_pre_pad += kDim1PrePad) {
     for (size_t dim1_post_pad = 0; dim1_post_pad <= kDim1PostPad; dim1_post_pad += kDim1PostPad) {
       for (size_t dim2_pre_pad = 0; dim2_pre_pad <= kDim2PrePad; dim2_pre_pad += kDim2PrePad) {
@@ -356,7 +357,7 @@ TEST(CONSTANT_PAD_ND_X32, 3d) {
   }
 }
 
-TEST(CONSTANT_PAD_ND_X32, 4d) {
+TEST(CONSTANT_PAD_ND_X32, constant_pad_4d) {
   for (size_t dim1_pre_pad = 0; dim1_pre_pad <= kDim1PrePad; dim1_pre_pad += kDim1PrePad) {
     for (size_t dim1_post_pad = 0; dim1_post_pad <= kDim1PostPad; dim1_post_pad += kDim1PostPad) {
       for (size_t dim2_pre_pad = 0; dim2_pre_pad <= kDim2PrePad; dim2_pre_pad += kDim2PrePad) {
@@ -380,7 +381,7 @@ TEST(CONSTANT_PAD_ND_X32, 4d) {
   }
 }
 
-TEST(CONSTANT_PAD_ND_X32, 5d) {
+TEST(CONSTANT_PAD_ND_X32, constant_pad_5d) {
   for (size_t dim1_pre_pad = 0; dim1_pre_pad <= kDim1PrePad; dim1_pre_pad += kDim1PrePad) {
     for (size_t dim1_post_pad = 0; dim1_post_pad <= kDim1PostPad; dim1_post_pad += kDim1PostPad) {
       for (size_t dim2_pre_pad = 0; dim2_pre_pad <= kDim2PrePad; dim2_pre_pad += kDim2PrePad) {
@@ -408,7 +409,7 @@ TEST(CONSTANT_PAD_ND_X32, 5d) {
   }
 }
 
-TEST(CONSTANT_PAD_ND_X32, 6d) {
+TEST(CONSTANT_PAD_ND_X32, constant_pad_6d) {
   for (size_t dim1_pre_pad = 0; dim1_pre_pad <= kDim1PrePad; dim1_pre_pad += kDim1PrePad) {
     for (size_t dim1_post_pad = 0; dim1_post_pad <= kDim1PostPad; dim1_post_pad += kDim1PostPad) {
       for (size_t dim2_pre_pad = 0; dim2_pre_pad <= kDim2PrePad; dim2_pre_pad += kDim2PrePad) {

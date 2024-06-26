@@ -1,8 +1,8 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index a57caee72..cb16a40c5 100644
+index 314c72fe8..f102b7710 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -538,14 +538,14 @@ add_subdirectory(unsupported)
+@@ -597,14 +597,14 @@ add_subdirectory(unsupported)
  add_subdirectory(demos EXCLUDE_FROM_ALL)
  
  # must be after test and unsupported, for configuring buildtests.in
@@ -19,7 +19,7 @@ index a57caee72..cb16a40c5 100644
  if(CLANG_FORMAT_FOUND)
  set(FORMAT_SOURCES)
  list(APPEND FORMAT_SUBDIRS blas bench demos "doc" Eigen include lapack scripts share unsupported test failtest)
-@@ -572,9 +572,9 @@ if(EIGEN_BUILD_TESTING)
+@@ -631,9 +631,9 @@ if(EIGEN_BUILD_TESTING)
    ei_testing_print_summary()
  endif()
  

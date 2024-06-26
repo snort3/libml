@@ -7,6 +7,7 @@
 #include <cfloat>
 #include <cmath>
 #include <functional>
+#include <limits>
 #include <random>
 #include <vector>
 
@@ -26,12 +27,12 @@
 
 
 static void Im2ColGEMMBenchmark(benchmark::State& state,
-  xnn_f32_gemm_minmax_ukernel_function f32_gemm,
+  xnn_f32_gemm_minmax_ukernel_fn f32_gemm,
   uint32_t mr, uint32_t nr, uint32_t kr, uint32_t sr,
   xnn_init_f32_minmax_params_fn init_params,
   benchmark::utils::IsaCheckFunction isa_check = nullptr)
 {
-  if (isa_check && !isa_check(state)) {
+  if (isa_check != nullptr && !isa_check(state)) {
     return;
   }
 
@@ -77,8 +78,8 @@ static void Im2ColGEMMBenchmark(benchmark::State& state,
 
   std::vector<float, AlignedAllocator<float, 64>> w(w_elements * num_buffers);
   std::fill(w.begin(), w.end(), 0.0f);
-  xnn_pack_f32_gemm_goi_w(1 /* groups */, group_output_channels, group_input_channels * kernel_size,
-    nr, kr, sr, k.data(), b.data(), w.data(), 0, nullptr);
+  xnn_pack_f32_gemm_goi_w(/*groups=*/1, group_output_channels, group_input_channels * kernel_size,
+    nr, kr, sr, k.data(), b.data(), /*scale=*/nullptr, w.data(), /*extra_bytes=*/0, /*params=*/nullptr);
   for (size_t n = 1; n < num_buffers; n++) {
     std::copy(w.cbegin(), w.cbegin() + w_elements, w.begin() + n * w_elements);
   }
@@ -142,12 +143,12 @@ static void Im2ColGEMMBenchmark(benchmark::State& state,
 
 
 #if XNN_ARCH_ARM64 && XNN_ENABLE_ASSEMBLY
-  static void f32_gemm_4x8__aarch64_neonfma_prfm_cortex_a75(benchmark::State& state, const char* net) {
-    Im2ColGEMMBenchmark(state, xnn_f32_gemm_minmax_ukernel_4x8__aarch64_neonfma_prfm_cortex_a75, 4, 8, 1, 1,
+  static void f32_gemm_4x8__asm_aarch64_neonfma_cortex_a75_prfm(benchmark::State& state, const char* net) {
+    Im2ColGEMMBenchmark(state, xnn_f32_gemm_minmax_ukernel_4x8__asm_aarch64_neonfma_cortex_a75_prfm, 4, 8, 1, 1,
       xnn_init_f32_minmax_scalar_params);
   }
 
-  BENCHMARK_CONV(f32_gemm_4x8__aarch64_neonfma_prfm_cortex_a75)
+  BENCHMARK_CONV(f32_gemm_4x8__asm_aarch64_neonfma_cortex_a75_prfm)
 #endif  // XNN_ARCH_ARM64 && XNN_ENABLE_ASSEMBLY
 
 

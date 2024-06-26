@@ -13,222 +13,222 @@
 #include <random>
 
 #include <xnnpack/cache.h>
+#include <xnnpack/common.h>
+#include <xnnpack/models.h>
 
 #include <fp16/fp16.h>
 
-#include "models/models.h"
-
 namespace models {
 
-ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
+ExecutionPlan FP16MobileNetV3Small(bool use_jit, pthreadpool_t threadpool) {
   alignas(16) static std::array<uint16_t, 150528 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v0;
-  alignas(16) static std::array<uint16_t, 200704> v1;
-  alignas(16) static std::array<uint16_t, 200704> v2;
-  alignas(16) static std::array<uint16_t, 50176> v3;
-  alignas(16) static std::array<uint16_t, 16> v4;
-  alignas(16) static std::array<uint16_t, 8> v5;
-  alignas(16) static std::array<uint16_t, 16> v6;
-  alignas(16) static std::array<uint16_t, 50176> v7;
-  alignas(16) static std::array<uint16_t, 50176> v8;
-  alignas(16) static std::array<uint16_t, 225792> v9;
-  alignas(16) static std::array<uint16_t, 56448> v10;
-  alignas(16) static std::array<uint16_t, 18816> v11;
-  alignas(16) static std::array<uint16_t, 68992> v12;
-  alignas(16) static std::array<uint16_t, 68992> v13;
-  alignas(16) static std::array<uint16_t, 18816> v14;
-  alignas(16) static std::array<uint16_t, 18816> v15;
-  alignas(16) static std::array<uint16_t, 75264> v16;
-  alignas(16) static std::array<uint16_t, 75264> v17;
-  alignas(16) static std::array<uint16_t, 18816> v18;
-  alignas(16) static std::array<uint16_t, 18816> v19;
-  alignas(16) static std::array<uint16_t, 96> v20;
-  alignas(16) static std::array<uint16_t, 24> v21;
-  alignas(16) static std::array<uint16_t, 96> v22;
-  alignas(16) static std::array<uint16_t, 18816> v23;
-  alignas(16) static std::array<uint16_t, 7840> v24;
-  alignas(16) static std::array<uint16_t, 47040> v25;
-  alignas(16) static std::array<uint16_t, 47040> v26;
-  alignas(16) static std::array<uint16_t, 47040> v27;
-  alignas(16) static std::array<uint16_t, 47040> v28;
-  alignas(16) static std::array<uint16_t, 240> v29;
-  alignas(16) static std::array<uint16_t, 64> v30;
-  alignas(16) static std::array<uint16_t, 240> v31;
-  alignas(16) static std::array<uint16_t, 47040> v32;
-  alignas(16) static std::array<uint16_t, 7840> v33;
-  alignas(16) static std::array<uint16_t, 7840> v34;
-  alignas(16) static std::array<uint16_t, 47040> v35;
-  alignas(16) static std::array<uint16_t, 47040> v36;
-  alignas(16) static std::array<uint16_t, 47040> v37;
-  alignas(16) static std::array<uint16_t, 47040> v38;
-  alignas(16) static std::array<uint16_t, 240> v39;
-  alignas(16) static std::array<uint16_t, 64> v40;
-  alignas(16) static std::array<uint16_t, 240> v41;
-  alignas(16) static std::array<uint16_t, 47040> v42;
-  alignas(16) static std::array<uint16_t, 7840> v43;
-  alignas(16) static std::array<uint16_t, 7840> v44;
-  alignas(16) static std::array<uint16_t, 23520> v45;
-  alignas(16) static std::array<uint16_t, 23520> v46;
-  alignas(16) static std::array<uint16_t, 23520> v47;
-  alignas(16) static std::array<uint16_t, 23520> v48;
-  alignas(16) static std::array<uint16_t, 120> v49;
-  alignas(16) static std::array<uint16_t, 32> v50;
-  alignas(16) static std::array<uint16_t, 120> v51;
-  alignas(16) static std::array<uint16_t, 23520> v52;
-  alignas(16) static std::array<uint16_t, 9408> v53;
-  alignas(16) static std::array<uint16_t, 28224> v54;
-  alignas(16) static std::array<uint16_t, 28224> v55;
-  alignas(16) static std::array<uint16_t, 28224> v56;
-  alignas(16) static std::array<uint16_t, 28224> v57;
-  alignas(16) static std::array<uint16_t, 144> v58;
-  alignas(16) static std::array<uint16_t, 40> v59;
-  alignas(16) static std::array<uint16_t, 144> v60;
-  alignas(16) static std::array<uint16_t, 28224> v61;
-  alignas(16) static std::array<uint16_t, 9408> v62;
-  alignas(16) static std::array<uint16_t, 9408> v63;
-  alignas(16) static std::array<uint16_t, 56448> v64;
-  alignas(16) static std::array<uint16_t, 56448> v65;
-  alignas(16) static std::array<uint16_t, 14112> v66;
-  alignas(16) static std::array<uint16_t, 14112> v67;
-  alignas(16) static std::array<uint16_t, 288> v68;
-  alignas(16) static std::array<uint16_t, 72> v69;
-  alignas(16) static std::array<uint16_t, 288> v70;
-  alignas(16) static std::array<uint16_t, 14112> v71;
-  alignas(16) static std::array<uint16_t, 4704> v72;
-  alignas(16) static std::array<uint16_t, 28224> v73;
-  alignas(16) static std::array<uint16_t, 28224> v74;
-  alignas(16) static std::array<uint16_t, 28224> v75;
-  alignas(16) static std::array<uint16_t, 28224> v76;
-  alignas(16) static std::array<uint16_t, 576> v77;
-  alignas(16) static std::array<uint16_t, 144> v78;
-  alignas(16) static std::array<uint16_t, 576> v79;
-  alignas(16) static std::array<uint16_t, 28224> v80;
-  alignas(16) static std::array<uint16_t, 4704> v81;
-  alignas(16) static std::array<uint16_t, 4704> v82;
-  alignas(16) static std::array<uint16_t, 28224> v83;
-  alignas(16) static std::array<uint16_t, 28224> v84;
-  alignas(16) static std::array<uint16_t, 28224> v85;
-  alignas(16) static std::array<uint16_t, 28224> v86;
-  alignas(16) static std::array<uint16_t, 576> v87;
-  alignas(16) static std::array<uint16_t, 144> v88;
-  alignas(16) static std::array<uint16_t, 576> v89;
-  alignas(16) static std::array<uint16_t, 28224> v90;
-  alignas(16) static std::array<uint16_t, 4704> v91;
-  alignas(16) static std::array<uint16_t, 4704> v92;
-  alignas(16) static std::array<uint16_t, 28224> v93;
-  alignas(16) static std::array<uint16_t, 28224> v94;
-  alignas(16) static std::array<uint16_t, 576> v95;
-  alignas(16) static std::array<uint16_t, 1024> v96;
-  alignas(16) static std::array<uint16_t, 1024> v97;
-  alignas(16) static std::array<uint16_t, 1024> v98;
-  alignas(16) static std::array<uint16_t, 1001> v99;
-  alignas(16) static std::array<uint16_t, 432> w100;
-  alignas(16) static std::array<uint16_t, 16> w101;
-  alignas(16) static std::array<uint16_t, 144> w102;
-  alignas(16) static std::array<uint16_t, 16> w103;
-  alignas(16) static std::array<uint16_t, 128> w104;
-  alignas(16) static std::array<uint16_t, 8> w105;
-  alignas(16) static std::array<uint16_t, 128> w106;
-  alignas(16) static std::array<uint16_t, 16> w107;
-  alignas(16) static std::array<uint16_t, 256> w108;
-  alignas(16) static std::array<uint16_t, 16> w109;
-  alignas(16) static std::array<uint16_t, 1152> w110;
-  alignas(16) static std::array<uint16_t, 72> w111;
-  alignas(16) static std::array<uint16_t, 648> w112;
-  alignas(16) static std::array<uint16_t, 72> w113;
-  alignas(16) static std::array<uint16_t, 1728> w114;
-  alignas(16) static std::array<uint16_t, 24> w115;
-  alignas(16) static std::array<uint16_t, 2112> w116;
-  alignas(16) static std::array<uint16_t, 88> w117;
-  alignas(16) static std::array<uint16_t, 792> w118;
-  alignas(16) static std::array<uint16_t, 88> w119;
-  alignas(16) static std::array<uint16_t, 2112> w120;
-  alignas(16) static std::array<uint16_t, 24> w121;
-  alignas(16) static std::array<uint16_t, 2304> w122;
-  alignas(16) static std::array<uint16_t, 96> w123;
-  alignas(16) static std::array<uint16_t, 2400> w124;
-  alignas(16) static std::array<uint16_t, 96> w125;
-  alignas(16) static std::array<uint16_t, 2304> w126;
-  alignas(16) static std::array<uint16_t, 24> w127;
-  alignas(16) static std::array<uint16_t, 2304> w128;
-  alignas(16) static std::array<uint16_t, 96> w129;
-  alignas(16) static std::array<uint16_t, 3840> w130;
-  alignas(16) static std::array<uint16_t, 40> w131;
-  alignas(16) static std::array<uint16_t, 9600> w132;
-  alignas(16) static std::array<uint16_t, 240> w133;
-  alignas(16) static std::array<uint16_t, 6000> w134;
-  alignas(16) static std::array<uint16_t, 240> w135;
-  alignas(16) static std::array<uint16_t, 15360> w136;
-  alignas(16) static std::array<uint16_t, 64> w137;
-  alignas(16) static std::array<uint16_t, 15360> w138;
-  alignas(16) static std::array<uint16_t, 240> w139;
-  alignas(16) static std::array<uint16_t, 9600> w140;
-  alignas(16) static std::array<uint16_t, 40> w141;
-  alignas(16) static std::array<uint16_t, 9600> w142;
-  alignas(16) static std::array<uint16_t, 240> w143;
-  alignas(16) static std::array<uint16_t, 6000> w144;
-  alignas(16) static std::array<uint16_t, 240> w145;
-  alignas(16) static std::array<uint16_t, 15360> w146;
-  alignas(16) static std::array<uint16_t, 64> w147;
-  alignas(16) static std::array<uint16_t, 15360> w148;
-  alignas(16) static std::array<uint16_t, 240> w149;
-  alignas(16) static std::array<uint16_t, 9600> w150;
-  alignas(16) static std::array<uint16_t, 40> w151;
-  alignas(16) static std::array<uint16_t, 4800> w152;
-  alignas(16) static std::array<uint16_t, 120> w153;
-  alignas(16) static std::array<uint16_t, 3000> w154;
-  alignas(16) static std::array<uint16_t, 120> w155;
-  alignas(16) static std::array<uint16_t, 3840> w156;
-  alignas(16) static std::array<uint16_t, 32> w157;
-  alignas(16) static std::array<uint16_t, 3840> w158;
-  alignas(16) static std::array<uint16_t, 120> w159;
-  alignas(16) static std::array<uint16_t, 5760> w160;
-  alignas(16) static std::array<uint16_t, 48> w161;
-  alignas(16) static std::array<uint16_t, 6912> w162;
-  alignas(16) static std::array<uint16_t, 144> w163;
-  alignas(16) static std::array<uint16_t, 3600> w164;
-  alignas(16) static std::array<uint16_t, 144> w165;
-  alignas(16) static std::array<uint16_t, 5760> w166;
-  alignas(16) static std::array<uint16_t, 40> w167;
-  alignas(16) static std::array<uint16_t, 5760> w168;
-  alignas(16) static std::array<uint16_t, 144> w169;
-  alignas(16) static std::array<uint16_t, 6912> w170;
-  alignas(16) static std::array<uint16_t, 48> w171;
-  alignas(16) static std::array<uint16_t, 13824> w172;
-  alignas(16) static std::array<uint16_t, 288> w173;
-  alignas(16) static std::array<uint16_t, 7200> w174;
-  alignas(16) static std::array<uint16_t, 288> w175;
-  alignas(16) static std::array<uint16_t, 20736> w176;
-  alignas(16) static std::array<uint16_t, 72> w177;
-  alignas(16) static std::array<uint16_t, 20736> w178;
-  alignas(16) static std::array<uint16_t, 288> w179;
-  alignas(16) static std::array<uint16_t, 27648> w180;
-  alignas(16) static std::array<uint16_t, 96> w181;
-  alignas(16) static std::array<uint16_t, 55296> w182;
-  alignas(16) static std::array<uint16_t, 576> w183;
-  alignas(16) static std::array<uint16_t, 14400> w184;
-  alignas(16) static std::array<uint16_t, 576> w185;
-  alignas(16) static std::array<uint16_t, 82944> w186;
-  alignas(16) static std::array<uint16_t, 144> w187;
-  alignas(16) static std::array<uint16_t, 82944> w188;
-  alignas(16) static std::array<uint16_t, 576> w189;
-  alignas(16) static std::array<uint16_t, 55296> w190;
-  alignas(16) static std::array<uint16_t, 96> w191;
-  alignas(16) static std::array<uint16_t, 55296> w192;
-  alignas(16) static std::array<uint16_t, 576> w193;
-  alignas(16) static std::array<uint16_t, 14400> w194;
-  alignas(16) static std::array<uint16_t, 576> w195;
-  alignas(16) static std::array<uint16_t, 82944> w196;
-  alignas(16) static std::array<uint16_t, 144> w197;
-  alignas(16) static std::array<uint16_t, 82944> w198;
-  alignas(16) static std::array<uint16_t, 576> w199;
-  alignas(16) static std::array<uint16_t, 55296> w200;
-  alignas(16) static std::array<uint16_t, 96> w201;
-  alignas(16) static std::array<uint16_t, 55296> w202;
-  alignas(16) static std::array<uint16_t, 576> w203;
-  alignas(16) static std::array<uint16_t, 589824> w204;
-  alignas(16) static std::array<uint16_t, 1024> w205;
-  alignas(16) static std::array<uint16_t, 1025024> w206;
-  alignas(16) static std::array<uint16_t, 1001> w207;
+  alignas(16) static std::array<uint16_t, 200704 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v1;
+  alignas(16) static std::array<uint16_t, 200704 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v2;
+  alignas(16) static std::array<uint16_t, 50176 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v3;
+  alignas(16) static std::array<uint16_t, 16 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v4;
+  alignas(16) static std::array<uint16_t, 8 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v5;
+  alignas(16) static std::array<uint16_t, 16 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v6;
+  alignas(16) static std::array<uint16_t, 50176 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v7;
+  alignas(16) static std::array<uint16_t, 50176 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v8;
+  alignas(16) static std::array<uint16_t, 225792 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v9;
+  alignas(16) static std::array<uint16_t, 56448 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v10;
+  alignas(16) static std::array<uint16_t, 18816 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v11;
+  alignas(16) static std::array<uint16_t, 68992 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v12;
+  alignas(16) static std::array<uint16_t, 68992 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v13;
+  alignas(16) static std::array<uint16_t, 18816 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v14;
+  alignas(16) static std::array<uint16_t, 18816 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v15;
+  alignas(16) static std::array<uint16_t, 75264 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v16;
+  alignas(16) static std::array<uint16_t, 75264 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v17;
+  alignas(16) static std::array<uint16_t, 18816 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v18;
+  alignas(16) static std::array<uint16_t, 18816 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v19;
+  alignas(16) static std::array<uint16_t, 96 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v20;
+  alignas(16) static std::array<uint16_t, 24 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v21;
+  alignas(16) static std::array<uint16_t, 96 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v22;
+  alignas(16) static std::array<uint16_t, 18816 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v23;
+  alignas(16) static std::array<uint16_t, 7840 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v24;
+  alignas(16) static std::array<uint16_t, 47040 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v25;
+  alignas(16) static std::array<uint16_t, 47040 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v26;
+  alignas(16) static std::array<uint16_t, 47040 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v27;
+  alignas(16) static std::array<uint16_t, 47040 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v28;
+  alignas(16) static std::array<uint16_t, 240 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v29;
+  alignas(16) static std::array<uint16_t, 64 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v30;
+  alignas(16) static std::array<uint16_t, 240 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v31;
+  alignas(16) static std::array<uint16_t, 47040 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v32;
+  alignas(16) static std::array<uint16_t, 7840 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v33;
+  alignas(16) static std::array<uint16_t, 7840 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v34;
+  alignas(16) static std::array<uint16_t, 47040 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v35;
+  alignas(16) static std::array<uint16_t, 47040 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v36;
+  alignas(16) static std::array<uint16_t, 47040 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v37;
+  alignas(16) static std::array<uint16_t, 47040 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v38;
+  alignas(16) static std::array<uint16_t, 240 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v39;
+  alignas(16) static std::array<uint16_t, 64 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v40;
+  alignas(16) static std::array<uint16_t, 240 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v41;
+  alignas(16) static std::array<uint16_t, 47040 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v42;
+  alignas(16) static std::array<uint16_t, 7840 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v43;
+  alignas(16) static std::array<uint16_t, 7840 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v44;
+  alignas(16) static std::array<uint16_t, 23520 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v45;
+  alignas(16) static std::array<uint16_t, 23520 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v46;
+  alignas(16) static std::array<uint16_t, 23520 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v47;
+  alignas(16) static std::array<uint16_t, 23520 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v48;
+  alignas(16) static std::array<uint16_t, 120 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v49;
+  alignas(16) static std::array<uint16_t, 32 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v50;
+  alignas(16) static std::array<uint16_t, 120 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v51;
+  alignas(16) static std::array<uint16_t, 23520 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v52;
+  alignas(16) static std::array<uint16_t, 9408 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v53;
+  alignas(16) static std::array<uint16_t, 28224 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v54;
+  alignas(16) static std::array<uint16_t, 28224 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v55;
+  alignas(16) static std::array<uint16_t, 28224 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v56;
+  alignas(16) static std::array<uint16_t, 28224 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v57;
+  alignas(16) static std::array<uint16_t, 144 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v58;
+  alignas(16) static std::array<uint16_t, 40 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v59;
+  alignas(16) static std::array<uint16_t, 144 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v60;
+  alignas(16) static std::array<uint16_t, 28224 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v61;
+  alignas(16) static std::array<uint16_t, 9408 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v62;
+  alignas(16) static std::array<uint16_t, 9408 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v63;
+  alignas(16) static std::array<uint16_t, 56448 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v64;
+  alignas(16) static std::array<uint16_t, 56448 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v65;
+  alignas(16) static std::array<uint16_t, 14112 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v66;
+  alignas(16) static std::array<uint16_t, 14112 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v67;
+  alignas(16) static std::array<uint16_t, 288 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v68;
+  alignas(16) static std::array<uint16_t, 72 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v69;
+  alignas(16) static std::array<uint16_t, 288 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v70;
+  alignas(16) static std::array<uint16_t, 14112 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v71;
+  alignas(16) static std::array<uint16_t, 4704 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v72;
+  alignas(16) static std::array<uint16_t, 28224 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v73;
+  alignas(16) static std::array<uint16_t, 28224 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v74;
+  alignas(16) static std::array<uint16_t, 28224 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v75;
+  alignas(16) static std::array<uint16_t, 28224 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v76;
+  alignas(16) static std::array<uint16_t, 576 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v77;
+  alignas(16) static std::array<uint16_t, 144 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v78;
+  alignas(16) static std::array<uint16_t, 576 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v79;
+  alignas(16) static std::array<uint16_t, 28224 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v80;
+  alignas(16) static std::array<uint16_t, 4704 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v81;
+  alignas(16) static std::array<uint16_t, 4704 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v82;
+  alignas(16) static std::array<uint16_t, 28224 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v83;
+  alignas(16) static std::array<uint16_t, 28224 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v84;
+  alignas(16) static std::array<uint16_t, 28224 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v85;
+  alignas(16) static std::array<uint16_t, 28224 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v86;
+  alignas(16) static std::array<uint16_t, 576 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v87;
+  alignas(16) static std::array<uint16_t, 144 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v88;
+  alignas(16) static std::array<uint16_t, 576 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v89;
+  alignas(16) static std::array<uint16_t, 28224 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v90;
+  alignas(16) static std::array<uint16_t, 4704 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v91;
+  alignas(16) static std::array<uint16_t, 4704 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v92;
+  alignas(16) static std::array<uint16_t, 28224 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v93;
+  alignas(16) static std::array<uint16_t, 28224 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v94;
+  alignas(16) static std::array<uint16_t, 576 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v95;
+  alignas(16) static std::array<uint16_t, 1024 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v96;
+  alignas(16) static std::array<uint16_t, 1024 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v97;
+  alignas(16) static std::array<uint16_t, 1024 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v98;
+  alignas(16) static std::array<uint16_t, 1001 + XNN_EXTRA_BYTES / sizeof(uint16_t)> v99;
+  alignas(16) static std::array<uint16_t, 432 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w100;
+  alignas(16) static std::array<uint16_t, 16 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w101;
+  alignas(16) static std::array<uint16_t, 144 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w102;
+  alignas(16) static std::array<uint16_t, 16 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w103;
+  alignas(16) static std::array<uint16_t, 128 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w104;
+  alignas(16) static std::array<uint16_t, 8 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w105;
+  alignas(16) static std::array<uint16_t, 128 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w106;
+  alignas(16) static std::array<uint16_t, 16 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w107;
+  alignas(16) static std::array<uint16_t, 256 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w108;
+  alignas(16) static std::array<uint16_t, 16 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w109;
+  alignas(16) static std::array<uint16_t, 1152 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w110;
+  alignas(16) static std::array<uint16_t, 72 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w111;
+  alignas(16) static std::array<uint16_t, 648 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w112;
+  alignas(16) static std::array<uint16_t, 72 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w113;
+  alignas(16) static std::array<uint16_t, 1728 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w114;
+  alignas(16) static std::array<uint16_t, 24 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w115;
+  alignas(16) static std::array<uint16_t, 2112 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w116;
+  alignas(16) static std::array<uint16_t, 88 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w117;
+  alignas(16) static std::array<uint16_t, 792 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w118;
+  alignas(16) static std::array<uint16_t, 88 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w119;
+  alignas(16) static std::array<uint16_t, 2112 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w120;
+  alignas(16) static std::array<uint16_t, 24 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w121;
+  alignas(16) static std::array<uint16_t, 2304 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w122;
+  alignas(16) static std::array<uint16_t, 96 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w123;
+  alignas(16) static std::array<uint16_t, 2400 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w124;
+  alignas(16) static std::array<uint16_t, 96 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w125;
+  alignas(16) static std::array<uint16_t, 2304 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w126;
+  alignas(16) static std::array<uint16_t, 24 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w127;
+  alignas(16) static std::array<uint16_t, 2304 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w128;
+  alignas(16) static std::array<uint16_t, 96 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w129;
+  alignas(16) static std::array<uint16_t, 3840 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w130;
+  alignas(16) static std::array<uint16_t, 40 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w131;
+  alignas(16) static std::array<uint16_t, 9600 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w132;
+  alignas(16) static std::array<uint16_t, 240 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w133;
+  alignas(16) static std::array<uint16_t, 6000 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w134;
+  alignas(16) static std::array<uint16_t, 240 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w135;
+  alignas(16) static std::array<uint16_t, 15360 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w136;
+  alignas(16) static std::array<uint16_t, 64 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w137;
+  alignas(16) static std::array<uint16_t, 15360 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w138;
+  alignas(16) static std::array<uint16_t, 240 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w139;
+  alignas(16) static std::array<uint16_t, 9600 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w140;
+  alignas(16) static std::array<uint16_t, 40 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w141;
+  alignas(16) static std::array<uint16_t, 9600 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w142;
+  alignas(16) static std::array<uint16_t, 240 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w143;
+  alignas(16) static std::array<uint16_t, 6000 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w144;
+  alignas(16) static std::array<uint16_t, 240 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w145;
+  alignas(16) static std::array<uint16_t, 15360 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w146;
+  alignas(16) static std::array<uint16_t, 64 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w147;
+  alignas(16) static std::array<uint16_t, 15360 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w148;
+  alignas(16) static std::array<uint16_t, 240 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w149;
+  alignas(16) static std::array<uint16_t, 9600 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w150;
+  alignas(16) static std::array<uint16_t, 40 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w151;
+  alignas(16) static std::array<uint16_t, 4800 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w152;
+  alignas(16) static std::array<uint16_t, 120 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w153;
+  alignas(16) static std::array<uint16_t, 3000 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w154;
+  alignas(16) static std::array<uint16_t, 120 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w155;
+  alignas(16) static std::array<uint16_t, 3840 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w156;
+  alignas(16) static std::array<uint16_t, 32 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w157;
+  alignas(16) static std::array<uint16_t, 3840 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w158;
+  alignas(16) static std::array<uint16_t, 120 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w159;
+  alignas(16) static std::array<uint16_t, 5760 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w160;
+  alignas(16) static std::array<uint16_t, 48 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w161;
+  alignas(16) static std::array<uint16_t, 6912 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w162;
+  alignas(16) static std::array<uint16_t, 144 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w163;
+  alignas(16) static std::array<uint16_t, 3600 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w164;
+  alignas(16) static std::array<uint16_t, 144 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w165;
+  alignas(16) static std::array<uint16_t, 5760 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w166;
+  alignas(16) static std::array<uint16_t, 40 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w167;
+  alignas(16) static std::array<uint16_t, 5760 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w168;
+  alignas(16) static std::array<uint16_t, 144 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w169;
+  alignas(16) static std::array<uint16_t, 6912 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w170;
+  alignas(16) static std::array<uint16_t, 48 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w171;
+  alignas(16) static std::array<uint16_t, 13824 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w172;
+  alignas(16) static std::array<uint16_t, 288 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w173;
+  alignas(16) static std::array<uint16_t, 7200 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w174;
+  alignas(16) static std::array<uint16_t, 288 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w175;
+  alignas(16) static std::array<uint16_t, 20736 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w176;
+  alignas(16) static std::array<uint16_t, 72 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w177;
+  alignas(16) static std::array<uint16_t, 20736 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w178;
+  alignas(16) static std::array<uint16_t, 288 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w179;
+  alignas(16) static std::array<uint16_t, 27648 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w180;
+  alignas(16) static std::array<uint16_t, 96 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w181;
+  alignas(16) static std::array<uint16_t, 55296 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w182;
+  alignas(16) static std::array<uint16_t, 576 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w183;
+  alignas(16) static std::array<uint16_t, 14400 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w184;
+  alignas(16) static std::array<uint16_t, 576 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w185;
+  alignas(16) static std::array<uint16_t, 82944 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w186;
+  alignas(16) static std::array<uint16_t, 144 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w187;
+  alignas(16) static std::array<uint16_t, 82944 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w188;
+  alignas(16) static std::array<uint16_t, 576 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w189;
+  alignas(16) static std::array<uint16_t, 55296 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w190;
+  alignas(16) static std::array<uint16_t, 96 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w191;
+  alignas(16) static std::array<uint16_t, 55296 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w192;
+  alignas(16) static std::array<uint16_t, 576 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w193;
+  alignas(16) static std::array<uint16_t, 14400 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w194;
+  alignas(16) static std::array<uint16_t, 576 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w195;
+  alignas(16) static std::array<uint16_t, 82944 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w196;
+  alignas(16) static std::array<uint16_t, 144 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w197;
+  alignas(16) static std::array<uint16_t, 82944 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w198;
+  alignas(16) static std::array<uint16_t, 576 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w199;
+  alignas(16) static std::array<uint16_t, 55296 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w200;
+  alignas(16) static std::array<uint16_t, 96 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w201;
+  alignas(16) static std::array<uint16_t, 55296 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w202;
+  alignas(16) static std::array<uint16_t, 576 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w203;
+  alignas(16) static std::array<uint16_t, 589824 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w204;
+  alignas(16) static std::array<uint16_t, 1024 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w205;
+  alignas(16) static std::array<uint16_t, 1025024 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w206;
+  alignas(16) static std::array<uint16_t, 1001 + XNN_EXTRA_BYTES / sizeof(uint16_t)> w207;
 
   std::random_device random_device;
   auto rng = std::mt19937(random_device());
@@ -443,14 +443,21 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
   std::generate(w206.begin(), w206.end(), std::ref(f16rng));
   std::generate(w207.begin(), w207.end(), std::ref(f16rng));
 
-  ExecutionPlan operators;
+  Operators operators;
   xnn_status status;
-  xnn_code_cache code_cache;
+  xnn_code_cache* code_cache_ptr = nullptr;
 #if XNN_PLATFORM_JIT
-  xnn_init_code_cache(&code_cache);
-#endif
-  xnn_caches caches = { 0 };
-  caches.code_cache = &code_cache;
+  xnn_code_cache code_cache;
+  if (use_jit) {
+    status = xnn_init_code_cache(&code_cache);
+    if (status != xnn_status_success) {
+      std::cerr << "failed to initialize code cache" << std::endl;
+      return ExecutionPlan();
+    }
+    code_cache_ptr = &code_cache;
+  }
+#endif  // XNN_PLATFORM_JIT
+  size_t max_workspace_size = 0;
 
   xnn_operator_t op0 = nullptr;
   status = xnn_create_convolution2d_nhwc_f16(
@@ -467,7 +474,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w100.data(), w101.data(),
     -std::numeric_limits<float>::infinity() /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op0);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #0" << std::endl;
@@ -477,9 +485,6 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   xnn_operator_t op1 = nullptr;
   status = xnn_create_hardswish_nc_f16(
-    16 /* channels */,
-    16 /* input stride */,
-    16 /* output stride */,
     0 /* flags */,
     &op1);
   if (status != xnn_status_success) {
@@ -503,7 +508,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w102.data(), w103.data(),
     0.0f /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op2);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #2" << std::endl;
@@ -513,7 +519,6 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   xnn_operator_t op3 = nullptr;
   status = xnn_create_global_average_pooling_nwc_f16(
-    16 /* channels */, 16 /* input stride */, 16 /* output stride */,
     -std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity(),
     0 /* flags */,
     &op3);
@@ -538,7 +543,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w104.data(), w105.data(),
     0.0f /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op4);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #4" << std::endl;
@@ -561,7 +567,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w106.data(), w107.data(),
     0.0f /* output min */, +0x1.00014Fp+0 /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op5);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #5" << std::endl;
@@ -595,7 +602,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w108.data(), w109.data(),
     -std::numeric_limits<float>::infinity() /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op7);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #7" << std::endl;
@@ -618,7 +626,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w110.data(), w111.data(),
     0.0f /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op8);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #8" << std::endl;
@@ -641,7 +650,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w112.data(), w113.data(),
     0.0f /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op9);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #9" << std::endl;
@@ -664,7 +674,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w114.data(), w115.data(),
     -std::numeric_limits<float>::infinity() /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op10);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #10" << std::endl;
@@ -687,7 +698,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w116.data(), w117.data(),
     0.0f /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op11);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #11" << std::endl;
@@ -710,7 +722,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w118.data(), w119.data(),
     0.0f /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op12);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #12" << std::endl;
@@ -733,7 +746,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w120.data(), w121.data(),
     -std::numeric_limits<float>::infinity() /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op13);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #13" << std::endl;
@@ -767,7 +781,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w122.data(), w123.data(),
     -std::numeric_limits<float>::infinity() /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op15);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #15" << std::endl;
@@ -777,9 +792,6 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   xnn_operator_t op16 = nullptr;
   status = xnn_create_hardswish_nc_f16(
-    96 /* channels */,
-    96 /* input stride */,
-    96 /* output stride */,
     0 /* flags */,
     &op16);
   if (status != xnn_status_success) {
@@ -803,7 +815,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w124.data(), w125.data(),
     -std::numeric_limits<float>::infinity() /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op17);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #17" << std::endl;
@@ -813,9 +826,6 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   xnn_operator_t op18 = nullptr;
   status = xnn_create_hardswish_nc_f16(
-    96 /* channels */,
-    96 /* input stride */,
-    96 /* output stride */,
     0 /* flags */,
     &op18);
   if (status != xnn_status_success) {
@@ -826,7 +836,6 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   xnn_operator_t op19 = nullptr;
   status = xnn_create_global_average_pooling_nwc_f16(
-    96 /* channels */, 96 /* input stride */, 96 /* output stride */,
     -std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity(),
     0 /* flags */,
     &op19);
@@ -851,7 +860,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w126.data(), w127.data(),
     0.0f /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op20);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #20" << std::endl;
@@ -874,7 +884,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w128.data(), w129.data(),
     0.0f /* output min */, +0x1.00014Fp+0 /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op21);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #21" << std::endl;
@@ -908,7 +919,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w130.data(), w131.data(),
     -std::numeric_limits<float>::infinity() /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op23);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #23" << std::endl;
@@ -931,7 +943,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w132.data(), w133.data(),
     -std::numeric_limits<float>::infinity() /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op24);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #24" << std::endl;
@@ -941,9 +954,6 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   xnn_operator_t op25 = nullptr;
   status = xnn_create_hardswish_nc_f16(
-    240 /* channels */,
-    240 /* input stride */,
-    240 /* output stride */,
     0 /* flags */,
     &op25);
   if (status != xnn_status_success) {
@@ -967,7 +977,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w134.data(), w135.data(),
     -std::numeric_limits<float>::infinity() /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op26);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #26" << std::endl;
@@ -977,9 +988,6 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   xnn_operator_t op27 = nullptr;
   status = xnn_create_hardswish_nc_f16(
-    240 /* channels */,
-    240 /* input stride */,
-    240 /* output stride */,
     0 /* flags */,
     &op27);
   if (status != xnn_status_success) {
@@ -990,7 +998,6 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   xnn_operator_t op28 = nullptr;
   status = xnn_create_global_average_pooling_nwc_f16(
-    240 /* channels */, 240 /* input stride */, 240 /* output stride */,
     -std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity(),
     0 /* flags */,
     &op28);
@@ -1015,7 +1022,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w136.data(), w137.data(),
     0.0f /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op29);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #29" << std::endl;
@@ -1038,7 +1046,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w138.data(), w139.data(),
     0.0f /* output min */, +0x1.00014Fp+0 /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op30);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #30" << std::endl;
@@ -1072,7 +1081,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w140.data(), w141.data(),
     -std::numeric_limits<float>::infinity() /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op32);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #32" << std::endl;
@@ -1106,7 +1116,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w142.data(), w143.data(),
     -std::numeric_limits<float>::infinity() /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op34);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #34" << std::endl;
@@ -1116,9 +1127,6 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   xnn_operator_t op35 = nullptr;
   status = xnn_create_hardswish_nc_f16(
-    240 /* channels */,
-    240 /* input stride */,
-    240 /* output stride */,
     0 /* flags */,
     &op35);
   if (status != xnn_status_success) {
@@ -1142,7 +1150,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w144.data(), w145.data(),
     -std::numeric_limits<float>::infinity() /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op36);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #36" << std::endl;
@@ -1152,9 +1161,6 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   xnn_operator_t op37 = nullptr;
   status = xnn_create_hardswish_nc_f16(
-    240 /* channels */,
-    240 /* input stride */,
-    240 /* output stride */,
     0 /* flags */,
     &op37);
   if (status != xnn_status_success) {
@@ -1165,7 +1171,6 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   xnn_operator_t op38 = nullptr;
   status = xnn_create_global_average_pooling_nwc_f16(
-    240 /* channels */, 240 /* input stride */, 240 /* output stride */,
     -std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity(),
     0 /* flags */,
     &op38);
@@ -1190,7 +1195,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w146.data(), w147.data(),
     0.0f /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op39);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #39" << std::endl;
@@ -1213,7 +1219,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w148.data(), w149.data(),
     0.0f /* output min */, +0x1.00014Fp+0 /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op40);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #40" << std::endl;
@@ -1247,7 +1254,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w150.data(), w151.data(),
     -std::numeric_limits<float>::infinity() /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op42);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #42" << std::endl;
@@ -1281,7 +1289,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w152.data(), w153.data(),
     -std::numeric_limits<float>::infinity() /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op44);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #44" << std::endl;
@@ -1291,9 +1300,6 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   xnn_operator_t op45 = nullptr;
   status = xnn_create_hardswish_nc_f16(
-    120 /* channels */,
-    120 /* input stride */,
-    120 /* output stride */,
     0 /* flags */,
     &op45);
   if (status != xnn_status_success) {
@@ -1317,7 +1323,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w154.data(), w155.data(),
     -std::numeric_limits<float>::infinity() /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op46);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #46" << std::endl;
@@ -1327,9 +1334,6 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   xnn_operator_t op47 = nullptr;
   status = xnn_create_hardswish_nc_f16(
-    120 /* channels */,
-    120 /* input stride */,
-    120 /* output stride */,
     0 /* flags */,
     &op47);
   if (status != xnn_status_success) {
@@ -1340,7 +1344,6 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   xnn_operator_t op48 = nullptr;
   status = xnn_create_global_average_pooling_nwc_f16(
-    120 /* channels */, 120 /* input stride */, 120 /* output stride */,
     -std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity(),
     0 /* flags */,
     &op48);
@@ -1365,7 +1368,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w156.data(), w157.data(),
     0.0f /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op49);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #49" << std::endl;
@@ -1388,7 +1392,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w158.data(), w159.data(),
     0.0f /* output min */, +0x1.00014Fp+0 /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op50);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #50" << std::endl;
@@ -1422,7 +1427,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w160.data(), w161.data(),
     -std::numeric_limits<float>::infinity() /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op52);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #52" << std::endl;
@@ -1445,7 +1451,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w162.data(), w163.data(),
     -std::numeric_limits<float>::infinity() /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op53);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #53" << std::endl;
@@ -1455,9 +1462,6 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   xnn_operator_t op54 = nullptr;
   status = xnn_create_hardswish_nc_f16(
-    144 /* channels */,
-    144 /* input stride */,
-    144 /* output stride */,
     0 /* flags */,
     &op54);
   if (status != xnn_status_success) {
@@ -1481,7 +1485,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w164.data(), w165.data(),
     -std::numeric_limits<float>::infinity() /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op55);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #55" << std::endl;
@@ -1491,9 +1496,6 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   xnn_operator_t op56 = nullptr;
   status = xnn_create_hardswish_nc_f16(
-    144 /* channels */,
-    144 /* input stride */,
-    144 /* output stride */,
     0 /* flags */,
     &op56);
   if (status != xnn_status_success) {
@@ -1504,7 +1506,6 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   xnn_operator_t op57 = nullptr;
   status = xnn_create_global_average_pooling_nwc_f16(
-    144 /* channels */, 144 /* input stride */, 144 /* output stride */,
     -std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity(),
     0 /* flags */,
     &op57);
@@ -1529,7 +1530,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w166.data(), w167.data(),
     0.0f /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op58);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #58" << std::endl;
@@ -1552,7 +1554,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w168.data(), w169.data(),
     0.0f /* output min */, +0x1.00014Fp+0 /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op59);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #59" << std::endl;
@@ -1586,7 +1589,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w170.data(), w171.data(),
     -std::numeric_limits<float>::infinity() /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op61);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #61" << std::endl;
@@ -1620,7 +1624,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w172.data(), w173.data(),
     -std::numeric_limits<float>::infinity() /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op63);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #63" << std::endl;
@@ -1630,9 +1635,6 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   xnn_operator_t op64 = nullptr;
   status = xnn_create_hardswish_nc_f16(
-    288 /* channels */,
-    288 /* input stride */,
-    288 /* output stride */,
     0 /* flags */,
     &op64);
   if (status != xnn_status_success) {
@@ -1656,7 +1658,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w174.data(), w175.data(),
     -std::numeric_limits<float>::infinity() /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op65);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #65" << std::endl;
@@ -1666,9 +1669,6 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   xnn_operator_t op66 = nullptr;
   status = xnn_create_hardswish_nc_f16(
-    288 /* channels */,
-    288 /* input stride */,
-    288 /* output stride */,
     0 /* flags */,
     &op66);
   if (status != xnn_status_success) {
@@ -1679,7 +1679,6 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   xnn_operator_t op67 = nullptr;
   status = xnn_create_global_average_pooling_nwc_f16(
-    288 /* channels */, 288 /* input stride */, 288 /* output stride */,
     -std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity(),
     0 /* flags */,
     &op67);
@@ -1704,7 +1703,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w176.data(), w177.data(),
     0.0f /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op68);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #68" << std::endl;
@@ -1727,7 +1727,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w178.data(), w179.data(),
     0.0f /* output min */, +0x1.00014Fp+0 /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op69);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #69" << std::endl;
@@ -1761,7 +1762,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w180.data(), w181.data(),
     -std::numeric_limits<float>::infinity() /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op71);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #71" << std::endl;
@@ -1784,7 +1786,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w182.data(), w183.data(),
     -std::numeric_limits<float>::infinity() /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op72);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #72" << std::endl;
@@ -1794,9 +1797,6 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   xnn_operator_t op73 = nullptr;
   status = xnn_create_hardswish_nc_f16(
-    576 /* channels */,
-    576 /* input stride */,
-    576 /* output stride */,
     0 /* flags */,
     &op73);
   if (status != xnn_status_success) {
@@ -1820,7 +1820,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w184.data(), w185.data(),
     -std::numeric_limits<float>::infinity() /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op74);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #74" << std::endl;
@@ -1830,9 +1831,6 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   xnn_operator_t op75 = nullptr;
   status = xnn_create_hardswish_nc_f16(
-    576 /* channels */,
-    576 /* input stride */,
-    576 /* output stride */,
     0 /* flags */,
     &op75);
   if (status != xnn_status_success) {
@@ -1843,7 +1841,6 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   xnn_operator_t op76 = nullptr;
   status = xnn_create_global_average_pooling_nwc_f16(
-    576 /* channels */, 576 /* input stride */, 576 /* output stride */,
     -std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity(),
     0 /* flags */,
     &op76);
@@ -1868,7 +1865,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w186.data(), w187.data(),
     0.0f /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op77);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #77" << std::endl;
@@ -1891,7 +1889,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w188.data(), w189.data(),
     0.0f /* output min */, +0x1.00014Fp+0 /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op78);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #78" << std::endl;
@@ -1925,7 +1924,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w190.data(), w191.data(),
     -std::numeric_limits<float>::infinity() /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op80);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #80" << std::endl;
@@ -1959,7 +1959,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w192.data(), w193.data(),
     -std::numeric_limits<float>::infinity() /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op82);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #82" << std::endl;
@@ -1969,9 +1970,6 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   xnn_operator_t op83 = nullptr;
   status = xnn_create_hardswish_nc_f16(
-    576 /* channels */,
-    576 /* input stride */,
-    576 /* output stride */,
     0 /* flags */,
     &op83);
   if (status != xnn_status_success) {
@@ -1995,7 +1993,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w194.data(), w195.data(),
     -std::numeric_limits<float>::infinity() /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op84);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #84" << std::endl;
@@ -2005,9 +2004,6 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   xnn_operator_t op85 = nullptr;
   status = xnn_create_hardswish_nc_f16(
-    576 /* channels */,
-    576 /* input stride */,
-    576 /* output stride */,
     0 /* flags */,
     &op85);
   if (status != xnn_status_success) {
@@ -2018,7 +2014,6 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   xnn_operator_t op86 = nullptr;
   status = xnn_create_global_average_pooling_nwc_f16(
-    576 /* channels */, 576 /* input stride */, 576 /* output stride */,
     -std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity(),
     0 /* flags */,
     &op86);
@@ -2043,7 +2038,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w196.data(), w197.data(),
     0.0f /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op87);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #87" << std::endl;
@@ -2066,7 +2062,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w198.data(), w199.data(),
     0.0f /* output min */, +0x1.00014Fp+0 /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op88);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #88" << std::endl;
@@ -2100,7 +2097,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w200.data(), w201.data(),
     -std::numeric_limits<float>::infinity() /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op90);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #90" << std::endl;
@@ -2134,7 +2132,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w202.data(), w203.data(),
     -std::numeric_limits<float>::infinity() /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op92);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #92" << std::endl;
@@ -2144,9 +2143,6 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   xnn_operator_t op93 = nullptr;
   status = xnn_create_hardswish_nc_f16(
-    576 /* channels */,
-    576 /* input stride */,
-    576 /* output stride */,
     0 /* flags */,
     &op93);
   if (status != xnn_status_success) {
@@ -2157,7 +2153,6 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   xnn_operator_t op94 = nullptr;
   status = xnn_create_global_average_pooling_nwc_f16(
-    576 /* channels */, 576 /* input stride */, 576 /* output stride */,
     -std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity(),
     0 /* flags */,
     &op94);
@@ -2182,7 +2177,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w204.data(), w205.data(),
     -std::numeric_limits<float>::infinity() /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op95);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #95" << std::endl;
@@ -2192,9 +2188,6 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   xnn_operator_t op96 = nullptr;
   status = xnn_create_hardswish_nc_f16(
-    1024 /* channels */,
-    1024 /* input stride */,
-    1024 /* output stride */,
     0 /* flags */,
     &op96);
   if (status != xnn_status_success) {
@@ -2205,7 +2198,6 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   xnn_operator_t op97 = nullptr;
   status = xnn_create_global_average_pooling_nwc_f16(
-    1024 /* channels */, 1024 /* input stride */, 1024 /* output stride */,
     -std::numeric_limits<float>::infinity(), std::numeric_limits<float>::infinity(),
     0 /* flags */,
     &op97);
@@ -2230,7 +2222,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
     w206.data(), w207.data(),
     -std::numeric_limits<float>::infinity() /* output min */, std::numeric_limits<float>::infinity() /* output max */,
     0 /* flags */,
-    &caches,
+    code_cache_ptr,
+    nullptr,
     &op98);
   if (status != xnn_status_success) {
     std::cerr << "failed to create operation #98" << std::endl;
@@ -2239,14 +2232,1349 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
   operators.emplace_back(op98, xnn_delete_operator);
 
 #if XNN_PLATFORM_JIT
-  xnn_finalize_code_memory(&code_cache.cache.code);
-#endif
+  if (use_jit) {
+    xnn_finalize_code_memory(&code_cache.cache.code);
+  }
+#endif  // XNN_PLATFORM_JIT
+
+  size_t op0_workspace_size = 0;
+  size_t op0_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op0,
+    /*batch_size=*/1, /*input_height=*/224, /*input_width=*/224,
+    &op0_workspace_size, &op0_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op0_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #0" << std::endl;
+    return ExecutionPlan();
+  }
+
+  status = xnn_reshape_hardswish_nc_f16(
+    op1,
+    /*batch_size=*/12544,
+    16 /* channels */,
+    16 /* input stride */,
+    16 /* output stride */,
+    /*threadpool=*/threadpool);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #1" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op2_workspace_size = 0;
+  size_t op2_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op2,
+    /*batch_size=*/1, /*input_height=*/112, /*input_width=*/112,
+    &op2_workspace_size, &op2_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op2_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #2" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op3_workspace_size = 0;
+  size_t op3_workspace_alignment = 0;
+  status = xnn_reshape_global_average_pooling_nwc_f16(
+    op3,
+    /*batch_size=*/1, 3136 /* width */,
+    16 /* channels */, 16 /* input stride */, 16 /* output stride */,
+    &op3_workspace_size, &op3_workspace_alignment,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op3_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #3" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op4_workspace_size = 0;
+  size_t op4_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op4,
+    /*batch_size=*/1, /*input_height=*/1, /*input_width=*/1,
+    &op4_workspace_size, &op4_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op4_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #4" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op5_workspace_size = 0;
+  size_t op5_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op5,
+    /*batch_size=*/1, /*input_height=*/1, /*input_width=*/1,
+    &op5_workspace_size, &op5_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op5_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #5" << std::endl;
+    return ExecutionPlan();
+  }
+
+  {
+    const size_t a_shape[] = { 1, 56, 56, 16 };
+    const size_t b_shape[] = { 1, 1, 1, 16 };
+    status = xnn_reshape_multiply_nd_f16(
+      op6,
+      4, a_shape, 4, b_shape,
+      /*threadpool=*/threadpool);
+  }
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #6" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op7_workspace_size = 0;
+  size_t op7_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op7,
+    /*batch_size=*/1, /*input_height=*/56, /*input_width=*/56,
+    &op7_workspace_size, &op7_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op7_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #7" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op8_workspace_size = 0;
+  size_t op8_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op8,
+    /*batch_size=*/1, /*input_height=*/56, /*input_width=*/56,
+    &op8_workspace_size, &op8_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op8_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #8" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op9_workspace_size = 0;
+  size_t op9_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op9,
+    /*batch_size=*/1, /*input_height=*/56, /*input_width=*/56,
+    &op9_workspace_size, &op9_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op9_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #9" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op10_workspace_size = 0;
+  size_t op10_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op10,
+    /*batch_size=*/1, /*input_height=*/28, /*input_width=*/28,
+    &op10_workspace_size, &op10_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op10_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #10" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op11_workspace_size = 0;
+  size_t op11_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op11,
+    /*batch_size=*/1, /*input_height=*/28, /*input_width=*/28,
+    &op11_workspace_size, &op11_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op11_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #11" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op12_workspace_size = 0;
+  size_t op12_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op12,
+    /*batch_size=*/1, /*input_height=*/28, /*input_width=*/28,
+    &op12_workspace_size, &op12_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op12_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #12" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op13_workspace_size = 0;
+  size_t op13_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op13,
+    /*batch_size=*/1, /*input_height=*/28, /*input_width=*/28,
+    &op13_workspace_size, &op13_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op13_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #13" << std::endl;
+    return ExecutionPlan();
+  }
+
+  {
+    const size_t a_shape[] = { 1, 28, 28, 24 };
+    const size_t b_shape[] = { 1, 28, 28, 24 };
+    status = xnn_reshape_add_nd_f16(
+      op14,
+      4, a_shape, 4, b_shape,
+      /*threadpool=*/threadpool);
+  }
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #14" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op15_workspace_size = 0;
+  size_t op15_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op15,
+    /*batch_size=*/1, /*input_height=*/28, /*input_width=*/28,
+    &op15_workspace_size, &op15_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op15_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #15" << std::endl;
+    return ExecutionPlan();
+  }
+
+  status = xnn_reshape_hardswish_nc_f16(
+    op16,
+    /*batch_size=*/784,
+    96 /* channels */,
+    96 /* input stride */,
+    96 /* output stride */,
+    /*threadpool=*/threadpool);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #16" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op17_workspace_size = 0;
+  size_t op17_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op17,
+    /*batch_size=*/1, /*input_height=*/28, /*input_width=*/28,
+    &op17_workspace_size, &op17_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op17_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #17" << std::endl;
+    return ExecutionPlan();
+  }
+
+  status = xnn_reshape_hardswish_nc_f16(
+    op18,
+    /*batch_size=*/196,
+    96 /* channels */,
+    96 /* input stride */,
+    96 /* output stride */,
+    /*threadpool=*/threadpool);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #18" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op19_workspace_size = 0;
+  size_t op19_workspace_alignment = 0;
+  status = xnn_reshape_global_average_pooling_nwc_f16(
+    op19,
+    /*batch_size=*/1, 196 /* width */,
+    96 /* channels */, 96 /* input stride */, 96 /* output stride */,
+    &op19_workspace_size, &op19_workspace_alignment,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op19_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #19" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op20_workspace_size = 0;
+  size_t op20_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op20,
+    /*batch_size=*/1, /*input_height=*/1, /*input_width=*/1,
+    &op20_workspace_size, &op20_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op20_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #20" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op21_workspace_size = 0;
+  size_t op21_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op21,
+    /*batch_size=*/1, /*input_height=*/1, /*input_width=*/1,
+    &op21_workspace_size, &op21_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op21_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #21" << std::endl;
+    return ExecutionPlan();
+  }
+
+  {
+    const size_t a_shape[] = { 1, 14, 14, 96 };
+    const size_t b_shape[] = { 1, 1, 1, 96 };
+    status = xnn_reshape_multiply_nd_f16(
+      op22,
+      4, a_shape, 4, b_shape,
+      /*threadpool=*/threadpool);
+  }
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #22" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op23_workspace_size = 0;
+  size_t op23_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op23,
+    /*batch_size=*/1, /*input_height=*/14, /*input_width=*/14,
+    &op23_workspace_size, &op23_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op23_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #23" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op24_workspace_size = 0;
+  size_t op24_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op24,
+    /*batch_size=*/1, /*input_height=*/14, /*input_width=*/14,
+    &op24_workspace_size, &op24_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op24_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #24" << std::endl;
+    return ExecutionPlan();
+  }
+
+  status = xnn_reshape_hardswish_nc_f16(
+    op25,
+    /*batch_size=*/196,
+    240 /* channels */,
+    240 /* input stride */,
+    240 /* output stride */,
+    /*threadpool=*/threadpool);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #25" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op26_workspace_size = 0;
+  size_t op26_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op26,
+    /*batch_size=*/1, /*input_height=*/14, /*input_width=*/14,
+    &op26_workspace_size, &op26_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op26_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #26" << std::endl;
+    return ExecutionPlan();
+  }
+
+  status = xnn_reshape_hardswish_nc_f16(
+    op27,
+    /*batch_size=*/196,
+    240 /* channels */,
+    240 /* input stride */,
+    240 /* output stride */,
+    /*threadpool=*/threadpool);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #27" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op28_workspace_size = 0;
+  size_t op28_workspace_alignment = 0;
+  status = xnn_reshape_global_average_pooling_nwc_f16(
+    op28,
+    /*batch_size=*/1, 196 /* width */,
+    240 /* channels */, 240 /* input stride */, 240 /* output stride */,
+    &op28_workspace_size, &op28_workspace_alignment,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op28_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #28" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op29_workspace_size = 0;
+  size_t op29_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op29,
+    /*batch_size=*/1, /*input_height=*/1, /*input_width=*/1,
+    &op29_workspace_size, &op29_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op29_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #29" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op30_workspace_size = 0;
+  size_t op30_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op30,
+    /*batch_size=*/1, /*input_height=*/1, /*input_width=*/1,
+    &op30_workspace_size, &op30_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op30_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #30" << std::endl;
+    return ExecutionPlan();
+  }
+
+  {
+    const size_t a_shape[] = { 1, 14, 14, 240 };
+    const size_t b_shape[] = { 1, 1, 1, 240 };
+    status = xnn_reshape_multiply_nd_f16(
+      op31,
+      4, a_shape, 4, b_shape,
+      /*threadpool=*/threadpool);
+  }
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #31" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op32_workspace_size = 0;
+  size_t op32_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op32,
+    /*batch_size=*/1, /*input_height=*/14, /*input_width=*/14,
+    &op32_workspace_size, &op32_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op32_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #32" << std::endl;
+    return ExecutionPlan();
+  }
+
+  {
+    const size_t a_shape[] = { 1, 14, 14, 40 };
+    const size_t b_shape[] = { 1, 14, 14, 40 };
+    status = xnn_reshape_add_nd_f16(
+      op33,
+      4, a_shape, 4, b_shape,
+      /*threadpool=*/threadpool);
+  }
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #33" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op34_workspace_size = 0;
+  size_t op34_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op34,
+    /*batch_size=*/1, /*input_height=*/14, /*input_width=*/14,
+    &op34_workspace_size, &op34_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op34_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #34" << std::endl;
+    return ExecutionPlan();
+  }
+
+  status = xnn_reshape_hardswish_nc_f16(
+    op35,
+    /*batch_size=*/196,
+    240 /* channels */,
+    240 /* input stride */,
+    240 /* output stride */,
+    /*threadpool=*/threadpool);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #35" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op36_workspace_size = 0;
+  size_t op36_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op36,
+    /*batch_size=*/1, /*input_height=*/14, /*input_width=*/14,
+    &op36_workspace_size, &op36_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op36_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #36" << std::endl;
+    return ExecutionPlan();
+  }
+
+  status = xnn_reshape_hardswish_nc_f16(
+    op37,
+    /*batch_size=*/196,
+    240 /* channels */,
+    240 /* input stride */,
+    240 /* output stride */,
+    /*threadpool=*/threadpool);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #37" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op38_workspace_size = 0;
+  size_t op38_workspace_alignment = 0;
+  status = xnn_reshape_global_average_pooling_nwc_f16(
+    op38,
+    /*batch_size=*/1, 196 /* width */,
+    240 /* channels */, 240 /* input stride */, 240 /* output stride */,
+    &op38_workspace_size, &op38_workspace_alignment,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op38_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #38" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op39_workspace_size = 0;
+  size_t op39_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op39,
+    /*batch_size=*/1, /*input_height=*/1, /*input_width=*/1,
+    &op39_workspace_size, &op39_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op39_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #39" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op40_workspace_size = 0;
+  size_t op40_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op40,
+    /*batch_size=*/1, /*input_height=*/1, /*input_width=*/1,
+    &op40_workspace_size, &op40_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op40_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #40" << std::endl;
+    return ExecutionPlan();
+  }
+
+  {
+    const size_t a_shape[] = { 1, 14, 14, 240 };
+    const size_t b_shape[] = { 1, 1, 1, 240 };
+    status = xnn_reshape_multiply_nd_f16(
+      op41,
+      4, a_shape, 4, b_shape,
+      /*threadpool=*/threadpool);
+  }
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #41" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op42_workspace_size = 0;
+  size_t op42_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op42,
+    /*batch_size=*/1, /*input_height=*/14, /*input_width=*/14,
+    &op42_workspace_size, &op42_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op42_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #42" << std::endl;
+    return ExecutionPlan();
+  }
+
+  {
+    const size_t a_shape[] = { 1, 14, 14, 40 };
+    const size_t b_shape[] = { 1, 14, 14, 40 };
+    status = xnn_reshape_add_nd_f16(
+      op43,
+      4, a_shape, 4, b_shape,
+      /*threadpool=*/threadpool);
+  }
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #43" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op44_workspace_size = 0;
+  size_t op44_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op44,
+    /*batch_size=*/1, /*input_height=*/14, /*input_width=*/14,
+    &op44_workspace_size, &op44_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op44_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #44" << std::endl;
+    return ExecutionPlan();
+  }
+
+  status = xnn_reshape_hardswish_nc_f16(
+    op45,
+    /*batch_size=*/196,
+    120 /* channels */,
+    120 /* input stride */,
+    120 /* output stride */,
+    /*threadpool=*/threadpool);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #45" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op46_workspace_size = 0;
+  size_t op46_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op46,
+    /*batch_size=*/1, /*input_height=*/14, /*input_width=*/14,
+    &op46_workspace_size, &op46_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op46_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #46" << std::endl;
+    return ExecutionPlan();
+  }
+
+  status = xnn_reshape_hardswish_nc_f16(
+    op47,
+    /*batch_size=*/196,
+    120 /* channels */,
+    120 /* input stride */,
+    120 /* output stride */,
+    /*threadpool=*/threadpool);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #47" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op48_workspace_size = 0;
+  size_t op48_workspace_alignment = 0;
+  status = xnn_reshape_global_average_pooling_nwc_f16(
+    op48,
+    /*batch_size=*/1, 196 /* width */,
+    120 /* channels */, 120 /* input stride */, 120 /* output stride */,
+    &op48_workspace_size, &op48_workspace_alignment,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op48_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #48" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op49_workspace_size = 0;
+  size_t op49_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op49,
+    /*batch_size=*/1, /*input_height=*/1, /*input_width=*/1,
+    &op49_workspace_size, &op49_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op49_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #49" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op50_workspace_size = 0;
+  size_t op50_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op50,
+    /*batch_size=*/1, /*input_height=*/1, /*input_width=*/1,
+    &op50_workspace_size, &op50_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op50_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #50" << std::endl;
+    return ExecutionPlan();
+  }
+
+  {
+    const size_t a_shape[] = { 1, 14, 14, 120 };
+    const size_t b_shape[] = { 1, 1, 1, 120 };
+    status = xnn_reshape_multiply_nd_f16(
+      op51,
+      4, a_shape, 4, b_shape,
+      /*threadpool=*/threadpool);
+  }
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #51" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op52_workspace_size = 0;
+  size_t op52_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op52,
+    /*batch_size=*/1, /*input_height=*/14, /*input_width=*/14,
+    &op52_workspace_size, &op52_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op52_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #52" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op53_workspace_size = 0;
+  size_t op53_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op53,
+    /*batch_size=*/1, /*input_height=*/14, /*input_width=*/14,
+    &op53_workspace_size, &op53_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op53_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #53" << std::endl;
+    return ExecutionPlan();
+  }
+
+  status = xnn_reshape_hardswish_nc_f16(
+    op54,
+    /*batch_size=*/196,
+    144 /* channels */,
+    144 /* input stride */,
+    144 /* output stride */,
+    /*threadpool=*/threadpool);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #54" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op55_workspace_size = 0;
+  size_t op55_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op55,
+    /*batch_size=*/1, /*input_height=*/14, /*input_width=*/14,
+    &op55_workspace_size, &op55_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op55_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #55" << std::endl;
+    return ExecutionPlan();
+  }
+
+  status = xnn_reshape_hardswish_nc_f16(
+    op56,
+    /*batch_size=*/196,
+    144 /* channels */,
+    144 /* input stride */,
+    144 /* output stride */,
+    /*threadpool=*/threadpool);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #56" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op57_workspace_size = 0;
+  size_t op57_workspace_alignment = 0;
+  status = xnn_reshape_global_average_pooling_nwc_f16(
+    op57,
+    /*batch_size=*/1, 196 /* width */,
+    144 /* channels */, 144 /* input stride */, 144 /* output stride */,
+    &op57_workspace_size, &op57_workspace_alignment,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op57_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #57" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op58_workspace_size = 0;
+  size_t op58_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op58,
+    /*batch_size=*/1, /*input_height=*/1, /*input_width=*/1,
+    &op58_workspace_size, &op58_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op58_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #58" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op59_workspace_size = 0;
+  size_t op59_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op59,
+    /*batch_size=*/1, /*input_height=*/1, /*input_width=*/1,
+    &op59_workspace_size, &op59_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op59_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #59" << std::endl;
+    return ExecutionPlan();
+  }
+
+  {
+    const size_t a_shape[] = { 1, 14, 14, 144 };
+    const size_t b_shape[] = { 1, 1, 1, 144 };
+    status = xnn_reshape_multiply_nd_f16(
+      op60,
+      4, a_shape, 4, b_shape,
+      /*threadpool=*/threadpool);
+  }
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #60" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op61_workspace_size = 0;
+  size_t op61_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op61,
+    /*batch_size=*/1, /*input_height=*/14, /*input_width=*/14,
+    &op61_workspace_size, &op61_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op61_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #61" << std::endl;
+    return ExecutionPlan();
+  }
+
+  {
+    const size_t a_shape[] = { 1, 14, 14, 48 };
+    const size_t b_shape[] = { 1, 14, 14, 48 };
+    status = xnn_reshape_add_nd_f16(
+      op62,
+      4, a_shape, 4, b_shape,
+      /*threadpool=*/threadpool);
+  }
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #62" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op63_workspace_size = 0;
+  size_t op63_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op63,
+    /*batch_size=*/1, /*input_height=*/14, /*input_width=*/14,
+    &op63_workspace_size, &op63_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op63_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #63" << std::endl;
+    return ExecutionPlan();
+  }
+
+  status = xnn_reshape_hardswish_nc_f16(
+    op64,
+    /*batch_size=*/196,
+    288 /* channels */,
+    288 /* input stride */,
+    288 /* output stride */,
+    /*threadpool=*/threadpool);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #64" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op65_workspace_size = 0;
+  size_t op65_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op65,
+    /*batch_size=*/1, /*input_height=*/14, /*input_width=*/14,
+    &op65_workspace_size, &op65_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op65_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #65" << std::endl;
+    return ExecutionPlan();
+  }
+
+  status = xnn_reshape_hardswish_nc_f16(
+    op66,
+    /*batch_size=*/49,
+    288 /* channels */,
+    288 /* input stride */,
+    288 /* output stride */,
+    /*threadpool=*/threadpool);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #66" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op67_workspace_size = 0;
+  size_t op67_workspace_alignment = 0;
+  status = xnn_reshape_global_average_pooling_nwc_f16(
+    op67,
+    /*batch_size=*/1, 49 /* width */,
+    288 /* channels */, 288 /* input stride */, 288 /* output stride */,
+    &op67_workspace_size, &op67_workspace_alignment,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op67_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #67" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op68_workspace_size = 0;
+  size_t op68_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op68,
+    /*batch_size=*/1, /*input_height=*/1, /*input_width=*/1,
+    &op68_workspace_size, &op68_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op68_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #68" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op69_workspace_size = 0;
+  size_t op69_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op69,
+    /*batch_size=*/1, /*input_height=*/1, /*input_width=*/1,
+    &op69_workspace_size, &op69_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op69_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #69" << std::endl;
+    return ExecutionPlan();
+  }
+
+  {
+    const size_t a_shape[] = { 1, 7, 7, 288 };
+    const size_t b_shape[] = { 1, 1, 1, 288 };
+    status = xnn_reshape_multiply_nd_f16(
+      op70,
+      4, a_shape, 4, b_shape,
+      /*threadpool=*/threadpool);
+  }
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #70" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op71_workspace_size = 0;
+  size_t op71_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op71,
+    /*batch_size=*/1, /*input_height=*/7, /*input_width=*/7,
+    &op71_workspace_size, &op71_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op71_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #71" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op72_workspace_size = 0;
+  size_t op72_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op72,
+    /*batch_size=*/1, /*input_height=*/7, /*input_width=*/7,
+    &op72_workspace_size, &op72_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op72_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #72" << std::endl;
+    return ExecutionPlan();
+  }
+
+  status = xnn_reshape_hardswish_nc_f16(
+    op73,
+    /*batch_size=*/49,
+    576 /* channels */,
+    576 /* input stride */,
+    576 /* output stride */,
+    /*threadpool=*/threadpool);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #73" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op74_workspace_size = 0;
+  size_t op74_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op74,
+    /*batch_size=*/1, /*input_height=*/7, /*input_width=*/7,
+    &op74_workspace_size, &op74_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op74_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #74" << std::endl;
+    return ExecutionPlan();
+  }
+
+  status = xnn_reshape_hardswish_nc_f16(
+    op75,
+    /*batch_size=*/49,
+    576 /* channels */,
+    576 /* input stride */,
+    576 /* output stride */,
+    /*threadpool=*/threadpool);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #75" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op76_workspace_size = 0;
+  size_t op76_workspace_alignment = 0;
+  status = xnn_reshape_global_average_pooling_nwc_f16(
+    op76,
+    /*batch_size=*/1, 49 /* width */,
+    576 /* channels */, 576 /* input stride */, 576 /* output stride */,
+    &op76_workspace_size, &op76_workspace_alignment,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op76_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #76" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op77_workspace_size = 0;
+  size_t op77_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op77,
+    /*batch_size=*/1, /*input_height=*/1, /*input_width=*/1,
+    &op77_workspace_size, &op77_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op77_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #77" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op78_workspace_size = 0;
+  size_t op78_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op78,
+    /*batch_size=*/1, /*input_height=*/1, /*input_width=*/1,
+    &op78_workspace_size, &op78_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op78_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #78" << std::endl;
+    return ExecutionPlan();
+  }
+
+  {
+    const size_t a_shape[] = { 1, 7, 7, 576 };
+    const size_t b_shape[] = { 1, 1, 1, 576 };
+    status = xnn_reshape_multiply_nd_f16(
+      op79,
+      4, a_shape, 4, b_shape,
+      /*threadpool=*/threadpool);
+  }
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #79" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op80_workspace_size = 0;
+  size_t op80_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op80,
+    /*batch_size=*/1, /*input_height=*/7, /*input_width=*/7,
+    &op80_workspace_size, &op80_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op80_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #80" << std::endl;
+    return ExecutionPlan();
+  }
+
+  {
+    const size_t a_shape[] = { 1, 7, 7, 96 };
+    const size_t b_shape[] = { 1, 7, 7, 96 };
+    status = xnn_reshape_add_nd_f16(
+      op81,
+      4, a_shape, 4, b_shape,
+      /*threadpool=*/threadpool);
+  }
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #81" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op82_workspace_size = 0;
+  size_t op82_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op82,
+    /*batch_size=*/1, /*input_height=*/7, /*input_width=*/7,
+    &op82_workspace_size, &op82_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op82_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #82" << std::endl;
+    return ExecutionPlan();
+  }
+
+  status = xnn_reshape_hardswish_nc_f16(
+    op83,
+    /*batch_size=*/49,
+    576 /* channels */,
+    576 /* input stride */,
+    576 /* output stride */,
+    /*threadpool=*/threadpool);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #83" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op84_workspace_size = 0;
+  size_t op84_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op84,
+    /*batch_size=*/1, /*input_height=*/7, /*input_width=*/7,
+    &op84_workspace_size, &op84_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op84_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #84" << std::endl;
+    return ExecutionPlan();
+  }
+
+  status = xnn_reshape_hardswish_nc_f16(
+    op85,
+    /*batch_size=*/49,
+    576 /* channels */,
+    576 /* input stride */,
+    576 /* output stride */,
+    /*threadpool=*/threadpool);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #85" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op86_workspace_size = 0;
+  size_t op86_workspace_alignment = 0;
+  status = xnn_reshape_global_average_pooling_nwc_f16(
+    op86,
+    /*batch_size=*/1, 49 /* width */,
+    576 /* channels */, 576 /* input stride */, 576 /* output stride */,
+    &op86_workspace_size, &op86_workspace_alignment,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op86_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #86" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op87_workspace_size = 0;
+  size_t op87_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op87,
+    /*batch_size=*/1, /*input_height=*/1, /*input_width=*/1,
+    &op87_workspace_size, &op87_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op87_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #87" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op88_workspace_size = 0;
+  size_t op88_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op88,
+    /*batch_size=*/1, /*input_height=*/1, /*input_width=*/1,
+    &op88_workspace_size, &op88_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op88_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #88" << std::endl;
+    return ExecutionPlan();
+  }
+
+  {
+    const size_t a_shape[] = { 1, 7, 7, 576 };
+    const size_t b_shape[] = { 1, 1, 1, 576 };
+    status = xnn_reshape_multiply_nd_f16(
+      op89,
+      4, a_shape, 4, b_shape,
+      /*threadpool=*/threadpool);
+  }
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #89" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op90_workspace_size = 0;
+  size_t op90_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op90,
+    /*batch_size=*/1, /*input_height=*/7, /*input_width=*/7,
+    &op90_workspace_size, &op90_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op90_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #90" << std::endl;
+    return ExecutionPlan();
+  }
+
+  {
+    const size_t a_shape[] = { 1, 7, 7, 96 };
+    const size_t b_shape[] = { 1, 7, 7, 96 };
+    status = xnn_reshape_add_nd_f16(
+      op91,
+      4, a_shape, 4, b_shape,
+      /*threadpool=*/threadpool);
+  }
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #91" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op92_workspace_size = 0;
+  size_t op92_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op92,
+    /*batch_size=*/1, /*input_height=*/7, /*input_width=*/7,
+    &op92_workspace_size, &op92_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op92_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #92" << std::endl;
+    return ExecutionPlan();
+  }
+
+  status = xnn_reshape_hardswish_nc_f16(
+    op93,
+    /*batch_size=*/49,
+    576 /* channels */,
+    576 /* input stride */,
+    576 /* output stride */,
+    /*threadpool=*/threadpool);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #93" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op94_workspace_size = 0;
+  size_t op94_workspace_alignment = 0;
+  status = xnn_reshape_global_average_pooling_nwc_f16(
+    op94,
+    /*batch_size=*/1, 49 /* width */,
+    576 /* channels */, 576 /* input stride */, 576 /* output stride */,
+    &op94_workspace_size, &op94_workspace_alignment,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op94_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #94" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op95_workspace_size = 0;
+  size_t op95_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op95,
+    /*batch_size=*/1, /*input_height=*/1, /*input_width=*/1,
+    &op95_workspace_size, &op95_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op95_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #95" << std::endl;
+    return ExecutionPlan();
+  }
+
+  status = xnn_reshape_hardswish_nc_f16(
+    op96,
+    /*batch_size=*/1,
+    1024 /* channels */,
+    1024 /* input stride */,
+    1024 /* output stride */,
+    /*threadpool=*/threadpool);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #96" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op97_workspace_size = 0;
+  size_t op97_workspace_alignment = 0;
+  status = xnn_reshape_global_average_pooling_nwc_f16(
+    op97,
+    /*batch_size=*/1, 1 /* width */,
+    1024 /* channels */, 1024 /* input stride */, 1024 /* output stride */,
+    &op97_workspace_size, &op97_workspace_alignment,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op97_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #97" << std::endl;
+    return ExecutionPlan();
+  }
+
+  size_t op98_workspace_size = 0;
+  size_t op98_workspace_alignment = 0;
+  status = xnn_reshape_convolution2d_nhwc_f16(
+    op98,
+    /*batch_size=*/1, /*input_height=*/1, /*input_width=*/1,
+    &op98_workspace_size, &op98_workspace_alignment,
+    /*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+    /*threadpool=*/threadpool);
+  max_workspace_size = std::max(max_workspace_size, op98_workspace_size);
+  if (status != xnn_status_success) {
+    std::cerr << "failed to reshape operation #98" << std::endl;
+    return ExecutionPlan();
+  }
+
+  Workspace workspace(max_workspace_size);
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op0,
-    1 /* batch size */, 224 /* input height */, 224 /* input width */,
-    v0.data() /* input */, v1.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v0.data(), /*output=*/v1.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #0" << std::endl;
     return ExecutionPlan();
@@ -2254,9 +3582,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_hardswish_nc_f16(
     op1,
-    12544 /* batch size */,
-    v1.data() /* input */, v2.data() /* output */,
-    threadpool /* threadpool */);
+    /*input=*/v1.data(), /*output=*/v2.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #1" << std::endl;
     return ExecutionPlan();
@@ -2264,9 +3590,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op2,
-    1 /* batch size */, 112 /* input height */, 112 /* input width */,
-    v2.data() /* input */, v3.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v2.data(), /*output=*/v3.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #2" << std::endl;
     return ExecutionPlan();
@@ -2274,9 +3598,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_global_average_pooling_nwc_f16(
     op3,
-    1 /* batch size */, 3136 /* width */,
-    v3.data() /* input */, v4.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(),
+    /*input=*/v3.data(), /*output=*/v4.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #3" << std::endl;
     return ExecutionPlan();
@@ -2284,9 +3607,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op4,
-    1 /* batch size */, 1 /* input height */, 1 /* input width */,
-    v4.data() /* input */, v5.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v4.data(), /*output=*/v5.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #4" << std::endl;
     return ExecutionPlan();
@@ -2294,23 +3615,15 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op5,
-    1 /* batch size */, 1 /* input height */, 1 /* input width */,
-    v5.data() /* input */, v6.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v5.data(), /*output=*/v6.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #5" << std::endl;
     return ExecutionPlan();
   }
 
-  {
-    const size_t a_shape[] = { 1, 56, 56, 16 };
-    const size_t b_shape[] = { 1, 1, 1, 16 };
-    status = xnn_setup_multiply_nd_f16(
-      op6,
-      4, a_shape, 4, b_shape,
-      v3.data() /* a */, v6.data() /* b */, v7.data() /* output */,
-      threadpool /* threadpool */);
-  }
+  status = xnn_setup_multiply_nd_f16(
+    op6,
+    v3.data() /* a */, v6.data() /* b */, /*output=*/v7.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #6" << std::endl;
     return ExecutionPlan();
@@ -2318,9 +3631,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op7,
-    1 /* batch size */, 56 /* input height */, 56 /* input width */,
-    v7.data() /* input */, v8.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v7.data(), /*output=*/v8.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #7" << std::endl;
     return ExecutionPlan();
@@ -2328,9 +3639,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op8,
-    1 /* batch size */, 56 /* input height */, 56 /* input width */,
-    v8.data() /* input */, v9.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v8.data(), /*output=*/v9.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #8" << std::endl;
     return ExecutionPlan();
@@ -2338,9 +3647,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op9,
-    1 /* batch size */, 56 /* input height */, 56 /* input width */,
-    v9.data() /* input */, v10.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v9.data(), /*output=*/v10.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #9" << std::endl;
     return ExecutionPlan();
@@ -2348,9 +3655,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op10,
-    1 /* batch size */, 28 /* input height */, 28 /* input width */,
-    v10.data() /* input */, v11.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v10.data(), /*output=*/v11.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #10" << std::endl;
     return ExecutionPlan();
@@ -2358,9 +3663,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op11,
-    1 /* batch size */, 28 /* input height */, 28 /* input width */,
-    v11.data() /* input */, v12.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v11.data(), /*output=*/v12.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #11" << std::endl;
     return ExecutionPlan();
@@ -2368,9 +3671,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op12,
-    1 /* batch size */, 28 /* input height */, 28 /* input width */,
-    v12.data() /* input */, v13.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v12.data(), /*output=*/v13.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #12" << std::endl;
     return ExecutionPlan();
@@ -2378,23 +3679,15 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op13,
-    1 /* batch size */, 28 /* input height */, 28 /* input width */,
-    v13.data() /* input */, v14.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v13.data(), /*output=*/v14.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #13" << std::endl;
     return ExecutionPlan();
   }
 
-  {
-    const size_t a_shape[] = { 1, 28, 28, 24 };
-    const size_t b_shape[] = { 1, 28, 28, 24 };
-    status = xnn_setup_add_nd_f16(
-      op14,
-      4, a_shape, 4, b_shape,
-      v14.data() /* a */, v11.data() /* b */, v15.data() /* output */,
-      threadpool /* threadpool */);
-  }
+  status = xnn_setup_add_nd_f16(
+    op14,
+    v14.data() /* a */, v11.data() /* b */, /*output=*/v15.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #14" << std::endl;
     return ExecutionPlan();
@@ -2402,9 +3695,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op15,
-    1 /* batch size */, 28 /* input height */, 28 /* input width */,
-    v15.data() /* input */, v16.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v15.data(), /*output=*/v16.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #15" << std::endl;
     return ExecutionPlan();
@@ -2412,9 +3703,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_hardswish_nc_f16(
     op16,
-    784 /* batch size */,
-    v16.data() /* input */, v17.data() /* output */,
-    threadpool /* threadpool */);
+    /*input=*/v16.data(), /*output=*/v17.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #16" << std::endl;
     return ExecutionPlan();
@@ -2422,9 +3711,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op17,
-    1 /* batch size */, 28 /* input height */, 28 /* input width */,
-    v17.data() /* input */, v18.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v17.data(), /*output=*/v18.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #17" << std::endl;
     return ExecutionPlan();
@@ -2432,9 +3719,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_hardswish_nc_f16(
     op18,
-    196 /* batch size */,
-    v18.data() /* input */, v19.data() /* output */,
-    threadpool /* threadpool */);
+    /*input=*/v18.data(), /*output=*/v19.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #18" << std::endl;
     return ExecutionPlan();
@@ -2442,9 +3727,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_global_average_pooling_nwc_f16(
     op19,
-    1 /* batch size */, 196 /* width */,
-    v19.data() /* input */, v20.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(),
+    /*input=*/v19.data(), /*output=*/v20.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #19" << std::endl;
     return ExecutionPlan();
@@ -2452,9 +3736,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op20,
-    1 /* batch size */, 1 /* input height */, 1 /* input width */,
-    v20.data() /* input */, v21.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v20.data(), /*output=*/v21.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #20" << std::endl;
     return ExecutionPlan();
@@ -2462,23 +3744,15 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op21,
-    1 /* batch size */, 1 /* input height */, 1 /* input width */,
-    v21.data() /* input */, v22.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v21.data(), /*output=*/v22.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #21" << std::endl;
     return ExecutionPlan();
   }
 
-  {
-    const size_t a_shape[] = { 1, 14, 14, 96 };
-    const size_t b_shape[] = { 1, 1, 1, 96 };
-    status = xnn_setup_multiply_nd_f16(
-      op22,
-      4, a_shape, 4, b_shape,
-      v19.data() /* a */, v22.data() /* b */, v23.data() /* output */,
-      threadpool /* threadpool */);
-  }
+  status = xnn_setup_multiply_nd_f16(
+    op22,
+    v19.data() /* a */, v22.data() /* b */, /*output=*/v23.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #22" << std::endl;
     return ExecutionPlan();
@@ -2486,9 +3760,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op23,
-    1 /* batch size */, 14 /* input height */, 14 /* input width */,
-    v23.data() /* input */, v24.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v23.data(), /*output=*/v24.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #23" << std::endl;
     return ExecutionPlan();
@@ -2496,9 +3768,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op24,
-    1 /* batch size */, 14 /* input height */, 14 /* input width */,
-    v24.data() /* input */, v25.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v24.data(), /*output=*/v25.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #24" << std::endl;
     return ExecutionPlan();
@@ -2506,9 +3776,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_hardswish_nc_f16(
     op25,
-    196 /* batch size */,
-    v25.data() /* input */, v26.data() /* output */,
-    threadpool /* threadpool */);
+    /*input=*/v25.data(), /*output=*/v26.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #25" << std::endl;
     return ExecutionPlan();
@@ -2516,9 +3784,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op26,
-    1 /* batch size */, 14 /* input height */, 14 /* input width */,
-    v26.data() /* input */, v27.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v26.data(), /*output=*/v27.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #26" << std::endl;
     return ExecutionPlan();
@@ -2526,9 +3792,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_hardswish_nc_f16(
     op27,
-    196 /* batch size */,
-    v27.data() /* input */, v28.data() /* output */,
-    threadpool /* threadpool */);
+    /*input=*/v27.data(), /*output=*/v28.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #27" << std::endl;
     return ExecutionPlan();
@@ -2536,9 +3800,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_global_average_pooling_nwc_f16(
     op28,
-    1 /* batch size */, 196 /* width */,
-    v28.data() /* input */, v29.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(),
+    /*input=*/v28.data(), /*output=*/v29.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #28" << std::endl;
     return ExecutionPlan();
@@ -2546,9 +3809,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op29,
-    1 /* batch size */, 1 /* input height */, 1 /* input width */,
-    v29.data() /* input */, v30.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v29.data(), /*output=*/v30.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #29" << std::endl;
     return ExecutionPlan();
@@ -2556,23 +3817,15 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op30,
-    1 /* batch size */, 1 /* input height */, 1 /* input width */,
-    v30.data() /* input */, v31.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v30.data(), /*output=*/v31.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #30" << std::endl;
     return ExecutionPlan();
   }
 
-  {
-    const size_t a_shape[] = { 1, 14, 14, 240 };
-    const size_t b_shape[] = { 1, 1, 1, 240 };
-    status = xnn_setup_multiply_nd_f16(
-      op31,
-      4, a_shape, 4, b_shape,
-      v28.data() /* a */, v31.data() /* b */, v32.data() /* output */,
-      threadpool /* threadpool */);
-  }
+  status = xnn_setup_multiply_nd_f16(
+    op31,
+    v28.data() /* a */, v31.data() /* b */, /*output=*/v32.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #31" << std::endl;
     return ExecutionPlan();
@@ -2580,23 +3833,15 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op32,
-    1 /* batch size */, 14 /* input height */, 14 /* input width */,
-    v32.data() /* input */, v33.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v32.data(), /*output=*/v33.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #32" << std::endl;
     return ExecutionPlan();
   }
 
-  {
-    const size_t a_shape[] = { 1, 14, 14, 40 };
-    const size_t b_shape[] = { 1, 14, 14, 40 };
-    status = xnn_setup_add_nd_f16(
-      op33,
-      4, a_shape, 4, b_shape,
-      v33.data() /* a */, v24.data() /* b */, v34.data() /* output */,
-      threadpool /* threadpool */);
-  }
+  status = xnn_setup_add_nd_f16(
+    op33,
+    v33.data() /* a */, v24.data() /* b */, /*output=*/v34.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #33" << std::endl;
     return ExecutionPlan();
@@ -2604,9 +3849,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op34,
-    1 /* batch size */, 14 /* input height */, 14 /* input width */,
-    v34.data() /* input */, v35.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v34.data(), /*output=*/v35.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #34" << std::endl;
     return ExecutionPlan();
@@ -2614,9 +3857,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_hardswish_nc_f16(
     op35,
-    196 /* batch size */,
-    v35.data() /* input */, v36.data() /* output */,
-    threadpool /* threadpool */);
+    /*input=*/v35.data(), /*output=*/v36.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #35" << std::endl;
     return ExecutionPlan();
@@ -2624,9 +3865,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op36,
-    1 /* batch size */, 14 /* input height */, 14 /* input width */,
-    v36.data() /* input */, v37.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v36.data(), /*output=*/v37.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #36" << std::endl;
     return ExecutionPlan();
@@ -2634,9 +3873,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_hardswish_nc_f16(
     op37,
-    196 /* batch size */,
-    v37.data() /* input */, v38.data() /* output */,
-    threadpool /* threadpool */);
+    /*input=*/v37.data(), /*output=*/v38.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #37" << std::endl;
     return ExecutionPlan();
@@ -2644,9 +3881,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_global_average_pooling_nwc_f16(
     op38,
-    1 /* batch size */, 196 /* width */,
-    v38.data() /* input */, v39.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(),
+    /*input=*/v38.data(), /*output=*/v39.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #38" << std::endl;
     return ExecutionPlan();
@@ -2654,9 +3890,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op39,
-    1 /* batch size */, 1 /* input height */, 1 /* input width */,
-    v39.data() /* input */, v40.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v39.data(), /*output=*/v40.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #39" << std::endl;
     return ExecutionPlan();
@@ -2664,23 +3898,15 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op40,
-    1 /* batch size */, 1 /* input height */, 1 /* input width */,
-    v40.data() /* input */, v41.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v40.data(), /*output=*/v41.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #40" << std::endl;
     return ExecutionPlan();
   }
 
-  {
-    const size_t a_shape[] = { 1, 14, 14, 240 };
-    const size_t b_shape[] = { 1, 1, 1, 240 };
-    status = xnn_setup_multiply_nd_f16(
-      op41,
-      4, a_shape, 4, b_shape,
-      v38.data() /* a */, v41.data() /* b */, v42.data() /* output */,
-      threadpool /* threadpool */);
-  }
+  status = xnn_setup_multiply_nd_f16(
+    op41,
+    v38.data() /* a */, v41.data() /* b */, /*output=*/v42.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #41" << std::endl;
     return ExecutionPlan();
@@ -2688,23 +3914,15 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op42,
-    1 /* batch size */, 14 /* input height */, 14 /* input width */,
-    v42.data() /* input */, v43.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v42.data(), /*output=*/v43.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #42" << std::endl;
     return ExecutionPlan();
   }
 
-  {
-    const size_t a_shape[] = { 1, 14, 14, 40 };
-    const size_t b_shape[] = { 1, 14, 14, 40 };
-    status = xnn_setup_add_nd_f16(
-      op43,
-      4, a_shape, 4, b_shape,
-      v43.data() /* a */, v34.data() /* b */, v44.data() /* output */,
-      threadpool /* threadpool */);
-  }
+  status = xnn_setup_add_nd_f16(
+    op43,
+    v43.data() /* a */, v34.data() /* b */, /*output=*/v44.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #43" << std::endl;
     return ExecutionPlan();
@@ -2712,9 +3930,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op44,
-    1 /* batch size */, 14 /* input height */, 14 /* input width */,
-    v44.data() /* input */, v45.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v44.data(), /*output=*/v45.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #44" << std::endl;
     return ExecutionPlan();
@@ -2722,9 +3938,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_hardswish_nc_f16(
     op45,
-    196 /* batch size */,
-    v45.data() /* input */, v46.data() /* output */,
-    threadpool /* threadpool */);
+    /*input=*/v45.data(), /*output=*/v46.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #45" << std::endl;
     return ExecutionPlan();
@@ -2732,9 +3946,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op46,
-    1 /* batch size */, 14 /* input height */, 14 /* input width */,
-    v46.data() /* input */, v47.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v46.data(), /*output=*/v47.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #46" << std::endl;
     return ExecutionPlan();
@@ -2742,9 +3954,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_hardswish_nc_f16(
     op47,
-    196 /* batch size */,
-    v47.data() /* input */, v48.data() /* output */,
-    threadpool /* threadpool */);
+    /*input=*/v47.data(), /*output=*/v48.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #47" << std::endl;
     return ExecutionPlan();
@@ -2752,9 +3962,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_global_average_pooling_nwc_f16(
     op48,
-    1 /* batch size */, 196 /* width */,
-    v48.data() /* input */, v49.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(),
+    /*input=*/v48.data(), /*output=*/v49.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #48" << std::endl;
     return ExecutionPlan();
@@ -2762,9 +3971,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op49,
-    1 /* batch size */, 1 /* input height */, 1 /* input width */,
-    v49.data() /* input */, v50.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v49.data(), /*output=*/v50.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #49" << std::endl;
     return ExecutionPlan();
@@ -2772,23 +3979,15 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op50,
-    1 /* batch size */, 1 /* input height */, 1 /* input width */,
-    v50.data() /* input */, v51.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v50.data(), /*output=*/v51.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #50" << std::endl;
     return ExecutionPlan();
   }
 
-  {
-    const size_t a_shape[] = { 1, 14, 14, 120 };
-    const size_t b_shape[] = { 1, 1, 1, 120 };
-    status = xnn_setup_multiply_nd_f16(
-      op51,
-      4, a_shape, 4, b_shape,
-      v48.data() /* a */, v51.data() /* b */, v52.data() /* output */,
-      threadpool /* threadpool */);
-  }
+  status = xnn_setup_multiply_nd_f16(
+    op51,
+    v48.data() /* a */, v51.data() /* b */, /*output=*/v52.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #51" << std::endl;
     return ExecutionPlan();
@@ -2796,9 +3995,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op52,
-    1 /* batch size */, 14 /* input height */, 14 /* input width */,
-    v52.data() /* input */, v53.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v52.data(), /*output=*/v53.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #52" << std::endl;
     return ExecutionPlan();
@@ -2806,9 +4003,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op53,
-    1 /* batch size */, 14 /* input height */, 14 /* input width */,
-    v53.data() /* input */, v54.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v53.data(), /*output=*/v54.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #53" << std::endl;
     return ExecutionPlan();
@@ -2816,9 +4011,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_hardswish_nc_f16(
     op54,
-    196 /* batch size */,
-    v54.data() /* input */, v55.data() /* output */,
-    threadpool /* threadpool */);
+    /*input=*/v54.data(), /*output=*/v55.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #54" << std::endl;
     return ExecutionPlan();
@@ -2826,9 +4019,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op55,
-    1 /* batch size */, 14 /* input height */, 14 /* input width */,
-    v55.data() /* input */, v56.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v55.data(), /*output=*/v56.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #55" << std::endl;
     return ExecutionPlan();
@@ -2836,9 +4027,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_hardswish_nc_f16(
     op56,
-    196 /* batch size */,
-    v56.data() /* input */, v57.data() /* output */,
-    threadpool /* threadpool */);
+    /*input=*/v56.data(), /*output=*/v57.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #56" << std::endl;
     return ExecutionPlan();
@@ -2846,9 +4035,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_global_average_pooling_nwc_f16(
     op57,
-    1 /* batch size */, 196 /* width */,
-    v57.data() /* input */, v58.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(),
+    /*input=*/v57.data(), /*output=*/v58.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #57" << std::endl;
     return ExecutionPlan();
@@ -2856,9 +4044,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op58,
-    1 /* batch size */, 1 /* input height */, 1 /* input width */,
-    v58.data() /* input */, v59.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v58.data(), /*output=*/v59.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #58" << std::endl;
     return ExecutionPlan();
@@ -2866,23 +4052,15 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op59,
-    1 /* batch size */, 1 /* input height */, 1 /* input width */,
-    v59.data() /* input */, v60.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v59.data(), /*output=*/v60.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #59" << std::endl;
     return ExecutionPlan();
   }
 
-  {
-    const size_t a_shape[] = { 1, 14, 14, 144 };
-    const size_t b_shape[] = { 1, 1, 1, 144 };
-    status = xnn_setup_multiply_nd_f16(
-      op60,
-      4, a_shape, 4, b_shape,
-      v57.data() /* a */, v60.data() /* b */, v61.data() /* output */,
-      threadpool /* threadpool */);
-  }
+  status = xnn_setup_multiply_nd_f16(
+    op60,
+    v57.data() /* a */, v60.data() /* b */, /*output=*/v61.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #60" << std::endl;
     return ExecutionPlan();
@@ -2890,23 +4068,15 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op61,
-    1 /* batch size */, 14 /* input height */, 14 /* input width */,
-    v61.data() /* input */, v62.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v61.data(), /*output=*/v62.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #61" << std::endl;
     return ExecutionPlan();
   }
 
-  {
-    const size_t a_shape[] = { 1, 14, 14, 48 };
-    const size_t b_shape[] = { 1, 14, 14, 48 };
-    status = xnn_setup_add_nd_f16(
-      op62,
-      4, a_shape, 4, b_shape,
-      v62.data() /* a */, v53.data() /* b */, v63.data() /* output */,
-      threadpool /* threadpool */);
-  }
+  status = xnn_setup_add_nd_f16(
+    op62,
+    v62.data() /* a */, v53.data() /* b */, /*output=*/v63.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #62" << std::endl;
     return ExecutionPlan();
@@ -2914,9 +4084,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op63,
-    1 /* batch size */, 14 /* input height */, 14 /* input width */,
-    v63.data() /* input */, v64.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v63.data(), /*output=*/v64.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #63" << std::endl;
     return ExecutionPlan();
@@ -2924,9 +4092,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_hardswish_nc_f16(
     op64,
-    196 /* batch size */,
-    v64.data() /* input */, v65.data() /* output */,
-    threadpool /* threadpool */);
+    /*input=*/v64.data(), /*output=*/v65.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #64" << std::endl;
     return ExecutionPlan();
@@ -2934,9 +4100,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op65,
-    1 /* batch size */, 14 /* input height */, 14 /* input width */,
-    v65.data() /* input */, v66.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v65.data(), /*output=*/v66.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #65" << std::endl;
     return ExecutionPlan();
@@ -2944,9 +4108,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_hardswish_nc_f16(
     op66,
-    49 /* batch size */,
-    v66.data() /* input */, v67.data() /* output */,
-    threadpool /* threadpool */);
+    /*input=*/v66.data(), /*output=*/v67.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #66" << std::endl;
     return ExecutionPlan();
@@ -2954,9 +4116,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_global_average_pooling_nwc_f16(
     op67,
-    1 /* batch size */, 49 /* width */,
-    v67.data() /* input */, v68.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(),
+    /*input=*/v67.data(), /*output=*/v68.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #67" << std::endl;
     return ExecutionPlan();
@@ -2964,9 +4125,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op68,
-    1 /* batch size */, 1 /* input height */, 1 /* input width */,
-    v68.data() /* input */, v69.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v68.data(), /*output=*/v69.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #68" << std::endl;
     return ExecutionPlan();
@@ -2974,23 +4133,15 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op69,
-    1 /* batch size */, 1 /* input height */, 1 /* input width */,
-    v69.data() /* input */, v70.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v69.data(), /*output=*/v70.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #69" << std::endl;
     return ExecutionPlan();
   }
 
-  {
-    const size_t a_shape[] = { 1, 7, 7, 288 };
-    const size_t b_shape[] = { 1, 1, 1, 288 };
-    status = xnn_setup_multiply_nd_f16(
-      op70,
-      4, a_shape, 4, b_shape,
-      v67.data() /* a */, v70.data() /* b */, v71.data() /* output */,
-      threadpool /* threadpool */);
-  }
+  status = xnn_setup_multiply_nd_f16(
+    op70,
+    v67.data() /* a */, v70.data() /* b */, /*output=*/v71.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #70" << std::endl;
     return ExecutionPlan();
@@ -2998,9 +4149,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op71,
-    1 /* batch size */, 7 /* input height */, 7 /* input width */,
-    v71.data() /* input */, v72.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v71.data(), /*output=*/v72.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #71" << std::endl;
     return ExecutionPlan();
@@ -3008,9 +4157,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op72,
-    1 /* batch size */, 7 /* input height */, 7 /* input width */,
-    v72.data() /* input */, v73.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v72.data(), /*output=*/v73.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #72" << std::endl;
     return ExecutionPlan();
@@ -3018,9 +4165,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_hardswish_nc_f16(
     op73,
-    49 /* batch size */,
-    v73.data() /* input */, v74.data() /* output */,
-    threadpool /* threadpool */);
+    /*input=*/v73.data(), /*output=*/v74.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #73" << std::endl;
     return ExecutionPlan();
@@ -3028,9 +4173,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op74,
-    1 /* batch size */, 7 /* input height */, 7 /* input width */,
-    v74.data() /* input */, v75.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v74.data(), /*output=*/v75.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #74" << std::endl;
     return ExecutionPlan();
@@ -3038,9 +4181,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_hardswish_nc_f16(
     op75,
-    49 /* batch size */,
-    v75.data() /* input */, v76.data() /* output */,
-    threadpool /* threadpool */);
+    /*input=*/v75.data(), /*output=*/v76.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #75" << std::endl;
     return ExecutionPlan();
@@ -3048,9 +4189,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_global_average_pooling_nwc_f16(
     op76,
-    1 /* batch size */, 49 /* width */,
-    v76.data() /* input */, v77.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(),
+    /*input=*/v76.data(), /*output=*/v77.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #76" << std::endl;
     return ExecutionPlan();
@@ -3058,9 +4198,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op77,
-    1 /* batch size */, 1 /* input height */, 1 /* input width */,
-    v77.data() /* input */, v78.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v77.data(), /*output=*/v78.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #77" << std::endl;
     return ExecutionPlan();
@@ -3068,23 +4206,15 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op78,
-    1 /* batch size */, 1 /* input height */, 1 /* input width */,
-    v78.data() /* input */, v79.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v78.data(), /*output=*/v79.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #78" << std::endl;
     return ExecutionPlan();
   }
 
-  {
-    const size_t a_shape[] = { 1, 7, 7, 576 };
-    const size_t b_shape[] = { 1, 1, 1, 576 };
-    status = xnn_setup_multiply_nd_f16(
-      op79,
-      4, a_shape, 4, b_shape,
-      v76.data() /* a */, v79.data() /* b */, v80.data() /* output */,
-      threadpool /* threadpool */);
-  }
+  status = xnn_setup_multiply_nd_f16(
+    op79,
+    v76.data() /* a */, v79.data() /* b */, /*output=*/v80.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #79" << std::endl;
     return ExecutionPlan();
@@ -3092,23 +4222,15 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op80,
-    1 /* batch size */, 7 /* input height */, 7 /* input width */,
-    v80.data() /* input */, v81.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v80.data(), /*output=*/v81.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #80" << std::endl;
     return ExecutionPlan();
   }
 
-  {
-    const size_t a_shape[] = { 1, 7, 7, 96 };
-    const size_t b_shape[] = { 1, 7, 7, 96 };
-    status = xnn_setup_add_nd_f16(
-      op81,
-      4, a_shape, 4, b_shape,
-      v81.data() /* a */, v72.data() /* b */, v82.data() /* output */,
-      threadpool /* threadpool */);
-  }
+  status = xnn_setup_add_nd_f16(
+    op81,
+    v81.data() /* a */, v72.data() /* b */, /*output=*/v82.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #81" << std::endl;
     return ExecutionPlan();
@@ -3116,9 +4238,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op82,
-    1 /* batch size */, 7 /* input height */, 7 /* input width */,
-    v82.data() /* input */, v83.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v82.data(), /*output=*/v83.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #82" << std::endl;
     return ExecutionPlan();
@@ -3126,9 +4246,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_hardswish_nc_f16(
     op83,
-    49 /* batch size */,
-    v83.data() /* input */, v84.data() /* output */,
-    threadpool /* threadpool */);
+    /*input=*/v83.data(), /*output=*/v84.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #83" << std::endl;
     return ExecutionPlan();
@@ -3136,9 +4254,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op84,
-    1 /* batch size */, 7 /* input height */, 7 /* input width */,
-    v84.data() /* input */, v85.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v84.data(), /*output=*/v85.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #84" << std::endl;
     return ExecutionPlan();
@@ -3146,9 +4262,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_hardswish_nc_f16(
     op85,
-    49 /* batch size */,
-    v85.data() /* input */, v86.data() /* output */,
-    threadpool /* threadpool */);
+    /*input=*/v85.data(), /*output=*/v86.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #85" << std::endl;
     return ExecutionPlan();
@@ -3156,9 +4270,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_global_average_pooling_nwc_f16(
     op86,
-    1 /* batch size */, 49 /* width */,
-    v86.data() /* input */, v87.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(),
+    /*input=*/v86.data(), /*output=*/v87.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #86" << std::endl;
     return ExecutionPlan();
@@ -3166,9 +4279,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op87,
-    1 /* batch size */, 1 /* input height */, 1 /* input width */,
-    v87.data() /* input */, v88.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v87.data(), /*output=*/v88.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #87" << std::endl;
     return ExecutionPlan();
@@ -3176,23 +4287,15 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op88,
-    1 /* batch size */, 1 /* input height */, 1 /* input width */,
-    v88.data() /* input */, v89.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v88.data(), /*output=*/v89.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #88" << std::endl;
     return ExecutionPlan();
   }
 
-  {
-    const size_t a_shape[] = { 1, 7, 7, 576 };
-    const size_t b_shape[] = { 1, 1, 1, 576 };
-    status = xnn_setup_multiply_nd_f16(
-      op89,
-      4, a_shape, 4, b_shape,
-      v86.data() /* a */, v89.data() /* b */, v90.data() /* output */,
-      threadpool /* threadpool */);
-  }
+  status = xnn_setup_multiply_nd_f16(
+    op89,
+    v86.data() /* a */, v89.data() /* b */, /*output=*/v90.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #89" << std::endl;
     return ExecutionPlan();
@@ -3200,23 +4303,15 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op90,
-    1 /* batch size */, 7 /* input height */, 7 /* input width */,
-    v90.data() /* input */, v91.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v90.data(), /*output=*/v91.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #90" << std::endl;
     return ExecutionPlan();
   }
 
-  {
-    const size_t a_shape[] = { 1, 7, 7, 96 };
-    const size_t b_shape[] = { 1, 7, 7, 96 };
-    status = xnn_setup_add_nd_f16(
-      op91,
-      4, a_shape, 4, b_shape,
-      v91.data() /* a */, v82.data() /* b */, v92.data() /* output */,
-      threadpool /* threadpool */);
-  }
+  status = xnn_setup_add_nd_f16(
+    op91,
+    v91.data() /* a */, v82.data() /* b */, /*output=*/v92.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #91" << std::endl;
     return ExecutionPlan();
@@ -3224,9 +4319,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op92,
-    1 /* batch size */, 7 /* input height */, 7 /* input width */,
-    v92.data() /* input */, v93.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v92.data(), /*output=*/v93.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #92" << std::endl;
     return ExecutionPlan();
@@ -3234,9 +4327,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_hardswish_nc_f16(
     op93,
-    49 /* batch size */,
-    v93.data() /* input */, v94.data() /* output */,
-    threadpool /* threadpool */);
+    /*input=*/v93.data(), /*output=*/v94.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #93" << std::endl;
     return ExecutionPlan();
@@ -3244,9 +4335,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_global_average_pooling_nwc_f16(
     op94,
-    1 /* batch size */, 49 /* width */,
-    v94.data() /* input */, v95.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(),
+    /*input=*/v94.data(), /*output=*/v95.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #94" << std::endl;
     return ExecutionPlan();
@@ -3254,9 +4344,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op95,
-    1 /* batch size */, 1 /* input height */, 1 /* input width */,
-    v95.data() /* input */, v96.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v95.data(), /*output=*/v96.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #95" << std::endl;
     return ExecutionPlan();
@@ -3264,9 +4352,7 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_hardswish_nc_f16(
     op96,
-    1 /* batch size */,
-    v96.data() /* input */, v97.data() /* output */,
-    threadpool /* threadpool */);
+    /*input=*/v96.data(), /*output=*/v97.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #96" << std::endl;
     return ExecutionPlan();
@@ -3274,9 +4360,8 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_global_average_pooling_nwc_f16(
     op97,
-    1 /* batch size */, 1 /* width */,
-    v97.data() /* input */, v98.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(),
+    /*input=*/v97.data(), /*output=*/v98.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #97" << std::endl;
     return ExecutionPlan();
@@ -3284,18 +4369,24 @@ ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
 
   status = xnn_setup_convolution2d_nhwc_f16(
     op98,
-    1 /* batch size */, 1 /* input height */, 1 /* input width */,
-    v98.data() /* input */, v99.data() /* output */,
-    threadpool /* threadpool */);
+    workspace.data(), /*input=*/v98.data(), /*output=*/v99.data());
   if (status != xnn_status_success) {
     std::cerr << "failed to setup operation #98" << std::endl;
     return ExecutionPlan();
   }
 
-  #pragma clang diagnostic push
-  #pragma clang diagnostic ignored "-Wpessimizing-move"
-  return operators;
-  #pragma clang diagnostic pop
+  XNN_PRAGMA_CLANG("clang diagnostic push")
+  XNN_PRAGMA_CLANG("clang diagnostic ignored \"-Wpessimizing-move\"")
+  return ExecutionPlan{operators, workspace};
+  XNN_PRAGMA_CLANG("clang diagnostic pop")
+}
+
+ExecutionPlan FP16MobileNetV3Small(pthreadpool_t threadpool) {
+  return FP16MobileNetV3Small(/*use_jit=*/false, threadpool);
+}
+
+ExecutionPlan FP16MobileNetV3SmallJit(pthreadpool_t threadpool) {
+  return FP16MobileNetV3Small(/*use_jit=*/true, threadpool);
 }
 
 }  // namespace models

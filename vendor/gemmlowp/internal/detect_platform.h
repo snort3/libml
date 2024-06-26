@@ -20,7 +20,7 @@
 
 // Our inline assembly path assume GCC/Clang syntax.
 // Native Client doesn't seem to support inline assembly(?).
-#if defined(__GNUC__) && !defined(__native_client__)
+#if (defined(__GNUC__) || defined(__clang__)) && !defined(__native_client__)
 #define GEMMLOWP_ALLOW_INLINE_ASM
 #endif
 
@@ -69,6 +69,11 @@
 
 #if defined(GEMMLOWP_X86_32) || defined(GEMMLOWP_X86_64)
 #define GEMMLOWP_X86
+#endif
+
+// Detect WebAssembly SIMD.
+#if defined(__wasm_simd128__)
+#define GEMMLOWP_WASMSIMD
 #endif
 
 // Some of our optimized paths use inline assembly and for

@@ -8,6 +8,8 @@
 #include <cfloat>
 #include <cmath>
 #include <functional>
+#include <limits>
+#include <memory>
 #include <random>
 #include <string>
 #include <vector>
@@ -25,7 +27,6 @@
 #endif  // BENCHMARK_TENSORFLOW_LITE */
 #include "bench/utils.h"
 
-#ifndef XNN_NO_QU8_OPERATORS
 void xnnpack_deconvolution_qu8(benchmark::State& state, const char* net) {
   const size_t batch_size = state.range(0);
   const size_t input_height = state.range(1);
@@ -89,7 +90,7 @@ void xnnpack_deconvolution_qu8(benchmark::State& state, const char* net) {
         kernel.data(), bias.data(),
         127, 0.5f, 0, 255,
         0 /* flags */,
-        NULL,
+        nullptr, nullptr,
         &deconvolution_op);
     if (status != xnn_status_success) {
       state.SkipWithError("failed to create QINT8 Deconvolution operator");
@@ -98,12 +99,22 @@ void xnnpack_deconvolution_qu8(benchmark::State& state, const char* net) {
   }
 
   for (size_t i = 0; i < deconvolution_operators.size(); i++) {
-    status = xnn_setup_deconvolution2d_nhwc_qu8(
+    status = xnn_reshape_deconvolution2d_nhwc_qu8(
         deconvolution_operators[i],
         batch_size, input_height, input_width,
         0 /* height adjustment */, 0 /* width adjustment */,
-        input.data(), output.data() + i * output_elements,
-        nullptr /* thread pool */);
+	/*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+        /*threadpool=*/nullptr);
+    if (status != xnn_status_success) {
+      state.SkipWithError("failed to setup QINT8 Deconvolution operator");
+      return;
+    }
+  }
+
+  for (size_t i = 0; i < deconvolution_operators.size(); i++) {
+    status = xnn_setup_deconvolution2d_nhwc_qu8(
+        deconvolution_operators[i],
+        input.data(), output.data() + i * output_elements);
     if (status != xnn_status_success) {
       state.SkipWithError("failed to setup QINT8 Deconvolution operator");
       return;
@@ -117,7 +128,7 @@ void xnnpack_deconvolution_qu8(benchmark::State& state, const char* net) {
     buffer_index = (buffer_index + 1) % num_buffers;
     state.ResumeTiming();
 
-    status = xnn_run_operator(deconvolution_operators[buffer_index], nullptr /* thread pool */);
+    status = xnn_run_operator(deconvolution_operators[buffer_index], /*threadpool=*/nullptr);
     if (status != xnn_status_success) {
       state.SkipWithError("failed to run QINT8 Deconvolution operator");
       return;
@@ -145,7 +156,6 @@ void xnnpack_deconvolution_qu8(benchmark::State& state, const char* net) {
     kernel_height * kernel_width,
   benchmark::Counter::kIsRate);
 }
-#endif  // XNN_NO_QU8_OPERATORS
 
 void xnnpack_deconvolution_f32(benchmark::State& state, const char* net) {
   const size_t batch_size = state.range(0);
@@ -207,7 +217,8 @@ void xnnpack_deconvolution_f32(benchmark::State& state, const char* net) {
         kernel.data(), bias.data(),
         -std::numeric_limits<float>::infinity(), +std::numeric_limits<float>::infinity(),
         0 /* flags */,
-        NULL,
+        nullptr,
+        nullptr,
         &deconvolution_op);
     if (status != xnn_status_success) {
       state.SkipWithError("failed to create FP32 Deconvolution operator");
@@ -216,12 +227,22 @@ void xnnpack_deconvolution_f32(benchmark::State& state, const char* net) {
   }
 
   for (size_t i = 0; i < deconvolution_operators.size(); i++) {
-    status = xnn_setup_deconvolution2d_nhwc_f32(
+    status = xnn_reshape_deconvolution2d_nhwc_f32(
         deconvolution_operators[i],
         batch_size, input_height, input_width,
         0 /* height adjustment */, 0 /* width adjustment */,
-        input.data(), output.data() + i * output_elements,
-        nullptr /* thread pool */);
+	/*output_height_out=*/nullptr, /*output_width_out=*/nullptr,
+        /*threadpool=*/nullptr);
+    if (status != xnn_status_success) {
+      state.SkipWithError("failed to setup QINT8 Deconvolution operator");
+      return;
+    }
+  }
+
+  for (size_t i = 0; i < deconvolution_operators.size(); i++) {
+    status = xnn_setup_deconvolution2d_nhwc_f32(
+        deconvolution_operators[i],
+        input.data(), output.data() + i * output_elements);
     if (status != xnn_status_success) {
       state.SkipWithError("failed to setup QINT8 Deconvolution operator");
       return;
@@ -235,7 +256,7 @@ void xnnpack_deconvolution_f32(benchmark::State& state, const char* net) {
     buffer_index = (buffer_index + 1) % num_buffers;
     state.ResumeTiming();
 
-    status = xnn_run_operator(deconvolution_operators[buffer_index], nullptr /* thread pool */);
+    status = xnn_run_operator(deconvolution_operators[buffer_index], /*threadpool=*/nullptr);
     if (status != xnn_status_success) {
       state.SkipWithError("failed to run FP32 Deconvolution operator");
       return;
@@ -515,23 +536,21 @@ BENCHMARK_CAPTURE(xnnpack_deconvolution_f32, espnet, "ESPNet")
   ->Apply(ESPNet)
   ->UseRealTime();
 
-#ifndef XNN_NO_QU8_OPERATORS
-  BENCHMARK_CAPTURE(xnnpack_deconvolution_qu8, fcn32, "FCN-32")
-    ->Apply(FCN32)
-    ->UseRealTime();
-  BENCHMARK_CAPTURE(xnnpack_deconvolution_qu8, fcn16, "FCN-16")
-    ->Apply(FCN16)
-    ->UseRealTime();
-  BENCHMARK_CAPTURE(xnnpack_deconvolution_qu8, fcn8, "FCN-8")
-    ->Apply(FCN8)
-    ->UseRealTime();
-  BENCHMARK_CAPTURE(xnnpack_deconvolution_qu8, enet, "ENet")
-    ->Apply(ENet)
-    ->UseRealTime();
-  BENCHMARK_CAPTURE(xnnpack_deconvolution_qu8, espnet, "ESPNet")
-    ->Apply(ESPNet)
-    ->UseRealTime();
-#endif  // XNN_NO_QU8_OPERATORS
+BENCHMARK_CAPTURE(xnnpack_deconvolution_qu8, fcn32, "FCN-32")
+  ->Apply(FCN32)
+  ->UseRealTime();
+BENCHMARK_CAPTURE(xnnpack_deconvolution_qu8, fcn16, "FCN-16")
+  ->Apply(FCN16)
+  ->UseRealTime();
+BENCHMARK_CAPTURE(xnnpack_deconvolution_qu8, fcn8, "FCN-8")
+  ->Apply(FCN8)
+  ->UseRealTime();
+BENCHMARK_CAPTURE(xnnpack_deconvolution_qu8, enet, "ENet")
+  ->Apply(ENet)
+  ->UseRealTime();
+BENCHMARK_CAPTURE(xnnpack_deconvolution_qu8, espnet, "ESPNet")
+  ->Apply(ESPNet)
+  ->UseRealTime();
 
 #ifdef BENCHMARK_TENSORFLOW_LITE
   BENCHMARK_CAPTURE(tflite_deconvolution_f32, fcn32, "FCN-32")

@@ -13,26 +13,25 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include <algorithm>
 #include <memory>
 #include <string>
-#include <vector>
 
-#include "llvm/ADT/BitVector.h"
-#include "llvm/ADT/STLExtras.h"
+#include "absl/strings/str_cat.h"
 #include "llvm/Support/Casting.h"
-#include "llvm/Support/Debug.h"
+#include "mlir/Analysis/DataFlow/ConstantPropagationAnalysis.h"  // from @llvm-project
 #include "mlir/Analysis/DataFlow/DeadCodeAnalysis.h"  // from @llvm-project
-#include "mlir/Analysis/DataFlow/SparseAnalysis.h"  // from @llvm-project
-#include "mlir/Dialect/Func/IR/FuncOps.h"  // from @llvm-project
+#include "mlir/Analysis/DataFlowFramework.h"  // from @llvm-project
 #include "mlir/Dialect/MLProgram/IR/MLProgram.h"  // from @llvm-project
-#include "mlir/Dialect/MLProgram/IR/MLProgramAttributes.h"  // from @llvm-project
+#include "mlir/IR/Attributes.h"  // from @llvm-project
 #include "mlir/IR/Builders.h"  // from @llvm-project
 #include "mlir/IR/BuiltinOps.h"  // from @llvm-project
+#include "mlir/IR/BuiltinTypes.h"  // from @llvm-project
+#include "mlir/IR/DialectRegistry.h"  // from @llvm-project
 #include "mlir/IR/SymbolTable.h"  // from @llvm-project
 #include "mlir/IR/Value.h"  // from @llvm-project
 #include "mlir/Pass/Pass.h"  // from @llvm-project
 #include "mlir/Support/LLVM.h"  // from @llvm-project
+#include "mlir/Support/LogicalResult.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/tensorflow/analysis/resource_dataflow.h"
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_ops.h"
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_saved_model.h"
@@ -45,8 +44,8 @@ namespace {
 
 std::string GetVariableName(Operation* op) {
   if (auto handle = dyn_cast<TF::VarHandleOp>(op)) {
-    std::string container = handle.container().str();
-    std::string shared_name = handle.shared_name().str();
+    std::string container = handle.getContainer().str();
+    std::string shared_name = handle.getSharedName().str();
     if (container.empty()) {
       return absl::StrCat("vars.", shared_name);
     } else {
@@ -61,12 +60,12 @@ std::string GetVariableName(Operation* op) {
 Operation* GetHandleSource(Operation* op, DataFlowSolver& solver) {
   Value resource;
   if (auto read = llvm::dyn_cast<TF::ReadVariableOp>(op)) {
-    resource = read.resource();
+    resource = read.getResource();
   } else if (auto write = llvm::dyn_cast<TF::AssignVariableOp>(op)) {
-    resource = write.resource();
+    resource = write.getResource();
   }
-  const TF::ResourceDataflowAnalysis::StateT* state =
-      solver.lookupState<TF::ResourceDataflowAnalysis::StateT>(resource);
+  const TF::ResourceDataflowState* state =
+      solver.lookupState<TF::ResourceDataflowState>(resource);
   if (!state) {
     return nullptr;
   }
@@ -80,7 +79,9 @@ Operation* GetHandleSource(Operation* op, DataFlowSolver& solver) {
 
 Attribute GetInitialValue(Operation* source) {
   if (auto global = dyn_cast<tf_saved_model::GlobalTensorOp>(source)) {
-    return global.getValue();
+    if (global.getValue()) {
+      return *global.getValue();
+    }
   }
   return nullptr;
 }
@@ -90,7 +91,7 @@ Type GetGlobalType(Operation* source) {
     // Resources are represented as tensor<resource<tensor<...>>>, so
     // unwrap until we get to the inner tensor<...>.
     auto tensor =
-        llvm::dyn_cast<TensorType>(var_handle_op.resource().getType());
+        llvm::dyn_cast<TensorType>(var_handle_op.getResource().getType());
     if (!tensor) return nullptr;
     TF::ResourceType resource =
         llvm::dyn_cast<TF::ResourceType>(tensor.getElementType());
@@ -117,6 +118,9 @@ ml_program::GlobalOp CreateGlobalOpFromOp(Operation* source, OpBuilder& builder,
   Attribute initial_value = GetInitialValue(source);
   if (!initial_value) {
     initial_value = builder.getZeroAttr(type);
+    if (!initial_value) {
+      initial_value = builder.getArrayAttr({});
+    }
   }
 
   if (!type) return nullptr;
@@ -137,18 +141,18 @@ ml_program::GlobalOp CreateGlobalOpFromOp(Operation* source, OpBuilder& builder,
 struct LowerVariableOpsToMlProgramPass
     : public impl::LowerVariableOpsToMlProgramPassBase<
           LowerVariableOpsToMlProgramPass> {
-  explicit LowerVariableOpsToMlProgramPass() {}
+  explicit LowerVariableOpsToMlProgramPass() = default;
   void getDependentDialects(DialectRegistry& registry) const override {
     registry.insert<mlir::tf_saved_model::TensorFlowSavedModelDialect,
                     ml_program::MLProgramDialect>();
   }
   void runOnOperation() override {
     auto module = getOperation();
-    if (!tf_saved_model::HasTfSavedModelSemantics(module)) return;
 
     DataFlowSolver solver;
     solver.load<dataflow::DeadCodeAnalysis>();
-    solver.load<TF::ResourceDataflowAnalysis>();
+    solver.load<dataflow::SparseConstantPropagation>();
+    TF::LoadResourceDataflowAnalysis(solver);
     if (failed(solver.initializeAndRun(module))) return signalPassFailure();
 
     SymbolTable symbol_table(module);
@@ -165,8 +169,8 @@ struct LowerVariableOpsToMlProgramPass
       Operation* load = builder.create<mlir::ml_program::GlobalLoadOp>(
           op.getLoc(), globalOp.getType(),
           SymbolRefAttr::get(op->getContext(), globalOp.getSymName()));
-      if (globalOp.getType() != op.value().getType()) {
-        load = builder.create<TF::CastOp>(op.getLoc(), op.value().getType(),
+      if (globalOp.getType() != op.getValue().getType()) {
+        load = builder.create<TF::CastOp>(op.getLoc(), op.getValue().getType(),
                                           load->getResult(0));
       }
       op.getResult().replaceAllUsesWith(load->getResult(0));
@@ -182,8 +186,8 @@ struct LowerVariableOpsToMlProgramPass
       symbol_table.insert(globalOp);
       OpBuilder builder(op);
       globalOp.setIsMutableAttr(builder.getUnitAttr());
-      Value value_to_store = op.value();
-      if (globalOp.getType() != op.value().getType()) {
+      Value value_to_store = op.getValue();
+      if (globalOp.getType() != op.getValue().getType()) {
         value_to_store = builder.create<TF::CastOp>(
             op.getLoc(), globalOp.getType(), value_to_store);
       }

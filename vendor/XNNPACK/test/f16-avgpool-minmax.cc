@@ -11,17 +11,17 @@
 //   Generator: tools/generate-avgpool-test.py
 
 
-#include <gtest/gtest.h>
-
+#include <xnnpack/avgpool.h>
 #include <xnnpack/common.h>
 #include <xnnpack/isa-checks.h>
-
-#include <xnnpack/avgpool.h>
+#include <xnnpack/microparams-init.h>
 #include <xnnpack/pavgpool.h>
+
 #include "avgpool-microkernel-tester.h"
+#include <gtest/gtest.h>
 
 
-#if XNN_ENABLE_ARM_FP16 && XNN_ARCH_ARM64
+#if XNN_ENABLE_ARM_FP16_VECTOR && (XNN_ARCH_ARM || XNN_ARCH_ARM64)
   TEST(F16_AVGPOOL_MINMAX_9P8X__NEONFP16ARITH_C8, channels_eq_8_twopass_fulltile) {
     TEST_REQUIRES_ARM_NEON_FP16_ARITH;
     AvgPoolMicrokernelTester()
@@ -831,10 +831,10 @@
       }
     }
   }
-#endif  // XNN_ENABLE_ARM_FP16 && XNN_ARCH_ARM64
+#endif  // XNN_ENABLE_ARM_FP16_VECTOR && (XNN_ARCH_ARM || XNN_ARCH_ARM64)
 
 
-#if XNN_ENABLE_ARM_FP16 && XNN_ARCH_ARM64
+#if XNN_ENABLE_ARM_FP16_VECTOR && (XNN_ARCH_ARM || XNN_ARCH_ARM64)
   TEST(F16_AVGPOOL_MINMAX_9X__NEONFP16ARITH_C8, channels_eq_8_unipass_fulltile) {
     TEST_REQUIRES_ARM_NEON_FP16_ARITH;
     AvgPoolMicrokernelTester()
@@ -1366,7 +1366,7 @@
       }
     }
   }
-#endif  // XNN_ENABLE_ARM_FP16 && XNN_ARCH_ARM64
+#endif  // XNN_ENABLE_ARM_FP16_VECTOR && (XNN_ARCH_ARM || XNN_ARCH_ARM64)
 
 
 #if XNN_ARCH_X86 || XNN_ARCH_X86_64

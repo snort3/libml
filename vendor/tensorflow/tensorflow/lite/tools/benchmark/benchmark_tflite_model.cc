@@ -15,9 +15,11 @@ limitations under the License.
 
 #include "tensorflow/lite/tools/benchmark/benchmark_tflite_model.h"
 
+#include <algorithm>
 #include <cstdarg>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <fstream>
 #include <functional>
 #include <iostream>
@@ -33,14 +35,17 @@ limitations under the License.
 #include "absl/strings/numbers.h"
 #include "absl/strings/str_replace.h"
 #include "absl/strings/str_split.h"
+#include "absl/strings/string_view.h"
 #include "ruy/profiler/profiler.h"  // from @ruy
-#include "tensorflow/lite/c/c_api_types.h"
-#include "tensorflow/lite/c/common.h"
+#include "tensorflow/lite/core/c/c_api_types.h"
+#include "tensorflow/lite/core/c/common.h"
+#include "tensorflow/lite/core/kernels/register.h"
+#include "tensorflow/lite/core/model.h"
+#include "tensorflow/lite/core/model_builder.h"
+#include "tensorflow/lite/core/signature_runner.h"
 #include "tensorflow/lite/core/subgraph.h"
 #include "tensorflow/lite/interpreter.h"
 #include "tensorflow/lite/kernels/cpu_backend_context.h"
-#include "tensorflow/lite/kernels/register.h"
-#include "tensorflow/lite/model.h"
 #include "tensorflow/lite/op_resolver.h"
 #include "tensorflow/lite/optional_debug_tools.h"
 #include "tensorflow/lite/profiling/profile_summary_formatter.h"
@@ -49,6 +54,7 @@ limitations under the License.
 #include "tensorflow/lite/tools/benchmark/profiling_listener.h"
 #include "tensorflow/lite/tools/delegates/delegate_provider.h"
 #include "tensorflow/lite/tools/logging.h"
+#include "tensorflow/lite/tools/model_loader.h"
 #include "tensorflow/lite/tools/utils.h"
 
 void RegisterSelectedOps(::tflite::MutableOpResolver* resolver);
@@ -101,7 +107,10 @@ class InterpreterStatePrinter : public BenchmarkListener {
     if (params_->Get<bool>("print_preinvoke_state")) {
       TFLITE_LOG(INFO) << "\n====Printing out TfLite interpreter pre-invoke "
                           "state begins====";
-      tflite::PrintInterpreterState(interpreter_);
+      tflite::PrintInterpreterState(
+          interpreter_, params_->Get<int32_t>("tensor_name_display_length"),
+          params_->Get<int32_t>("tensor_type_display_length"),
+          params_->Get<int32_t>("alloc_type_display_length"));
       TFLITE_LOG(INFO) << "====Printing out TfLite interpreter pre-invoke "
                           "state ends====\n";
     }
@@ -111,7 +120,10 @@ class InterpreterStatePrinter : public BenchmarkListener {
     if (params_->Get<bool>("print_postinvoke_state")) {
       TFLITE_LOG(INFO) << "\n====Printing out TfLite interpreter post-invoke "
                           "state begins====";
-      tflite::PrintInterpreterState(interpreter_);
+      tflite::PrintInterpreterState(
+          interpreter_, params_->Get<int32_t>("tensor_name_display_length"),
+          params_->Get<int32_t>("tensor_type_display_length"),
+          params_->Get<int32_t>("alloc_type_display_length"));
       TFLITE_LOG(INFO) << "====Printing out TfLite interpreter post-invoke "
                           "state ends====\n";
     }
@@ -124,7 +136,8 @@ class InterpreterStatePrinter : public BenchmarkListener {
 
 class OutputSaver : public BenchmarkListener {
  public:
-  explicit OutputSaver(Interpreter* interpreter) : interpreter_(interpreter) {}
+  explicit OutputSaver(BenchmarkInterpreterRunner* runner)
+      : interpreter_runner_(runner) {}
 
   void OnBenchmarkStart(const BenchmarkParams& params) override {
     params_ = &params;
@@ -136,16 +149,17 @@ class OutputSaver : public BenchmarkListener {
 
     std::ofstream ofs(path, std::ofstream::out);
     if (ofs.good()) {
-      for (int i = 0; i < interpreter_->outputs().size(); i++) {
-        ofs.write(interpreter_->output_tensor(i)->data.raw,
-                  interpreter_->output_tensor(i)->bytes);
+      for (int i = 0; i < interpreter_runner_->outputs().size(); i++) {
+        int tensor_index = interpreter_runner_->outputs()[i];
+        ofs.write(interpreter_runner_->tensor(tensor_index)->data.raw,
+                  interpreter_runner_->tensor(tensor_index)->bytes);
       }
       ofs.close();
     }
   }
 
  private:
-  Interpreter* const interpreter_ = nullptr;
+  BenchmarkInterpreterRunner* const interpreter_runner_;
   const BenchmarkParams* params_ = nullptr;
 };
 
@@ -256,14 +270,13 @@ TfLiteStatus PopulateInputLayerInfo(
   std::vector<std::string> shapes = Split(shapes_string, ':');
 
   if (names.size() != shapes.size()) {
-    TFLITE_LOG(ERROR) << "The number of items in"
-                      << " --input_layer_shape (" << shapes_string << ", with "
-                      << shapes.size() << " items)"
-                      << " must match the number of items in"
-                      << " --input_layer (" << names_string << ", with "
-                      << names.size() << " items)."
-                      << " For example --input_layer=input1,input2"
-                      << " --input_layer_shape=1,224,224,4:1,20";
+    TFLITE_LOG(ERROR)
+        << "The number of items in --input_layer_shape (" << shapes_string
+        << ", with " << shapes.size()
+        << " items) must match the number of items in --input_layer ("
+        << names_string << ", with " << names.size()
+        << " items). For example --input_layer=input1,input2 "
+           "--input_layer_shape=1,224,224,4:1,20";
     return kTfLiteError;
   }
 
@@ -338,9 +351,120 @@ TfLiteStatus SplitInputLayerNameAndValueFile(
   return kTfLiteOk;
 }
 
+std::pair<TfLiteStatus, std::unique_ptr<BenchmarkInterpreterRunner>>
+BenchmarkInterpreterRunner::Create(tflite::Interpreter* const interpreter,
+                                   std::string signature_key) {
+  if (!signature_key.empty()) {
+    const std::vector<const std::string*>& keys = interpreter->signature_keys();
+    bool found = std::any_of(
+        keys.begin(), keys.end(),
+        [&signature_key](const auto& k) { return *k == signature_key; });
+
+    if (keys.size() > 1 && (signature_key.empty() || !found)) {
+      TFLITE_LOG(ERROR)
+          << "Signature not specified or incorrect for graph with multiple "
+             "signatures. Pass one of the following to the flag "
+             "\"--signature_to_run_for\"";
+      for (const std::string* k : keys) {
+        TFLITE_LOG(ERROR) << " #> Signature key: " << *k;
+      }
+      return {kTfLiteError, nullptr};
+    } else if (keys.size() == 1 && signature_key.empty()) {
+      signature_key = *keys[0];
+    }
+
+    if (!signature_key.empty() && !keys.empty()) {
+      TFLITE_LOG(INFO) << "Using signature: " << signature_key;
+      auto signature_runner =
+          interpreter->GetSignatureRunner(signature_key.c_str());
+      if (signature_runner == nullptr) {
+        return {kTfLiteError, nullptr};
+      } else {
+        int subgraph_index =
+            interpreter->GetSubgraphIndexFromSignature(signature_key.c_str());
+
+        return {kTfLiteOk, std::make_unique<BenchmarkInterpreterRunner>(
+                               interpreter, signature_runner,
+                               interpreter->subgraph(subgraph_index))};
+      }
+    }
+  }
+  return {kTfLiteOk, std::make_unique<BenchmarkInterpreterRunner>(
+                         interpreter, nullptr, nullptr)};
+}
+
+TfLiteStatus BenchmarkInterpreterRunner::AllocateTensors() {
+  if (signature_runner_ != nullptr) {
+    return signature_runner_->AllocateTensors();
+  } else {
+    return interpreter_->AllocateTensors();
+  }
+}
+
+TfLiteStatus BenchmarkInterpreterRunner::Invoke() {
+  if (signature_runner_ != nullptr) {
+    return signature_runner_->Invoke();
+  } else {
+    return interpreter_->Invoke();
+  }
+}
+
+const std::vector<int>& BenchmarkInterpreterRunner::execution_plan() const {
+  if (signature_runner_ != nullptr) {
+    return subgraph_->execution_plan();
+  } else {
+    return interpreter_->execution_plan();
+  }
+}
+
+const std::vector<int>& BenchmarkInterpreterRunner::inputs() const {
+  if (signature_runner_ != nullptr) {
+    return subgraph_->inputs();
+  } else {
+    return interpreter_->inputs();
+  }
+}
+
+const std::vector<int>& BenchmarkInterpreterRunner::outputs() const {
+  if (signature_runner_ != nullptr) {
+    return subgraph_->outputs();
+  } else {
+    return interpreter_->outputs();
+  }
+}
+TfLiteTensor* BenchmarkInterpreterRunner::tensor(int tensor_index) {
+  if (signature_runner_ != nullptr) {
+    return subgraph_->tensor(tensor_index);
+  } else {
+    return interpreter_->tensor(tensor_index);
+  }
+}
+
+const std::pair<TfLiteNode, TfLiteRegistration>*
+BenchmarkInterpreterRunner::node_and_registration(int node_index) const {
+  if (signature_runner_ != nullptr) {
+    return subgraph_->node_and_registration(node_index);
+  } else {
+    return interpreter_->node_and_registration(node_index);
+  }
+}
+
+TfLiteStatus BenchmarkInterpreterRunner::ResizeInputTensor(
+    int tensor_index, const std::vector<int>& new_size) {
+  if (signature_runner_ != nullptr) {
+    return subgraph_->ResizeInputTensor(tensor_index, new_size);
+  } else {
+    return interpreter_->ResizeInputTensor(tensor_index, new_size);
+  }
+}
+
 BenchmarkParams BenchmarkTfLiteModel::DefaultParams() {
   BenchmarkParams default_params = BenchmarkModel::DefaultParams();
   default_params.AddParam("graph", BenchmarkParam::Create<std::string>(""));
+  default_params.AddParam("signature_to_run_for",
+                          BenchmarkParam::Create<std::string>(""));
+  default_params.AddParam("list_signatures",
+                          BenchmarkParam::Create<bool>(false));
   default_params.AddParam("input_layer",
                           BenchmarkParam::Create<std::string>(""));
   default_params.AddParam("input_layer_shape",
@@ -372,8 +496,17 @@ BenchmarkParams BenchmarkTfLiteModel::DefaultParams() {
                           BenchmarkParam::Create<int32_t>(0));
   default_params.AddParam("disable_delegate_clustering",
                           BenchmarkParam::Create<bool>(false));
+  default_params.AddParam("enable_builtin_cast_constant_cache",
+                          BenchmarkParam::Create<bool>(false));
   default_params.AddParam("output_filepath",
                           BenchmarkParam::Create<std::string>(""));
+
+  default_params.AddParam("tensor_name_display_length",
+                          BenchmarkParam::Create<int32_t>(25));
+  default_params.AddParam("tensor_type_display_length",
+                          BenchmarkParam::Create<int32_t>(15));
+  default_params.AddParam("alloc_type_display_length",
+                          BenchmarkParam::Create<int32_t>(18));
 
   tools::ProvidedDelegateList delegate_providers(&default_params);
   delegate_providers.AddAllDelegateParams();
@@ -394,6 +527,10 @@ void BenchmarkTfLiteModel::CleanUp() {
 
 BenchmarkTfLiteModel::~BenchmarkTfLiteModel() {
   CleanUp();
+
+  // Release the pointer to the interpreter_runner_ before the interpreter is
+  // destroyed.
+  interpreter_runner_.reset();
 
   // Destory the owned interpreter earlier than other objects (specially
   // 'owned_delegates_').
@@ -453,9 +590,35 @@ std::vector<Flag> BenchmarkTfLiteModel::GetFlags() {
           "Optimize memory usage for large tensors with sacrificing latency."),
       CreateFlag<bool>("disable_delegate_clustering", &params_,
                        "Disable delegate clustering."),
+      CreateFlag<bool>(
+          "enable_builtin_cast_constant_cache", &params_,
+          "Cache the output of the builtin cast operation when its input "
+          "is a constant tensor."),
       CreateFlag<std::string>(
           "output_filepath", &params_,
-          "File path to export outputs layer as binary data.")};
+          "File path to export outputs layer as binary data."),
+      CreateFlag<int32_t>(
+          "tensor_name_display_length", &params_,
+          "The number of characters to show for the tensor's name when "
+          "printing the interpeter's state, defaults to 25."),
+      CreateFlag<int32_t>(
+          "tensor_type_display_length", &params_,
+          "The number of characters to show for the tensor's type when "
+          "printing the interpeter's state, defaults to 15."),
+      CreateFlag<int32_t>(
+          "alloc_type_display_length", &params_,
+          "The number of characters to show for the tensor's allocation type "
+          "when printing the interpeter's state, defaults to 18."),
+      CreateFlag<std::string>(
+          "signature_to_run_for", &params_,
+          "If the model contains multiple signatures, use this flag to specify "
+          "the signature to benchmark. If multiple signatures are present and "
+          "this flag is not specified, the benchmark will throw an error. If "
+          "only one signature is present and this flag is not specified, the "
+          "default signature will be used."),
+      CreateFlag<bool>("list_signatures", &params_,
+                       "Displays all signatures present in the model and then "
+                       "terminates the program.")};
 
   flags.insert(flags.end(), specific_flags.begin(), specific_flags.end());
 
@@ -470,6 +633,10 @@ void BenchmarkTfLiteModel::LogParams() {
   const bool verbose = params_.Get<bool>("verbose");
   // Always log the value of --graph.
   LOG_BENCHMARK_PARAM(std::string, "graph", "Graph", /*verbose*/ true);
+  LOG_BENCHMARK_PARAM(std::string, "signature_to_run_for", "Signature to run",
+                      /*verbose*/ true);
+  LOG_BENCHMARK_PARAM(bool, "list_signatures",
+                      "List signatures from the provided model", false);
   LOG_BENCHMARK_PARAM(std::string, "input_layer", "Input layers", verbose);
   LOG_BENCHMARK_PARAM(std::string, "input_layer_shape", "Input shapes",
                       verbose);
@@ -500,8 +667,16 @@ void BenchmarkTfLiteModel::LogParams() {
                       "Optimize memory usage for large tensors", verbose);
   LOG_BENCHMARK_PARAM(bool, "disable_delegate_clustering",
                       "Disable delegate clustering", verbose);
+  LOG_BENCHMARK_PARAM(bool, "enable_builtin_cast_constant_cache",
+                      "Constant CAST output cache", verbose);
   LOG_BENCHMARK_PARAM(std::string, "output_filepath",
                       "File path to export outputs layer to", verbose);
+  LOG_BENCHMARK_PARAM(int32_t, "tensor_name_display_length",
+                      "Tensor name display length", verbose);
+  LOG_BENCHMARK_PARAM(int32_t, "tensor_type_display_length",
+                      "Tensor type display length", verbose);
+  LOG_BENCHMARK_PARAM(int32_t, "alloc_type_display_length",
+                      "Tensor allocation type display length", verbose);
 
   for (const auto& delegate_provider :
        tools::GetRegisteredDelegateProviders()) {
@@ -526,18 +701,32 @@ TfLiteStatus BenchmarkTfLiteModel::ValidateParams() {
 }
 
 uint64_t BenchmarkTfLiteModel::ComputeInputBytes() {
-  TFLITE_TOOLS_CHECK(interpreter_);
+  TFLITE_TOOLS_CHECK(interpreter_runner_);
   uint64_t total_input_bytes = 0;
-  for (int input : interpreter_->inputs()) {
-    auto* t = interpreter_->tensor(input);
+  for (int input : interpreter_runner_->inputs()) {
+    auto* t = interpreter_runner_->tensor(input);
     total_input_bytes += t->bytes;
   }
   return total_input_bytes;
 }
 
 int64_t BenchmarkTfLiteModel::MayGetModelFileSize() {
-  std::ifstream in_file(params_.Get<std::string>("graph"),
-                        std::ios::binary | std::ios::ate);
+  std::string fd_or_graph_path = params_.Get<std::string>("graph");
+  // Path can be one of the following:
+  // 1) File descriptor path: path must be in the format of
+  // "fd:%model_fd%:%model_offset%:%model_size%".
+  // 2) File path: path to the model file.
+  // Please see tensorflow/lite/tools/model_loader.h for more information.
+  std::vector<absl::string_view> parts = absl::StrSplit(fd_or_graph_path, ':');
+  if (!parts.empty() && parts[0] == "fd") {
+    int64_t model_size = -1;
+    if (parts.size() != 4 || !absl::SimpleAtoi(parts[3], &model_size)) {
+      TFLITE_LOG(ERROR) << "Failed to parse model file size: "
+                        << fd_or_graph_path;
+    }
+    return model_size;
+  }
+  std::ifstream in_file(fd_or_graph_path, std::ios::binary | std::ios::ate);
   return in_file.tellg();
 }
 
@@ -614,15 +803,15 @@ InputTensorData BenchmarkTfLiteModel::CreateRandomTensorData(
 TfLiteStatus BenchmarkTfLiteModel::PrepareInputData() {
   CleanUp();
 
-  // Note the corresponding relation between 'interpreter_inputs' and 'inputs_'
-  // (i.e. the specified input layer info) has been checked in
-  // BenchmarkTfLiteModel::Init() before calling this function. So, we simply
-  // use the corresponding input layer info to initialize the input data value
-  // properly.
-  auto interpreter_inputs = interpreter_->inputs();
-  for (int i = 0; i < interpreter_inputs.size(); ++i) {
-    int tensor_index = interpreter_inputs[i];
-    const TfLiteTensor& t = *(interpreter_->tensor(tensor_index));
+  // Note the corresponding relation between 'runner_inputs' and
+  // 'inputs_' (i.e. the specified input layer info) has been checked in
+  // BenchmarkTfLiteModel::Init() before calling this function. So, we
+  // simply use the corresponding input layer info to initialize the input
+  // data value properly.
+  const std::vector<int>& runner_inputs = interpreter_runner_->inputs();
+  for (int i = 0; i < runner_inputs.size(); ++i) {
+    int tensor_index = runner_inputs[i];
+    const TfLiteTensor& t = *(interpreter_runner_->tensor(tensor_index));
     const InputLayerInfo* input_layer_info = nullptr;
     // Note that when input layer parameters (i.e. --input_layer,
     // --input_layer_shape) are not specified, inputs_ is empty.
@@ -640,11 +829,11 @@ TfLiteStatus BenchmarkTfLiteModel::PrepareInputData() {
 }
 
 TfLiteStatus BenchmarkTfLiteModel::ResetInputsAndOutputs() {
-  auto interpreter_inputs = interpreter_->inputs();
+  const std::vector<int>& runner_inputs = interpreter_runner_->inputs();
   // Set the values of the input tensors from inputs_data_.
-  for (int j = 0; j < interpreter_inputs.size(); ++j) {
-    int i = interpreter_inputs[j];
-    TfLiteTensor* t = interpreter_->tensor(i);
+  for (int j = 0; j < runner_inputs.size(); ++j) {
+    int i = runner_inputs[j];
+    TfLiteTensor* t = interpreter_runner_->tensor(i);
     if (t->type == kTfLiteString) {
       if (inputs_data_[j].data) {
         static_cast<DynamicBuffer*>(inputs_data_[j].data.get())
@@ -652,7 +841,8 @@ TfLiteStatus BenchmarkTfLiteModel::ResetInputsAndOutputs() {
       } else {
         tflite::DynamicBuffer buffer;
         FillRandomString(&buffer, t->dims, []() {
-          return "we're have some friends over saturday to hang out in the "
+          return "we're have some friends over saturday to hang out in "
+                 "the "
                  "yard";
         });
         buffer.WriteToTensor(t, /*new_shape=*/nullptr);
@@ -678,6 +868,8 @@ TfLiteStatus BenchmarkTfLiteModel::InitInterpreter() {
       params_.Get<int32_t>("optimize_memory_for_large_tensors"));
   options.SetDisableDelegateClustering(
       params_.Get<bool>("disable_delegate_clustering"));
+  options.SetCacheConstantCastOp(
+      params_.Get<bool>("enable_builtin_cast_constant_cache"));
 
   tflite::InterpreterBuilder builder(*model_, *resolver, &options);
   if (builder.SetNumThreads(num_threads) != kTfLiteOk) {
@@ -710,6 +902,20 @@ TfLiteStatus BenchmarkTfLiteModel::Init() {
   TF_LITE_ENSURE_STATUS(LoadModel());
   TF_LITE_ENSURE_STATUS(InitInterpreter());
 
+  if (params_.Get<bool>("list_signatures")) {
+    const std::vector<const std::string*>& keys =
+        interpreter_->signature_keys();
+    TFLITE_LOG(INFO) << "The Model contains " << keys.size()
+                     << " signature key(s).";
+    if (!keys.empty()) {
+      TFLITE_LOG(INFO) << "They are listed below: ";
+    }
+    for (const std::string* key : keys) {
+      TFLITE_LOG(INFO) << "-> Signature Key: " << *key;
+    }
+    return kTfLiteError;
+  }
+
   // Install profilers if necessary right after interpreter is created so that
   // any memory allocations inside the TFLite runtime could be recorded if the
   // installed profiler profile memory usage information.
@@ -732,26 +938,77 @@ TfLiteStatus BenchmarkTfLiteModel::Init() {
 
   interpreter_->SetAllowFp16PrecisionForFp32(params_.Get<bool>("allow_fp16"));
 
+  std::pair<TfLiteStatus, std::unique_ptr<BenchmarkInterpreterRunner>>
+      status_and_runner = BenchmarkInterpreterRunner::Create(
+          interpreter_.get(), params_.Get<std::string>("signature_to_run_for"));
+
+  TF_LITE_ENSURE_STATUS(status_and_runner.first);
+  interpreter_runner_ = std::move(status_and_runner.second);
+
+  const std::vector<int>& runner_inputs = interpreter_runner_->inputs();
+
+  if (!inputs_.empty()) {
+    TFLITE_TOOLS_CHECK_EQ(inputs_.size(), runner_inputs.size())
+        << "Inputs mismatch: Model inputs #:" << inputs_.size()
+        << " expected: " << runner_inputs.size();
+  }
+
+  // Check if the tensor names match, and log a warning if it doesn't.
+  for (int j = 0; j < inputs_.size(); ++j) {
+    const InputLayerInfo& input = inputs_[j];
+    int i = runner_inputs[j];
+    TfLiteTensor* t = interpreter_runner_->tensor(i);
+    if (input.name != t->name) {
+      TFLITE_LOG(WARN) << "Tensor # " << i << " is named " << t->name
+                       << " but flags call it " << input.name;
+    }
+
+    if (t->type != kTfLiteString && input.shape.size() != t->dims->size) {
+      TFLITE_LOG(ERROR) << "Input tensor #" << i << " should have "
+                        << t->dims->size << " dimensions!";
+      return kTfLiteError;
+    }
+  }
+
+  // Resize all non-string tensors.
+  for (int j = 0; j < inputs_.size(); ++j) {
+    const InputLayerInfo& input = inputs_[j];
+    int i = runner_inputs[j];
+    TfLiteTensor* t = interpreter_runner_->tensor(i);
+    if (t->type != kTfLiteString) {
+      interpreter_runner_->ResizeInputTensor(i, input.shape);
+    }
+  }
+
   owned_delegates_.clear();
 
-  // Contains all ids of TfLiteNodes that have been checked to see whether it's
-  // delegated or not.
+  // Contains all ids of TfLiteNodes that have been checked to see whether
+  // it's delegated or not.
   std::unordered_set<int> checked_node_ids;
   tools::ProvidedDelegateList delegate_providers(&params_);
   auto created_delegates = delegate_providers.CreateAllRankedDelegates();
   TFLITE_MAY_LOG(INFO, (created_delegates.size() >= 2))
       << "Going to apply " << created_delegates.size()
       << " delegates one after another.";
+
+  // If created_delegates is empty, 'require_full_delegation' flag will
+  // not be checked, thus CPU fallback will happen. Adding check here to
+  // avoid fallback in this situation.
+  if (created_delegates.empty() &&
+      params_.Get<bool>("require_full_delegation")) {
+    TFLITE_LOG(ERROR) << "Disallowed CPU fallback detected.";
+    return kTfLiteError;
+  }
   for (auto& created_delegate : created_delegates) {
     const auto* delegate_provider = created_delegate.provider;
     TfLiteDelegate* delegate = created_delegate.delegate.get();
     TFLITE_TOOLS_CHECK(delegate != nullptr)
         << "The created delegate by the delegate provider should not be "
            "nullptr!";
-    // The interpreter becomes dependent on the delegate once the delegate is
-    // used, so the order of destruction must be interpreter first, delegate
-    // later.
-    // Moving the delegate to a list of owned delegates to guarantee that.
+    // The interpreter becomes dependent on the delegate once the delegate
+    // is used, so the order of destruction must be interpreter first,
+    // delegate later. Moving the delegate to a list of owned delegates to
+    // guarantee that.
     owned_delegates_.emplace_back(std::move(created_delegate.delegate));
     if (interpreter_->ModifyGraphWithDelegate(delegate) != kTfLiteOk) {
       TFLITE_LOG(ERROR) << "Failed to apply " << delegate_provider->GetName()
@@ -761,25 +1018,27 @@ TfLiteStatus BenchmarkTfLiteModel::Init() {
       // Ideally, such delegate info should already be computed when the
       // delegate is being applied to the model graph.
       int num_delegated_kernels = 0;
-      for (int i = 0; i < interpreter_->execution_plan().size(); ++i) {
-        int node_id = interpreter_->execution_plan()[i];
+      for (int i = 0; i < interpreter_runner_->execution_plan().size(); ++i) {
+        int node_id = interpreter_runner_->execution_plan()[i];
         if (checked_node_ids.find(node_id) != checked_node_ids.end()) {
           continue;
         }
         const TfLiteNode& node =
-            interpreter_->node_and_registration(node_id)->first;
+            interpreter_runner_->node_and_registration(node_id)->first;
 
-        // Note that the 'delegate' here could be an ExternalDelegateWrapper
-        // object that wraps an actual external delegate, in which case,
-        // 'node.delegate' will be different from 'delegate' because
-        // 'node.delegate' refers to the actual external delegate.
+        // Note that the 'delegate' here could be an
+        // ExternalDelegateWrapper object that wraps an actual external
+        // delegate, in which case, 'node.delegate' will be different from
+        // 'delegate' because 'node.delegate' refers to the actual
+        // external delegate.
         if (node.delegate != nullptr) {
           num_delegated_kernels++;
           checked_node_ids.insert(node_id);
         }
       }
-      bool fully_delegated = (num_delegated_kernels == 1 &&
-                              interpreter_->execution_plan().size() == 1);
+      bool fully_delegated =
+          (num_delegated_kernels == 1 &&
+           interpreter_runner_->execution_plan().size() == 1);
 
       if (params_.Get<bool>("require_full_delegation") && !fully_delegated) {
         TFLITE_LOG(ERROR) << "Disallowed CPU fallback detected.";
@@ -797,70 +1056,45 @@ TfLiteStatus BenchmarkTfLiteModel::Init() {
                          << " executed by the delegate w/ "
                          << num_delegated_kernels << " delegate kernels.";
       } else {
-        TFLITE_LOG(INFO)
-            << "Though " << delegate_provider->GetName()
-            << " delegate is explicitly applied, the model graph will not be"
-            << " executed by the delegate.";
+        TFLITE_LOG(INFO) << "Though " << delegate_provider->GetName()
+                         << " delegate is explicitly applied, the model "
+                            "graph will not be"
+                         << " executed by the delegate.";
       }
     }
   }
 
-  auto interpreter_inputs = interpreter_->inputs();
-
-  if (!inputs_.empty()) {
-    TFLITE_TOOLS_CHECK_EQ(inputs_.size(), interpreter_inputs.size())
-        << "Inputs mismatch: Model inputs #:" << inputs_.size()
-        << " expected: " << interpreter_inputs.size();
-  }
-
-  // Check if the tensor names match, and log a warning if it doesn't.
-  for (int j = 0; j < inputs_.size(); ++j) {
-    const InputLayerInfo& input = inputs_[j];
-    int i = interpreter_inputs[j];
-    TfLiteTensor* t = interpreter_->tensor(i);
-    if (input.name != t->name) {
-      TFLITE_LOG(WARN) << "Tensor # " << i << " is named " << t->name
-                       << " but flags call it " << input.name;
-    }
-
-    if (t->type != kTfLiteString && input.shape.size() != t->dims->size) {
-      TFLITE_LOG(ERROR) << "Input tensor #" << i << " should have "
-                        << t->dims->size << " dimensions!";
-      return kTfLiteError;
-    }
-  }
-
-  // Resize all non-string tensors.
-  for (int j = 0; j < inputs_.size(); ++j) {
-    const InputLayerInfo& input = inputs_[j];
-    int i = interpreter_inputs[j];
-    TfLiteTensor* t = interpreter_->tensor(i);
-    if (t->type != kTfLiteString) {
-      interpreter_->ResizeInputTensor(i, input.shape);
-    }
-  }
-
-  if (interpreter_->AllocateTensors() != kTfLiteOk) {
+  if (interpreter_runner_->AllocateTensors() != kTfLiteOk) {
     TFLITE_LOG(ERROR) << "Failed to allocate tensors!";
     return kTfLiteError;
   }
 
   AddOwnedListener(
       std::unique_ptr<BenchmarkListener>(new RuyProfileListener()));
-  AddOwnedListener(
-      std::unique_ptr<BenchmarkListener>(new OutputSaver(interpreter_.get())));
+
+  AddOwnedListener(std::unique_ptr<BenchmarkListener>(
+      new OutputSaver(interpreter_runner_.get())));
 
   return kTfLiteOk;
 }
 
 TfLiteStatus BenchmarkTfLiteModel::LoadModel() {
-  std::string graph = params_.Get<std::string>("graph");
-  model_ = tflite::FlatBufferModel::BuildFromFile(graph.c_str());
-  if (!model_) {
-    TFLITE_LOG(ERROR) << "Failed to mmap model " << graph;
+  std::string fd_or_graph_path = params_.Get<std::string>("graph");
+  model_loader_ = tools::CreateModelLoaderFromPath(fd_or_graph_path);
+  if (!model_loader_) {
+    TFLITE_LOG(ERROR) << "Failed to initialize model loader with path "
+                      << fd_or_graph_path;
     return kTfLiteError;
   }
-  TFLITE_LOG(INFO) << "Loaded model " << graph;
+  if (!model_loader_->Init()) {
+    TFLITE_LOG(ERROR) << "Failed to load model " << fd_or_graph_path;
+    return kTfLiteError;
+  }
+  model_ = tflite::FlatBufferModel::BuildFromBuffer(
+      reinterpret_cast<const char*>(
+          model_loader_->GetModel()->allocation()->base()),
+      model_loader_->GetModel()->allocation()->bytes());
+  TFLITE_LOG(INFO) << "Loaded model " << fd_or_graph_path;
   return kTfLiteOk;
 }
 
@@ -869,7 +1103,7 @@ std::unique_ptr<tflite::OpResolver> BenchmarkTfLiteModel::GetOpResolver()
   tflite::ops::builtin::BuiltinOpResolver* resolver = nullptr;
   // When --use_xnnpack is explicitly set to false, skip applying the default
   // XNNPACK delegate in TfLite runtime so that the original execution path
-  // based on the unmodified model graph is still excercised.
+  // based on the unmodified model graph is still exercised.
   if (params_.HasParam("use_xnnpack") &&
       params_.HasValueSet<bool>("use_xnnpack") &&
       !params_.Get<bool>("use_xnnpack")) {
@@ -894,7 +1128,9 @@ BenchmarkTfLiteModel::MayCreateProfilingListener() const {
           !params_.Get<std::string>("profiling_output_csv_file").empty())));
 }
 
-TfLiteStatus BenchmarkTfLiteModel::RunImpl() { return interpreter_->Invoke(); }
+TfLiteStatus BenchmarkTfLiteModel::RunImpl() {
+  return interpreter_runner_->Invoke();
+}
 
 }  // namespace benchmark
 }  // namespace tflite

@@ -68,9 +68,11 @@ int main(int argc, char** argv) {
 		printf("\tAVX512VPOPCNTDQ: %s\n", cpuinfo_has_x86_avx512vpopcntdq() ? "yes" : "no");
 		printf("\tAVX512VNNI: %s\n", cpuinfo_has_x86_avx512vnni() ? "yes" : "no");
 		printf("\tAVX512BF16: %s\n", cpuinfo_has_x86_avx512bf16() ? "yes" : "no");
+		printf("\tAVX512FP16: %s\n", cpuinfo_has_x86_avx512fp16() ? "yes" : "no");
 		printf("\tAVX512VP2INTERSECT: %s\n", cpuinfo_has_x86_avx512vp2intersect() ? "yes" : "no");
 		printf("\tAVX512_4VNNIW: %s\n", cpuinfo_has_x86_avx512_4vnniw() ? "yes" : "no");
 		printf("\tAVX512_4FMAPS: %s\n", cpuinfo_has_x86_avx512_4fmaps() ? "yes" : "no");
+                printf("\tAVXVNNI: %s\n", cpuinfo_has_x86_avxvnni() ? "yes" : "no");
 
 
 	printf("Multi-threading extensions:\n");
@@ -143,7 +145,8 @@ int main(int argc, char** argv) {
 		printf("\tNEON VQRDMLAH/VQRDMLSH: %s\n", cpuinfo_has_arm_neon_rdm() ? "yes" : "no");
 		printf("\tNEON FP16 arithmetics: %s\n", cpuinfo_has_arm_neon_fp16_arith() ? "yes" : "no");
 		printf("\tNEON complex: %s\n", cpuinfo_has_arm_fcma() ? "yes" : "no");
-		printf("\tNEON dot product: %s\n", cpuinfo_has_arm_neon_dot() ? "yes" : "no");
+		printf("\tNEON VSDOT/VUDOT: %s\n", cpuinfo_has_arm_neon_dot() ? "yes" : "no");
+		printf("\tNEON VFMLAL/VFMLSL: %s\n", cpuinfo_has_arm_fhm() ? "yes" : "no");
 
 	printf("Cryptography extensions:\n");
 		printf("\tAES: %s\n", cpuinfo_has_arm_aes() ? "yes" : "no");
@@ -157,8 +160,10 @@ int main(int argc, char** argv) {
 		printf("\tARM v8.1 atomics: %s\n", cpuinfo_has_arm_atomics() ? "yes" : "no");
 		printf("\tARM v8.1 SQRDMLxH: %s\n", cpuinfo_has_arm_neon_rdm() ? "yes" : "no");
 		printf("\tARM v8.2 FP16 arithmetics: %s\n", cpuinfo_has_arm_fp16_arith() ? "yes" : "no");
+		printf("\tARM v8.2 FHM: %s\n", cpuinfo_has_arm_fhm() ? "yes" : "no");
 		printf("\tARM v8.2 BF16: %s\n", cpuinfo_has_arm_bf16() ? "yes" : "no");
-		printf("\tARM v8.3 dot product: %s\n", cpuinfo_has_arm_neon_dot() ? "yes" : "no");
+		printf("\tARM v8.2 Int8 dot product: %s\n", cpuinfo_has_arm_neon_dot() ? "yes" : "no");
+		printf("\tARM v8.2 Int8 matrix multiplication: %s\n", cpuinfo_has_arm_i8mm() ? "yes" : "no");
 		printf("\tARM v8.3 JS conversion: %s\n", cpuinfo_has_arm_jscvt() ? "yes" : "no");
 		printf("\tARM v8.3 complex: %s\n", cpuinfo_has_arm_fcma() ? "yes" : "no");
 

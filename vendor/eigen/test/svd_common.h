@@ -25,34 +25,27 @@
 
 // Check that the matrix m is properly reconstructed and that the U and V factors are unitary
 // The SVD must have already been computed.
-template<typename SvdType, typename MatrixType>
-void svd_check_full(const MatrixType& m, const SvdType& svd)
-{
+template <typename SvdType, typename MatrixType>
+void svd_check_full(const MatrixType& m, const SvdType& svd) {
   Index rows = m.rows();
   Index cols = m.cols();
 
-  enum {
-    RowsAtCompileTime = MatrixType::RowsAtCompileTime,
-    ColsAtCompileTime = MatrixType::ColsAtCompileTime
-  };
+  enum { RowsAtCompileTime = MatrixType::RowsAtCompileTime, ColsAtCompileTime = MatrixType::ColsAtCompileTime };
 
   typedef typename MatrixType::Scalar Scalar;
   typedef typename MatrixType::RealScalar RealScalar;
   typedef Matrix<Scalar, RowsAtCompileTime, RowsAtCompileTime> MatrixUType;
   typedef Matrix<Scalar, ColsAtCompileTime, ColsAtCompileTime> MatrixVType;
 
-  MatrixType sigma = MatrixType::Zero(rows,cols);
+  MatrixType sigma = MatrixType::Zero(rows, cols);
   sigma.diagonal() = svd.singularValues().template cast<Scalar>();
   MatrixUType u = svd.matrixU();
   MatrixVType v = svd.matrixV();
   RealScalar scaling = m.cwiseAbs().maxCoeff();
-  if(scaling<(std::numeric_limits<RealScalar>::min)())
-  {
+  if (scaling < (std::numeric_limits<RealScalar>::min)()) {
     VERIFY(sigma.cwiseAbs().maxCoeff() <= (std::numeric_limits<RealScalar>::min)());
-  }
-  else
-  {
-    VERIFY_IS_APPROX(m/scaling, u * (sigma/scaling) * v.adjoint());
+  } else {
+    VERIFY_IS_APPROX(m / scaling, u * (sigma / scaling) * v.adjoint());
   }
   VERIFY_IS_UNITARY(u);
   VERIFY_IS_UNITARY(v);
@@ -72,15 +65,20 @@ void svd_compare_to_full(const MatrixType& m, const SvdType& referenceSvd) {
   VERIFY_IS_APPROX(svd.singularValues(), referenceSvd.singularValues());
 
   if (Options & (ComputeFullV | ComputeThinV)) {
-    VERIFY( (svd.matrixV().adjoint()*svd.matrixV()).isIdentity(prec) );
-    VERIFY_IS_APPROX( svd.matrixV().leftCols(diagSize) * svd.singularValues().asDiagonal() * svd.matrixV().leftCols(diagSize).adjoint(),
-                      referenceSvd.matrixV().leftCols(diagSize) * referenceSvd.singularValues().asDiagonal() * referenceSvd.matrixV().leftCols(diagSize).adjoint());
+    VERIFY((svd.matrixV().adjoint() * svd.matrixV()).isIdentity(prec));
+    VERIFY_IS_APPROX(svd.matrixV().leftCols(diagSize) * svd.singularValues().asDiagonal() *
+                         svd.matrixV().leftCols(diagSize).adjoint(),
+                     referenceSvd.matrixV().leftCols(diagSize) * referenceSvd.singularValues().asDiagonal() *
+                         referenceSvd.matrixV().leftCols(diagSize).adjoint());
   }
 
   if (Options & (ComputeFullU | ComputeThinU)) {
-    VERIFY( (svd.matrixU().adjoint()*svd.matrixU()).isIdentity(prec) );
-    VERIFY_IS_APPROX( svd.matrixU().leftCols(diagSize) * svd.singularValues().cwiseAbs2().asDiagonal() * svd.matrixU().leftCols(diagSize).adjoint(),
-                      referenceSvd.matrixU().leftCols(diagSize) * referenceSvd.singularValues().cwiseAbs2().asDiagonal() * referenceSvd.matrixU().leftCols(diagSize).adjoint());
+    VERIFY((svd.matrixU().adjoint() * svd.matrixU()).isIdentity(prec));
+    VERIFY_IS_APPROX(svd.matrixU().leftCols(diagSize) * svd.singularValues().cwiseAbs2().asDiagonal() *
+                         svd.matrixU().leftCols(diagSize).adjoint(),
+                     referenceSvd.matrixU().leftCols(diagSize) *
+                         referenceSvd.singularValues().cwiseAbs2().asDiagonal() *
+                         referenceSvd.matrixU().leftCols(diagSize).adjoint());
   }
 
   // The following checks are not critical.
@@ -102,10 +100,7 @@ void svd_least_square(const MatrixType& m) {
   Index rows = m.rows();
   Index cols = m.cols();
 
-  enum {
-    RowsAtCompileTime = MatrixType::RowsAtCompileTime,
-    ColsAtCompileTime = MatrixType::ColsAtCompileTime
-  };
+  enum { RowsAtCompileTime = MatrixType::RowsAtCompileTime, ColsAtCompileTime = MatrixType::ColsAtCompileTime };
 
   typedef Matrix<Scalar, RowsAtCompileTime, Dynamic> RhsType;
   typedef Matrix<Scalar, ColsAtCompileTime, Dynamic> SolutionType;
@@ -113,49 +108,48 @@ void svd_least_square(const MatrixType& m) {
   RhsType rhs = RhsType::Random(rows, internal::random<Index>(1, cols));
   SvdType svd(m);
 
-  if (internal::is_same<RealScalar, double>::value)  svd.setThreshold(RealScalar(1e-8));
-  else if(internal::is_same<RealScalar,float>::value)  svd.setThreshold(RealScalar(2e-4));
+  if (internal::is_same<RealScalar, double>::value)
+    svd.setThreshold(RealScalar(1e-8));
+  else if (internal::is_same<RealScalar, float>::value)
+    svd.setThreshold(RealScalar(2e-4));
 
   SolutionType x = svd.solve(rhs);
-   
-  RealScalar residual = (m*x-rhs).norm();
+
+  RealScalar residual = (m * x - rhs).norm();
   RealScalar rhs_norm = rhs.norm();
-  if(!test_isMuchSmallerThan(residual,rhs.norm()))
-  {
+  if (!test_isMuchSmallerThan(residual, rhs.norm())) {
     // ^^^ If the residual is very small, then we have an exact solution, so we are already good.
-    
+
     // evaluate normal equation which works also for least-squares solutions
-    if(internal::is_same<RealScalar,double>::value || svd.rank()==m.diagonal().size())
-    {
+    if (internal::is_same<RealScalar, double>::value || svd.rank() == m.diagonal().size()) {
       using std::sqrt;
       // This test is not stable with single precision.
-      // This is probably because squaring m signicantly affects the precision.      
-      if(internal::is_same<RealScalar,float>::value) ++g_test_level;
-      
-      VERIFY_IS_APPROX(m.adjoint()*(m*x),m.adjoint()*rhs);
-      
-      if(internal::is_same<RealScalar,float>::value) --g_test_level;
+      // This is probably because squaring m signicantly affects the precision.
+      if (internal::is_same<RealScalar, float>::value) ++g_test_level;
+
+      VERIFY_IS_APPROX(m.adjoint() * (m * x), m.adjoint() * rhs);
+
+      if (internal::is_same<RealScalar, float>::value) --g_test_level;
     }
-    
+
     // Check that there is no significantly better solution in the neighborhood of x
-    for(Index k=0;k<x.rows();++k)
-    {
+    for (Index k = 0; k < x.rows(); ++k) {
       using std::abs;
-      
+
       SolutionType y(x);
-      y.row(k) = (RealScalar(1)+2*NumTraits<RealScalar>::epsilon())*x.row(k);
-      RealScalar residual_y = (m*y-rhs).norm();
-      VERIFY( test_isMuchSmallerThan(abs(residual_y-residual), rhs_norm) || residual < residual_y );
-      if(internal::is_same<RealScalar,float>::value) ++g_test_level;
-      VERIFY( test_isApprox(residual_y,residual) || residual < residual_y );
-      if(internal::is_same<RealScalar,float>::value) --g_test_level;
-      
-      y.row(k) = (RealScalar(1)-2*NumTraits<RealScalar>::epsilon())*x.row(k);
-      residual_y = (m*y-rhs).norm();
-      VERIFY( test_isMuchSmallerThan(abs(residual_y-residual), rhs_norm) || residual < residual_y );
-      if(internal::is_same<RealScalar,float>::value) ++g_test_level;
-      VERIFY( test_isApprox(residual_y,residual) || residual < residual_y );
-      if(internal::is_same<RealScalar,float>::value) --g_test_level;
+      y.row(k) = (RealScalar(1) + 2 * NumTraits<RealScalar>::epsilon()) * x.row(k);
+      RealScalar residual_y = (m * y - rhs).norm();
+      VERIFY(test_isMuchSmallerThan(abs(residual_y - residual), rhs_norm) || residual < residual_y);
+      if (internal::is_same<RealScalar, float>::value) ++g_test_level;
+      VERIFY(test_isApprox(residual_y, residual) || residual < residual_y);
+      if (internal::is_same<RealScalar, float>::value) --g_test_level;
+
+      y.row(k) = (RealScalar(1) - 2 * NumTraits<RealScalar>::epsilon()) * x.row(k);
+      residual_y = (m * y - rhs).norm();
+      VERIFY(test_isMuchSmallerThan(abs(residual_y - residual), rhs_norm) || residual < residual_y);
+      if (internal::is_same<RealScalar, float>::value) ++g_test_level;
+      VERIFY(test_isApprox(residual_y, residual) || residual < residual_y);
+      if (internal::is_same<RealScalar, float>::value) --g_test_level;
     }
   }
 }
@@ -166,83 +160,84 @@ void svd_min_norm(const MatrixType& m) {
   typedef typename MatrixType::Scalar Scalar;
   Index cols = m.cols();
 
-  enum {
-    ColsAtCompileTime = MatrixType::ColsAtCompileTime
-  };
+  enum { ColsAtCompileTime = MatrixType::ColsAtCompileTime };
 
   typedef Matrix<Scalar, ColsAtCompileTime, Dynamic> SolutionType;
 
   // generate a full-rank m x n problem with m<n
   enum {
-    RankAtCompileTime2 = ColsAtCompileTime==Dynamic ? Dynamic : (ColsAtCompileTime)/2+1,
-    RowsAtCompileTime3 = ColsAtCompileTime==Dynamic ? Dynamic : ColsAtCompileTime+1
+    RankAtCompileTime2 = ColsAtCompileTime == Dynamic ? Dynamic : (ColsAtCompileTime) / 2 + 1,
+    RowsAtCompileTime3 = ColsAtCompileTime == Dynamic ? Dynamic : ColsAtCompileTime + 1
   };
   typedef Matrix<Scalar, RankAtCompileTime2, ColsAtCompileTime> MatrixType2;
   typedef Matrix<Scalar, RankAtCompileTime2, 1> RhsType2;
   typedef Matrix<Scalar, ColsAtCompileTime, RankAtCompileTime2> MatrixType2T;
-  Index rank = RankAtCompileTime2==Dynamic ? internal::random<Index>(1,cols) : Index(RankAtCompileTime2);
-  MatrixType2 m2(rank,cols);
+  Index rank = RankAtCompileTime2 == Dynamic ? internal::random<Index>(1, cols) : Index(RankAtCompileTime2);
+  MatrixType2 m2(rank, cols);
   int guard = 0;
   do {
     m2.setRandom();
-  } while(SVD_FOR_MIN_NORM(MatrixType2)(m2).setThreshold(test_precision<Scalar>()).rank()!=rank && (++guard)<10);
-  VERIFY(guard<10);
+  } while (SVD_FOR_MIN_NORM(MatrixType2)(m2).setThreshold(test_precision<Scalar>()).rank() != rank && (++guard) < 10);
+  VERIFY(guard < 10);
 
   RhsType2 rhs2 = RhsType2::Random(rank);
   // use QR to find a reference minimal norm solution
   HouseholderQR<MatrixType2T> qr(m2.adjoint());
-  Matrix<Scalar,Dynamic,1> tmp = qr.matrixQR().topLeftCorner(rank,rank).template triangularView<Upper>().adjoint().solve(rhs2);
+  Matrix<Scalar, Dynamic, 1> tmp =
+      qr.matrixQR().topLeftCorner(rank, rank).template triangularView<Upper>().adjoint().solve(rhs2);
   tmp.conservativeResize(cols);
-  tmp.tail(cols-rank).setZero();
+  tmp.tail(cols - rank).setZero();
   SolutionType x21 = qr.householderQ() * tmp;
   // now check with SVD
   SVD_STATIC_OPTIONS(MatrixType2, Options) svd2(m2);
   SolutionType x22 = svd2.solve(rhs2);
-  VERIFY_IS_APPROX(m2*x21, rhs2);
-  VERIFY_IS_APPROX(m2*x22, rhs2);
+  VERIFY_IS_APPROX(m2 * x21, rhs2);
+  VERIFY_IS_APPROX(m2 * x22, rhs2);
   VERIFY_IS_APPROX(x21, x22);
 
   // Now check with a rank deficient matrix
   typedef Matrix<Scalar, RowsAtCompileTime3, ColsAtCompileTime> MatrixType3;
   typedef Matrix<Scalar, RowsAtCompileTime3, 1> RhsType3;
-  Index rows3 = RowsAtCompileTime3==Dynamic ? internal::random<Index>(rank+1,2*cols) : Index(RowsAtCompileTime3);
-  Matrix<Scalar,RowsAtCompileTime3,Dynamic> C = Matrix<Scalar,RowsAtCompileTime3,Dynamic>::Random(rows3,rank);
+  Index rows3 = RowsAtCompileTime3 == Dynamic ? internal::random<Index>(rank + 1, 2 * cols) : Index(RowsAtCompileTime3);
+  Matrix<Scalar, RowsAtCompileTime3, Dynamic> C = Matrix<Scalar, RowsAtCompileTime3, Dynamic>::Random(rows3, rank);
   MatrixType3 m3 = C * m2;
   RhsType3 rhs3 = C * rhs2;
   SVD_STATIC_OPTIONS(MatrixType3, Options) svd3(m3);
   SolutionType x3 = svd3.solve(rhs3);
-  VERIFY_IS_APPROX(m3*x3, rhs3);
-  VERIFY_IS_APPROX(m3*x21, rhs3);
-  VERIFY_IS_APPROX(m2*x3, rhs2);
+  VERIFY_IS_APPROX(m3 * x3, rhs3);
+  VERIFY_IS_APPROX(m3 * x21, rhs3);
+  VERIFY_IS_APPROX(m2 * x3, rhs2);
   VERIFY_IS_APPROX(x21, x3);
 }
 
-template<typename MatrixType, typename SolverType>
+template <typename MatrixType, typename SolverType>
 void svd_test_solvers(const MatrixType& m, const SolverType& solver) {
-    Index rows, cols, cols2;
+  Index rows, cols, cols2;
 
-    rows = m.rows();
-    cols = m.cols();
+  rows = m.rows();
+  cols = m.cols();
 
-    if(MatrixType::ColsAtCompileTime==Dynamic)
-    {
-      cols2 = internal::random<int>(2,EIGEN_TEST_MAX_SIZE);
-    }
-    else
-    {
-      cols2 = cols;
-    }
-    typedef Matrix<typename MatrixType::Scalar, MatrixType::ColsAtCompileTime, MatrixType::ColsAtCompileTime> CMatrixType;
-    check_solverbase<CMatrixType, MatrixType>(m, solver, rows, cols, cols2);
+  if (MatrixType::ColsAtCompileTime == Dynamic) {
+    cols2 = internal::random<int>(2, EIGEN_TEST_MAX_SIZE);
+  } else {
+    cols2 = cols;
+  }
+  typedef Matrix<typename MatrixType::Scalar, MatrixType::ColsAtCompileTime, MatrixType::ColsAtCompileTime> CMatrixType;
+  check_solverbase<CMatrixType, MatrixType>(m, solver, rows, cols, cols2);
 }
 
 // work around stupid msvc error when constructing at compile time an expression that involves
 // a division by zero, even if the numeric type has floating point
-template<typename Scalar>
-EIGEN_DONT_INLINE Scalar zero() { return Scalar(0); }
+template <typename Scalar>
+EIGEN_DONT_INLINE Scalar zero() {
+  return Scalar(0);
+}
 
 // workaround aggressive optimization in ICC
-template<typename T> EIGEN_DONT_INLINE  T sub(T a, T b) { return a - b; }
+template <typename T>
+EIGEN_DONT_INLINE T sub(T a, T b) {
+  return a - b;
+}
 
 // This function verifies we don't iterate infinitely on nan/inf values,
 // and that info() returns InvalidInput.
@@ -258,86 +253,78 @@ void svd_inf_nan() {
   Scalar nan = std::numeric_limits<Scalar>::quiet_NaN();
   VERIFY(nan != nan);
   svd.compute(MatrixType::Constant(10, 10, nan));
-  VERIFY(svd.info() == InvalidInput);  
+  VERIFY(svd.info() == InvalidInput);
 
-  MatrixType m = MatrixType::Zero(10,10);
-  m(internal::random<int>(0,9), internal::random<int>(0,9)) = some_inf;
+  MatrixType m = MatrixType::Zero(10, 10);
+  m(internal::random<int>(0, 9), internal::random<int>(0, 9)) = some_inf;
   svd.compute(m);
   VERIFY(svd.info() == InvalidInput);
 
-  m = MatrixType::Zero(10,10);
-  m(internal::random<int>(0,9), internal::random<int>(0,9)) = nan;
+  m = MatrixType::Zero(10, 10);
+  m(internal::random<int>(0, 9), internal::random<int>(0, 9)) = nan;
   svd.compute(m);
   VERIFY(svd.info() == InvalidInput);
-  
+
   // regression test for bug 791
-  m.resize(3,3);
-  m << 0,    2*NumTraits<Scalar>::epsilon(),  0.5,
-       0,   -0.5,                             0,
-       nan,  0,                               0;
+  m.resize(3, 3);
+  m << 0, 2 * NumTraits<Scalar>::epsilon(), 0.5, 0, -0.5, 0, nan, 0, 0;
   svd.compute(m);
   VERIFY(svd.info() == InvalidInput);
-  
-  m.resize(4,4);
-  m <<  1, 0, 0, 0,
-        0, 3, 1, 2e-308,
-        1, 0, 1, nan,
-        0, nan, nan, 0;
+
+  Scalar min = (std::numeric_limits<Scalar>::min)();
+  m.resize(4, 4);
+  m << 1, 0, 0, 0, 0, 3, 1, min, 1, 0, 1, nan, 0, nan, nan, 0;
   svd.compute(m);
   VERIFY(svd.info() == InvalidInput);
 }
 
 // Regression test for bug 286: JacobiSVD loops indefinitely with some
 // matrices containing denormal numbers.
-template<typename>
-void svd_underoverflow()
-{
+template <typename>
+void svd_underoverflow() {
 #if defined __INTEL_COMPILER
 // shut up warning #239: floating point underflow
 #pragma warning push
 #pragma warning disable 239
 #endif
   Matrix2d M;
-  M << -7.90884e-313, -4.94e-324,
-                 0, 5.60844e-313;
+  M << -7.90884e-313, -4.94e-324, 0, 5.60844e-313;
   SVD_STATIC_OPTIONS(Matrix2d, ComputeFullU | ComputeFullV) svd;
   svd.compute(M);
-  CALL_SUBTEST( svd_check_full(M,svd) );
-  
+  CALL_SUBTEST(svd_check_full(M, svd));
+
   // Check all 2x2 matrices made with the following coefficients:
   VectorXd value_set(9);
   value_set << 0, 1, -1, 5.60844e-313, -5.60844e-313, 4.94e-324, -4.94e-324, -4.94e-223, 4.94e-223;
-  Array4i id(0,0,0,0);
+  Array4i id(0, 0, 0, 0);
   int k = 0;
-  do
-  {
+  do {
     M << value_set(id(0)), value_set(id(1)), value_set(id(2)), value_set(id(3));
     svd.compute(M);
-    CALL_SUBTEST( svd_check_full(M,svd) );
+    CALL_SUBTEST(svd_check_full(M, svd));
 
     id(k)++;
-    if(id(k)>=value_set.size())
-    {
-      while(k<3 && id(k)>=value_set.size()) id(++k)++;
+    if (id(k) >= value_set.size()) {
+      while (k < 3 && id(k) >= value_set.size()) id(++k)++;
       id.head(k).setZero();
-      k=0;
+      k = 0;
     }
 
-  } while((id<int(value_set.size())).all());
-  
+  } while ((id < int(value_set.size())).all());
+
 #if defined __INTEL_COMPILER
 #pragma warning pop
 #endif
-  
+
   // Check for overflow:
   Matrix3d M3;
-  M3 << 4.4331978442502944e+307, -5.8585363752028680e+307,  6.4527017443412964e+307,
-        3.7841695601406358e+307,  2.4331702789740617e+306, -3.5235707140272905e+307,
-       -8.7190887618028355e+307, -7.3453213709232193e+307, -2.4367363684472105e+307;
+  M3 << 4.4331978442502944e+307, -5.8585363752028680e+307, 6.4527017443412964e+307, 3.7841695601406358e+307,
+      2.4331702789740617e+306, -3.5235707140272905e+307, -8.7190887618028355e+307, -7.3453213709232193e+307,
+      -2.4367363684472105e+307;
 
   SVD_STATIC_OPTIONS(Matrix3d, ComputeFullU | ComputeFullV) svd3;
   svd3.compute(M3);  // just check we don't loop indefinitely
-  CALL_SUBTEST( svd_check_full(M3,svd3) );
+  CALL_SUBTEST(svd_check_full(M3, svd3));
 }
 
 template <typename MatrixType>
@@ -345,28 +332,25 @@ void svd_all_trivial_2x2(void (*cb)(const MatrixType&)) {
   MatrixType M;
   VectorXd value_set(3);
   value_set << 0, 1, -1;
-  Array4i id(0,0,0,0);
+  Array4i id(0, 0, 0, 0);
   int k = 0;
-  do
-  {
+  do {
     M << value_set(id(0)), value_set(id(1)), value_set(id(2)), value_set(id(3));
 
     cb(M);
 
     id(k)++;
-    if(id(k)>=value_set.size())
-    {
-      while(k<3 && id(k)>=value_set.size()) id(++k)++;
+    if (id(k) >= value_set.size()) {
+      while (k < 3 && id(k) >= value_set.size()) id(++k)++;
       id.head(k).setZero();
-      k=0;
+      k = 0;
     }
-    
-  } while((id<int(value_set.size())).all());
+
+  } while ((id < int(value_set.size())).all());
 }
 
-template<typename>
-void svd_preallocate()
-{
+template <typename>
+void svd_preallocate() {
   Vector3f v(3.f, 2.f, 1.f);
   MatrixXf m = v.asDiagonal();
 
@@ -392,11 +376,13 @@ void svd_preallocate()
 }
 
 template <typename MatrixType, int QRPreconditioner = 0>
-void svd_verify_assert_full_only(const MatrixType& m = MatrixType()) {
+void svd_verify_assert_full_only(const MatrixType& input = MatrixType()) {
   enum { RowsAtCompileTime = MatrixType::RowsAtCompileTime };
 
   typedef Matrix<typename MatrixType::Scalar, RowsAtCompileTime, 1> RhsType;
-  RhsType rhs = RhsType::Zero(m.rows());
+  RhsType rhs = RhsType::Zero(input.rows());
+  MatrixType m(input.rows(), input.cols());
+  svd_fill_random(m);
 
   SVD_STATIC_OPTIONS(MatrixType, QRPreconditioner) svd0;
   VERIFY_RAISES_ASSERT((svd0.matrixU()));
@@ -420,11 +406,12 @@ void svd_verify_assert_full_only(const MatrixType& m = MatrixType()) {
 }
 
 template <typename MatrixType, int QRPreconditioner = 0>
-void svd_verify_assert(const MatrixType& m = MatrixType()) {
+void svd_verify_assert(const MatrixType& input = MatrixType()) {
   enum { RowsAtCompileTime = MatrixType::RowsAtCompileTime };
-
   typedef Matrix<typename MatrixType::Scalar, RowsAtCompileTime, 1> RhsType;
-  RhsType rhs = RhsType::Zero(m.rows());
+  RhsType rhs = RhsType::Zero(input.rows());
+  MatrixType m(input.rows(), input.cols());
+  svd_fill_random(m);
 
   SVD_STATIC_OPTIONS(MatrixType, QRPreconditioner | ComputeThinU) svdThinU(m);
   VERIFY_RAISES_ASSERT((svdThinU.matrixV()));
@@ -479,45 +466,15 @@ void svd_compute_checks(const MatrixType& m) {
   }
 }
 
-// Deprecated behavior.
-template <typename SvdType, typename MatrixType>
-void svd_check_runtime_options(const MatrixType& m, unsigned int computationOptions) {
-  const bool fixedRowAndThinU = SvdType::RowsAtCompileTime != Dynamic && (computationOptions & ComputeThinU) != 0 && m.cols() < m.rows();
-  const bool fixedColAndThinV = SvdType::ColsAtCompileTime != Dynamic && (computationOptions & ComputeThinV) != 0 && m.rows() < m.cols();
-  if (fixedRowAndThinU || fixedColAndThinV) {
-    VERIFY_RAISES_ASSERT(SvdType svd(m, computationOptions));
-    return;
-  }
-
-  Index diagSize = (std::min)(m.rows(), m.cols());
-
-  SvdType svd(m, computationOptions);
-  if (svd.computeU()) {
-    VERIFY(svd.matrixU().isUnitary());
-    if (computationOptions & ComputeThinU) VERIFY(svd.matrixU().cols() == diagSize);
-  }
-
-  if (svd.computeV()) {
-    VERIFY(svd.matrixV().isUnitary());
-    if (computationOptions & ComputeThinV) VERIFY(svd.matrixV().cols() == diagSize);
-  }
-  if (svd.computeU() && svd.computeV()) {
-    svd_test_solvers(m, svd);
-    svd.matrixU().isUnitary();
-    svd.matrixV().isUnitary();
-  }
-}
-
 template <typename MatrixType, int QRPreconditioner = 0>
-void svd_option_checks(const MatrixType& m) {
+void svd_thin_option_checks(const MatrixType& input) {
+  MatrixType m(input.rows(), input.cols());
+  svd_fill_random(m);
+
   svd_compute_checks<MatrixType, QRPreconditioner>(m);
   svd_compute_checks<MatrixType, QRPreconditioner | ComputeThinU>(m);
   svd_compute_checks<MatrixType, QRPreconditioner | ComputeThinV>(m);
   svd_compute_checks<MatrixType, QRPreconditioner | ComputeThinU | ComputeThinV>(m);
-
-  svd_compute_checks<MatrixType, QRPreconditioner | ComputeFullU>(m);
-  svd_compute_checks<MatrixType, QRPreconditioner | ComputeFullV>(m);
-  svd_compute_checks<MatrixType, QRPreconditioner | ComputeFullU | ComputeFullV>(m);
 
   svd_compute_checks<MatrixType, QRPreconditioner | ComputeThinU | ComputeFullV>(m);
   svd_compute_checks<MatrixType, QRPreconditioner | ComputeFullU | ComputeThinV>(m);
@@ -526,24 +483,12 @@ void svd_option_checks(const MatrixType& m) {
   FullSvdType fullSvd(m);
   svd_check_full(m, fullSvd);
   svd_compare_to_full<MatrixType, FullSvdType, QRPreconditioner | ComputeFullU | ComputeFullV>(m, fullSvd);
-
-  // Deprecated behavior.
-  typedef SVD_STATIC_OPTIONS(MatrixType, QRPreconditioner) DynamicSvd;
-  svd_check_runtime_options<DynamicSvd>(m, 0);
-  svd_check_runtime_options<DynamicSvd>(m, ComputeThinU);
-  svd_check_runtime_options<DynamicSvd>(m, ComputeThinV);
-  svd_check_runtime_options<DynamicSvd>(m, ComputeThinU | ComputeThinV);
-
-  svd_check_runtime_options<DynamicSvd>(m, ComputeFullU);
-  svd_check_runtime_options<DynamicSvd>(m, ComputeFullV);
-  svd_check_runtime_options<DynamicSvd>(m, ComputeFullU | ComputeFullV);
-
-  svd_check_runtime_options<DynamicSvd>(m, ComputeThinU | ComputeFullV);
-  svd_check_runtime_options<DynamicSvd>(m, ComputeFullU | ComputeThinV);
 }
 
 template <typename MatrixType, int QRPreconditioner = 0>
-void svd_option_checks_full_only(const MatrixType& m) {
+void svd_option_checks_full_only(const MatrixType& input) {
+  MatrixType m(input.rows(), input.cols());
+  svd_fill_random(m);
   svd_compute_checks<MatrixType, QRPreconditioner | ComputeFullU>(m);
   svd_compute_checks<MatrixType, QRPreconditioner | ComputeFullV>(m);
   svd_compute_checks<MatrixType, QRPreconditioner | ComputeFullU | ComputeFullV>(m);
@@ -563,12 +508,14 @@ void svd_check_max_size_matrix(int initialRows, int initialCols) {
   int cols = MaxColsAtCompileTime == Dynamic ? initialCols : (std::min)(initialCols, (int)MaxColsAtCompileTime);
 
   MatrixType m(rows, cols);
+  svd_fill_random(m);
   SVD_STATIC_OPTIONS(MatrixType, QRPreconditioner | ComputeThinU | ComputeThinV) thinSvd(m);
   SVD_STATIC_OPTIONS(MatrixType, QRPreconditioner | ComputeThinU | ComputeFullV) mixedSvd1(m);
   SVD_STATIC_OPTIONS(MatrixType, QRPreconditioner | ComputeFullU | ComputeThinV) mixedSvd2(m);
   SVD_STATIC_OPTIONS(MatrixType, QRPreconditioner | ComputeFullU | ComputeFullV) fullSvd(m);
 
   MatrixType n(MaxRowsAtCompileTime, MaxColsAtCompileTime);
+  svd_fill_random(n);
   thinSvd.compute(n);
   mixedSvd1.compute(n);
   mixedSvd2.compute(n);
@@ -583,18 +530,15 @@ void svd_check_max_size_matrix(int initialRows, int initialCols) {
 }
 
 template <typename SvdType, typename MatrixType>
-void svd_verify_constructor_options_assert(const MatrixType& m, bool fullOnly = false) {
+void svd_verify_constructor_options_assert(const MatrixType& m) {
   typedef typename MatrixType::Scalar Scalar;
   Index rows = m.rows();
-  Index cols = m.cols();
 
-  enum {
-    RowsAtCompileTime = MatrixType::RowsAtCompileTime,
-    ColsAtCompileTime = MatrixType::ColsAtCompileTime
-  };
+  enum { RowsAtCompileTime = MatrixType::RowsAtCompileTime, ColsAtCompileTime = MatrixType::ColsAtCompileTime };
 
   typedef Matrix<Scalar, RowsAtCompileTime, 1> RhsType;
   RhsType rhs(rows);
+  svd_fill_random(rhs);
   SvdType svd;
   VERIFY_RAISES_ASSERT(svd.matrixU())
   VERIFY_RAISES_ASSERT(svd.singularValues())
@@ -602,37 +546,6 @@ void svd_verify_constructor_options_assert(const MatrixType& m, bool fullOnly = 
   VERIFY_RAISES_ASSERT(svd.solve(rhs))
   VERIFY_RAISES_ASSERT(svd.transpose().solve(rhs))
   VERIFY_RAISES_ASSERT(svd.adjoint().solve(rhs))
-
-  MatrixType a = MatrixType::Zero(rows, cols);
-  SvdType svd2(a, 0);
-  VERIFY_RAISES_ASSERT(svd2.matrixU())
-  VERIFY_RAISES_ASSERT(svd2.matrixV())
-  svd2.singularValues();
-  VERIFY_RAISES_ASSERT(svd2.solve(rhs))
-
-  // Deprecated behavior.
-  SvdType svd3(a, ComputeFullU);
-  svd3.matrixU();
-  VERIFY_RAISES_ASSERT(svd3.matrixV())
-  VERIFY_RAISES_ASSERT(svd3.solve(rhs))
-
-  SvdType svd4(a, ComputeFullV);
-  svd4.matrixV();
-  VERIFY_RAISES_ASSERT(svd4.matrixU())
-  VERIFY_RAISES_ASSERT(svd4.solve(rhs))
-
-  if (!fullOnly && ColsAtCompileTime == Dynamic)
-  {
-    SvdType svd5(a, ComputeThinU);
-    svd5.matrixU();
-    VERIFY_RAISES_ASSERT(svd5.matrixV())
-    VERIFY_RAISES_ASSERT(svd5.solve(rhs))
-
-    SvdType svd6(a, ComputeThinV);
-    svd6.matrixV();
-    VERIFY_RAISES_ASSERT(svd6.matrixU())
-    VERIFY_RAISES_ASSERT(svd6.solve(rhs))
-  }
 }
 
 #undef SVD_DEFAULT

@@ -9,38 +9,30 @@
     - gemmlowp
     - ruy
     - neon2sse
+    - ml\_dtypes
     - XNNPACK
         - pthreadpool
             - FXdiv
         - cpuinfo
-            - clog
         - FP16
             - psimd
 
 ## abseil
 
 - Upstream: <https://github.com/abseil/abseil-cpp>
-- Version: 20220623.0 (273292d1cfc0a94a65082ee350509af1d113344d)
+- Version: 20230802.1 (fb3621f4f897824c0dbe0615fa94543df6192f30)
 - License: Apache 2.0
-- Patch: patches/abseil.patch
-
-## clog
-
-- Upstream: <https://github.com/pytorch/cpuinfo/tree/main/deps/clog>
-- Version: git (5e63739504f0f8e18e941bd63b2d6d42536c7d90)
-- License: BSD-2-Clause
 
 ## cpuinfo
 
 - Upstream: <https://github.com/pytorch/cpuinfo>
-- Version: git (5e63739504f0f8e18e941bd63b2d6d42536c7d90)
+- Version: git (d6860c477c99f1fce9e28eb206891af3c0e1a1d7)
 - License: BSD-2-Clause
-- Patch: patches/cpuinfo.patch
 
 ## eigen
 
 - Upstream: <https://gitlab.com/libeigen/eigen>
-- Version: git (3bb6a48d8c171cf20b5f8e48bfb4e424fbd4f79e)
+- Version: git (c1d637433e3b3f9012b226c2c9125c494b470ae6)
 - License: Apache 2.0
 - Patch: patches/eigen.patch
 
@@ -59,20 +51,20 @@
 ## flatbuffers
 
 - Upstream: <https://github.com/google/flatbuffers>
-- Version: v2.0.6 (615616cb5549a34bdf288c04bc1b94bd7a65c396)
+- Version: v24.3.25 (595bf0007ab1929570c7671f091313c8fc20644e)
 - License: Apache 2.0
 - Patch: patches/flatbuffers.patch
 
 ## gemmlowp
 
 - Upstream: <https://github.com/google/gemmlowp>
-- Version: git (fda83bdc38b118cc6b56753bd540caa49e570745)
+- Version: git (16e8662c34917be0065110bfcd9cc27d30f52fdf)
 - License: Apache 2.0
 
 ## ruy
 
 - Upstream: <https://github.com/google/ruy>
-- Version: git (841ea4172ba904fe3536789497f9565f2ef64129)
+- Version: git (3286a34cc8de6149ac6844107dfdffac91531e72)
 - License: Apache 2.0
 
 ## psimd
@@ -98,7 +90,7 @@
 ## pthreadpool
 
 - Upstream: <https://github.com/Maratyszcza/pthreadpool>
-- Version: git (545ebe9f225aec6dca49109516fac02e973a3de2)
+- Version: git (4fe0e1e183925bf8cfa6aae24237e724a96479b8)
 - License: BSD-2-Clause
 
 ## neon2sse
@@ -108,16 +100,20 @@
 - License: BSD-2-Clause
 - Patch: patches/neon2sse.patch
 
+## ml\_dtypes
+
+- Upstream: <https://github.com/jax-ml/ml_dtypes>
+- Version: git (24084d9ed2c3d45bf83b7a9bff833aa185bf9172)
+- License: Apache 2.0
+
 ## XNNPACK
 
 - Upstream: <https://github.com/google/XNNPACK>
-- Version: git (e8f74a9763aa36559980a0c2f37f587794995622)
+- Version: git (50037f8072731a2cc30a961b96e199ad691887e4)
 - License: BSD-3-Clause
-- Patch: patches/XNNPACK.patch
 
 ## tensorflow
 
 - Upstream: <https://github.com/tensorflow/tensorflow>
-- Version: v2.11.0 (d5b57ca93e506df258271ea00fc29cf98383a374)
+- Version: git (ce41ee4f396bde91aac3360197708ae5ec7fdee8)
 - License: Apache 2.0
-- Patch: patches/tensorflow.patch

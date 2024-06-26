@@ -5,23 +5,22 @@
 
 #pragma once
 
-#include <gtest/gtest.h>
+#include <xnnpack/aligned-allocator.h>
+#include <xnnpack/microfnptr.h>
+#include <xnnpack/microparams.h>
 
 #include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
 #include <random>
 #include <vector>
 
-#include <fp16.h>
-
-#include <xnnpack.h>
-#include <xnnpack/aligned-allocator.h>
-#include <xnnpack/microfnptr.h>
-#include <xnnpack/microparams-init.h>
-
+#include "replicable_random_device.h"
+#include <gtest/gtest.h>
+#include <fp16/fp16.h>
 
 static inline bool is_fp16_zero(uint16_t x) {
   const uint16_t two_x = x + x;
@@ -30,58 +29,58 @@ static inline bool is_fp16_zero(uint16_t x) {
 
 class SpMMMicrokernelTester {
  public:
-  inline SpMMMicrokernelTester& mr(size_t mr) {
+  SpMMMicrokernelTester& mr(size_t mr) {
     this->mr_ = mr;
     return *this;
   }
 
-  inline size_t mr() const {
+  size_t mr() const {
     return this->mr_;
   }
 
-  inline SpMMMicrokernelTester& nr(size_t nr) {
+  SpMMMicrokernelTester& nr(size_t nr) {
     this->nr_ = nr;
     return *this;
   }
 
-  inline size_t nr() const {
+  size_t nr() const {
     return this->nr_;
   }
 
-  inline SpMMMicrokernelTester& m(size_t m) {
+  SpMMMicrokernelTester& m(size_t m) {
     this->m_ = m;
     return *this;
   }
 
-  inline size_t m() const {
+  size_t m() const {
     return this->m_;
   }
 
-  inline SpMMMicrokernelTester& n(size_t n) {
+  SpMMMicrokernelTester& n(size_t n) {
     this->n_ = n;
     return *this;
   }
 
-  inline size_t n() const {
+  size_t n() const {
     return this->n_;
   }
 
-  inline SpMMMicrokernelTester& k(size_t k) {
+  SpMMMicrokernelTester& k(size_t k) {
     this->k_ = k;
     return *this;
   }
 
-  inline size_t k() const {
+  size_t k() const {
     return this->k_;
   }
 
-  inline SpMMMicrokernelTester& output_stride(size_t output_stride) {
+  SpMMMicrokernelTester& output_stride(size_t output_stride) {
     assert(output_stride != 0);
     this->output_stride_ = output_stride;
     return *this;
   }
 
-  inline size_t output_stride() const {
+  size_t output_stride() const {
     if (this->output_stride_ == 0) {
       return m();
     } else {
@@ -90,49 +89,48 @@ class SpMMMicrokernelTester {
     }
   }
 
-  inline SpMMMicrokernelTester& sparsity(float sparsity) {
+  SpMMMicrokernelTester& sparsity(float sparsity) {
     this->sparsity_ = sparsity;
     return *this;
   }
 
-  inline float sparsity() const {
+  float sparsity() const {
     return this->sparsity_;
   }
 
-  inline SpMMMicrokernelTester& qmin(uint8_t qmin) {
+  SpMMMicrokernelTester& qmin(uint8_t qmin) {
     this->qmin_ = qmin;
     return *this;
   }
 
-  inline uint8_t qmin() const {
+  uint8_t qmin() const {
     return this->qmin_;
   }
 
-  inline SpMMMicrokernelTester& qmax(uint8_t qmax) {
+  SpMMMicrokernelTester& qmax(uint8_t qmax) {
     this->qmax_ = qmax;
     return *this;
   }
 
-  inline uint8_t qmax() const {
+  uint8_t qmax() const {
     return this->qmax_;
   }
 
-  inline SpMMMicrokernelTester& iterations(size_t iterations) {
+  SpMMMicrokernelTester& iterations(size_t iterations) {
     this->iterations_ = iterations;
     return *this;
   }
 
-  inline size_t iterations() const {
+  size_t iterations() const {
     return this->iterations_;
   }
 
-  void Test(xnn_f32_spmm_minmax_ukernel_function spmm, xnn_init_f32_minmax_params_fn init_params) const {
+  void Test(xnn_f32_spmm_minmax_ukernel_fn spmm, xnn_init_f32_minmax_params_fn init_params) const {
     ASSERT_GE(m(), 1);
     ASSERT_GE(n(), 1);
     ASSERT_GE(k(), 1);
 
-    std::random_device random_device;
-    auto rng = std::mt19937(random_device());
+    xnnpack::ReplicableRandomDevice rng;
     std::uniform_real_distribution<float> f32dist;
     std::uniform_real_distribution<float> pdist;
 
@@ -291,13 +289,12 @@ class SpMMMicrokernelTester {
     }
   }
 
-  void Test(xnn_f16_spmm_minmax_ukernel_function spmm, xnn_init_f16_minmax_params_fn init_params) const {
+  void Test(xnn_f16_spmm_minmax_ukernel_fn spmm, xnn_init_f16_minmax_params_fn init_params) const {
     ASSERT_GE(m(), 1);
     ASSERT_GE(n(), 1);
     ASSERT_GE(k(), 1);
 
-    std::random_device random_device;
-    auto rng = std::mt19937(random_device());
+    xnnpack::ReplicableRandomDevice rng;
     std::uniform_real_distribution<float> f32dist;
     std::uniform_real_distribution<float> pdist;
 
@@ -318,7 +315,7 @@ class SpMMMicrokernelTester {
       std::generate(input.begin(), input.end(), [&]() { return fp16_ieee_from_fp32_value(f32dist(rng)); });
       std::generate(b.begin(), b.end(), [&]() { return fp16_ieee_from_fp32_value(f32dist(rng)); });
       std::generate(bias.begin(), bias.end(), [&]() { return fp16_ieee_from_fp32_value(f32dist(rng)); });
-      std::fill(output.begin(), output.end(), 0xC000);
+      std::fill(output.begin(), output.end(), UINT16_C(0x7E00) /* NaN */);
       std::fill(output_ref.begin(), output_ref.end(), 0.0f);
       std::fill(nmap.begin(), nmap.end(), 0);
       std::fill(dmap.begin(), dmap.end(), 0);
