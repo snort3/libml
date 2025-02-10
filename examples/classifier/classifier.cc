@@ -1,5 +1,5 @@
 //--------------------------------------------------------------------------
-// Copyright (C) 2023-2023 Cisco and/or its affiliates. All rights reserved.
+// Copyright (C) 2023-2025 Cisco and/or its affiliates. All rights reserved.
 //
 // This program is free software; you can redistribute it and/or modify it
 // under the terms of the GNU General Public License Version 2 as published
@@ -30,11 +30,11 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    std::cout << "Using LibML version " << libml_version() << "\n";
+    std::cout << "Using LibML version " << libml::version() << "\n";
 
     std::string model_path(argv[1]);
 
-    BinaryClassifier classifier;
+    libml::BinaryClassifier classifier;
 
     if(!classifier.buildFromFile(model_path))
     {
@@ -54,7 +54,7 @@ int main(int argc, char** argv)
     std::cout << "Results\n"
               << "-------\n"
               << " input: '" << input << "'\n"
-              << "output: "  << output << "%\n";
+              << "output: "  << output*100.0 << "%\n";
 
     return 0;
 }

@@ -1,5 +1,5 @@
 //--------------------------------------------------------------------------
-// Copyright (C) 2023-2024 Cisco and/or its affiliates. All rights reserved.
+// Copyright (C) 2023-2025 Cisco and/or its affiliates. All rights reserved.
 //
 // This program is free software; you can redistribute it and/or modify it
 // under the terms of the GNU General Public License Version 2 as published
@@ -22,8 +22,8 @@
 #include <cstddef>
 #include <memory>
 #include <string>
-
-const char* libml_version();
+#include <utility>
+#include <vector>
 
 namespace tflite::impl
 {
@@ -31,20 +31,57 @@ namespace tflite::impl
     class Interpreter;
 }
 
+namespace libml
+{
+
+const char* version();
+
 class BinaryClassifier
 {
 public:
     BinaryClassifier();
     ~BinaryClassifier();
 
+    BinaryClassifier(BinaryClassifier&) = delete;
+
+    BinaryClassifier(BinaryClassifier&&) noexcept;
+    BinaryClassifier& operator=(BinaryClassifier&&) noexcept;
+
     bool build(std::string);
     bool buildFromFile(const std::string&);
 
     bool run(const char*, size_t, float&);
 
+    friend void swap(BinaryClassifier& l, BinaryClassifier& r) noexcept
+    {
+        std::swap(l.src, r.src);
+        std::swap(l.input_size, r.input_size);
+        std::swap(l.lowercase, r.lowercase);
+
+        std::swap(l.model, r.model);
+        std::swap(l.interpreter, r.interpreter);
+    }
+
+    friend class BinaryClassifierSet;
+
 private:
     std::string src;
     size_t input_size = 0;
+    bool lowercase = false;
+
     std::unique_ptr<tflite::impl::FlatBufferModel> model;
     std::unique_ptr<tflite::impl::Interpreter> interpreter;
 };
+
+class BinaryClassifierSet
+{
+public:
+    bool build(std::vector<std::string>);
+
+    bool run(const char*, size_t, float&);
+
+private:
+    std::vector<BinaryClassifier> classifiers;
+};
+
+}

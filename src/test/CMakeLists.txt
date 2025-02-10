@@ -1,4 +1,6 @@
 add_cpputest(binary_classifier_test
+    SOURCES
+        "${PROJECT_SOURCE_DIR}/src/util.cc"
     INCLUDES
         "${PROJECT_SOURCE_DIR}/src"
     LIBS
@@ -6,6 +8,6 @@ add_cpputest(binary_classifier_test
 )
 
 file(
-    COPY test.model
+    COPY models
     DESTINATION "${CMAKE_CURRENT_BINARY_DIR}"
 )

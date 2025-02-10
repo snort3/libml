@@ -1,0 +1,7 @@
+namespace libml;
+
+table Metadata {
+    lowercase:bool = false;
+}
+
+root_type Metadata;

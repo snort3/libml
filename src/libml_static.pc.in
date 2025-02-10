@@ -1,0 +1,10 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+exec_prefix=${prefix}
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+Name: libml_static
+Description: Machine Learning Static Library
+Version: @VERSION@
+Libs: -L${libdir} -lml_static
+Cflags: -I${includedir}

@@ -1,5 +1,5 @@
 //--------------------------------------------------------------------------
-// Copyright (C) 2023-2024 Cisco and/or its affiliates. All rights reserved.
+// Copyright (C) 2023-2025 Cisco and/or its affiliates. All rights reserved.
 //
 // This program is free software; you can redistribute it and/or modify it
 // under the terms of the GNU General Public License Version 2 as published
@@ -17,9 +17,12 @@
 //--------------------------------------------------------------------------
 // libml.cc author Brandon Stultz <brastult@cisco.com>
 
+#include <algorithm>
 #include <cstdint>
 #include <utility>
 
+#include "absl/strings/ascii.h"
+#include "flatbuffers/flatbuffers.h"
 #include "tensorflow/lite/interpreter.h"
 #include "tensorflow/lite/kernels/kernel_util.h"
 #include "tensorflow/lite/kernels/register.h"
@@ -27,36 +30,75 @@
 #include "tensorflow/lite/model.h"
 
 #include "libml.h"
+#include "metadata_schema_generated.h"
 #include "util.h"
 #include "version.h"
 
-using namespace tflite;
+using namespace libml;
 
-const char* libml_version()
+static constexpr char MetadataBufferName[] = "LIBML_METADATA";
+
+const char* libml::version()
 { return VERSION; }
 
 BinaryClassifier::BinaryClassifier() = default;
 BinaryClassifier::~BinaryClassifier() = default;
 
+BinaryClassifier::BinaryClassifier(BinaryClassifier&& other) noexcept
+{
+    swap(*this, other);
+}
+
+BinaryClassifier& BinaryClassifier::operator=(
+    BinaryClassifier&& other) noexcept
+{
+    swap(*this, other);
+    return *this;
+}
+
 bool BinaryClassifier::build(std::string in)
 {
     interpreter.reset();
 
-    LoggerOptions::SetMinimumLogSeverity(TFLITE_LOG_ERROR);
+    tflite::LoggerOptions::SetMinimumLogSeverity(
+        tflite::TFLITE_LOG_ERROR);
 
     src = std::move(in);
 
-    model = FlatBufferModel::VerifyAndBuildFromBuffer(src.data(),
-        src.size());
+    model = tflite::FlatBufferModel::VerifyAndBuildFromBuffer(
+        src.data(), src.size());
 
-    if(model == nullptr)
+    if(!model)
         return false;
 
-    ops::builtin::BuiltinOpResolver resolver;
+    auto md_map = model->ReadAllMetadata();
+    auto search = md_map.find(MetadataBufferName);
 
-    std::unique_ptr<Interpreter> check;
+    if(search != md_map.end())
+    {
+        const std::string& val = search->second;
+        const uint8_t* buf = (const uint8_t*)val.data();
+        size_t len = val.size();
 
-    InterpreterBuilder builder(*model, resolver);
+        flatbuffers::Verifier::Options opts;
+        auto verifier = flatbuffers::Verifier(buf, len, opts);
+
+        if(!VerifyMetadataBuffer(verifier))
+            return false;
+
+        const Metadata* md = GetMetadata(buf);
+
+        if(!md)
+            return false;
+
+        lowercase = md->lowercase();
+    }
+
+    tflite::ops::builtin::BuiltinOpResolver resolver;
+
+    std::unique_ptr<tflite::Interpreter> check;
+
+    tflite::InterpreterBuilder builder(*model, resolver);
 
     if(builder(&check) != kTfLiteOk)
         return false;
@@ -72,14 +114,14 @@ bool BinaryClassifier::build(std::string in)
         output_tensor->type != kTfLiteFloat32)
         return false;
 
-    int64_t sz = NumElements(input_tensor);
+    int64_t sz = tflite::NumElements(input_tensor);
 
     if(sz <= 0)
         return false;
 
     input_size = (size_t)sz;
 
-    if(NumElements(output_tensor) != 1)
+    if(tflite::NumElements(output_tensor) != 1)
         return false;
 
     if(check->AllocateTensors() != kTfLiteOk)
@@ -105,10 +147,7 @@ bool BinaryClassifier::buildFromFile(const std::string& path)
 bool BinaryClassifier::run(const char* buffer,
     size_t buffer_size, float& output)
 {
-    if(buffer_size == 0)
-        return false;
-
-    if(interpreter == nullptr)
+    if(!interpreter || buffer_size == 0)
         return false;
 
     if(interpreter->ResetVariableTensors() != kTfLiteOk)
@@ -126,7 +165,9 @@ bool BinaryClassifier::run(const char* buffer,
 
     for(size_t i = 0; i < buffer_size; i++)
     {
-        uint8_t byte = (uint8_t)buffer[i];
+        uint8_t byte = uint8_t(lowercase ?
+            absl::ascii_tolower((unsigned char)buffer[i]) : buffer[i]);
+
         input[pad_size + i] = (float)byte;
     }
 
@@ -135,4 +176,56 @@ bool BinaryClassifier::run(const char* buffer,
 
     output = *interpreter->typed_output_tensor<float>(0);
     return true;
+}
+
+bool BinaryClassifierSet::build(std::vector<std::string> models)
+{
+    classifiers.clear();
+
+    if(models.empty())
+        return false;
+
+    std::vector<BinaryClassifier> vec;
+
+    for(auto& model : models)
+    {
+        BinaryClassifier classifier;
+
+        if(!classifier.build(std::move(model)))
+            return false;
+
+        auto it = std::find_if(vec.begin(), vec.end(),
+            [&](const BinaryClassifier& c)
+            { return c.input_size == classifier.input_size; });
+
+        if(it != vec.end())
+        {
+            *it = std::move(classifier);
+            continue;
+        }
+
+        vec.push_back(std::move(classifier));
+    }
+
+    std::sort(vec.begin(), vec.end(),
+        [](const BinaryClassifier& l, const BinaryClassifier& r)
+        { return l.input_size < r.input_size; });
+
+    classifiers = std::move(vec);
+    return true;
+}
+
+bool BinaryClassifierSet::run(const char* buffer,
+    size_t buffer_size, float& output)
+{
+    if(classifiers.empty() || buffer_size == 0)
+        return false;
+
+    for(auto& classifier : classifiers)
+    {
+        if(classifier.input_size >= buffer_size)
+            return classifier.run(buffer, buffer_size, output);
+    }
+
+    return classifiers.back().run(buffer, buffer_size, output);
 }

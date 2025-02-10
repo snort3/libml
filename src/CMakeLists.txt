@@ -1,6 +1,8 @@
 include(BundleStaticLibrary)
 
 configure_file(version.h.in version.h)
+configure_file(libml.pc.in libml.pc @ONLY)
+configure_file(libml_static.pc.in libml_static.pc @ONLY)
 
 set(LIBML_API_SOURCES
     libml.cc
@@ -53,13 +55,21 @@ set(BUNDLE_NAME "libml_static${CMAKE_STATIC_LIBRARY_SUFFIX}")
 
 install(
     TARGETS libml_api_shared
-    DESTINATION lib
-    PUBLIC_HEADER DESTINATION include
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+    PUBLIC_HEADER DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
 )
 
 install(
     FILES "${CMAKE_BINARY_DIR}/${BUNDLE_NAME}"
-    DESTINATION lib
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+)
+
+install(
+    FILES
+        "${CMAKE_CURRENT_BINARY_DIR}/libml.pc"
+        "${CMAKE_CURRENT_BINARY_DIR}/libml_static.pc"
+    DESTINATION
+        "${CMAKE_INSTALL_LIBDIR}/pkgconfig"
 )
 
 add_subdirectory(test)

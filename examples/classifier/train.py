@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #--------------------------------------------------------------------------
-# Copyright (C) 2024-2024 Cisco and/or its affiliates. All rights reserved.
+# Copyright (C) 2024-2025 Cisco and/or its affiliates. All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License Version 2 as published
@@ -35,7 +35,7 @@ from urllib.parse import unquote_to_bytes
 # example data
 data = [
     { 'str':'foo=1', 'attack':0 },
-    { 'str':'foo=1%27%20OR%201=1%2D%2D', 'attack':1 }
+    { 'str':'foo=1%27%20or%201=1%2D%2D', 'attack':1 }
 ]
 
 #
