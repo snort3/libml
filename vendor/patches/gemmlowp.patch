@@ -1,0 +1,13 @@
+diff --git a/contrib/CMakeLists.txt b/contrib/CMakeLists.txt
+index f0c3b3e..1234567 100644
+--- a/contrib/CMakeLists.txt
++++ b/contrib/CMakeLists.txt
+@@ -2,7 +2,7 @@
+ # Copyright © 2016 Zhou Mo <cdluminate@gmail.com>
+ # Licence Apache-2.0
+
+-cmake_minimum_required(VERSION 3.7)
++cmake_minimum_required(VERSION 3.10)
+
+ # Project
+ project(gemmlowp C CXX)
